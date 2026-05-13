@@ -1,4 +1,5 @@
-import type { NextPage } from 'next'
+'use client'
+
 import dynamic from 'next/dynamic'
 import { useEffect, useState } from 'react'
 
@@ -8,7 +9,7 @@ const SwaggerUI = dynamic(() => import('swagger-ui-react'), {
   loading: () => <div style={{ padding: '20px', textAlign: 'center' }}>加载 API 文档中...</div>
 })
 
-const ApiDocs: NextPage = () => {
+export default function ApiDocsPage() {
   const [mounted, setMounted] = useState(false)
 
   useEffect(() => {
@@ -27,5 +28,3 @@ const ApiDocs: NextPage = () => {
     </div>
   )
 }
-
-export default ApiDocs

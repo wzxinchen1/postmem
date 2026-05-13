@@ -27,20 +27,15 @@ export class CutModelService {
    * 分析文本并返回切割点
    */
   async analyzeCutPoints(text: string): Promise<CutPoint[]> {
-    try {
-      switch (this.type) {
-        case 'local':
-          return await this.analyzeWithOllama(text)
-        case 'openai':
-          return await this.analyzeWithOpenAI(text)
-        case 'anthropic':
-          return await this.analyzeWithAnthropic(text)
-        default:
-          throw new Error(`Unknown chunk model type: ${this.type}`)
-      }
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      throw Errors.cutModelError(message)
+    switch (this.type) {
+      case 'local':
+        return await this.analyzeWithOllama(text)
+      case 'openai':
+        return await this.analyzeWithOpenAI(text)
+      case 'anthropic':
+        return await this.analyzeWithAnthropic(text)
+      default:
+        throw Errors.cutModelError(`Unknown chunk model type: ${this.type}`)
     }
   }
 
@@ -63,7 +58,7 @@ export class CutModelService {
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(`Ollama API error: ${response.status} - ${errorText}`)
+      throw Errors.cutModelError(`Ollama API error: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
@@ -75,7 +70,7 @@ export class CutModelService {
    */
   private async analyzeWithOpenAI(text: string): Promise<CutPoint[]> {
     if (!this.openaiApiKey) {
-      throw new Error('OpenAI API key not configured')
+      throw Errors.cutModelError('OpenAI API key not configured')
     }
 
     const prompt = this.buildPrompt(text)
@@ -104,7 +99,7 @@ export class CutModelService {
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(`OpenAI API error: ${response.status} - ${errorText}`)
+      throw Errors.cutModelError(`OpenAI API error: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
@@ -117,7 +112,7 @@ export class CutModelService {
    */
   private async analyzeWithAnthropic(text: string): Promise<CutPoint[]> {
     if (!this.anthropicApiKey) {
-      throw new Error('Anthropic API key not configured')
+      throw Errors.cutModelError('Anthropic API key not configured')
     }
 
     const prompt = this.buildPrompt(text)
@@ -143,7 +138,7 @@ export class CutModelService {
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw new Error(`Anthropic API error: ${response.status} - ${errorText}`)
+      throw Errors.cutModelError(`Anthropic API error: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
@@ -179,30 +174,32 @@ ${text}
    * 解析切割点响应
    */
   private parseCutPoints(response: string): CutPoint[] {
-    try {
-      // 尝试提取 JSON
-      let jsonStr = response.trim()
-      
-      // 如果响应包含 markdown 代码块，提取其中的 JSON
-      const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
-      if (jsonMatch) {
-        jsonStr = jsonMatch[1].trim()
-      }
-
-      const parsed = JSON.parse(jsonStr)
-      
-      if (!parsed.cutPoints || !Array.isArray(parsed.cutPoints)) {
-        throw new Error('Invalid response format: missing cutPoints array')
-      }
-
-      return parsed.cutPoints.map((point: any) => ({
-        index: Number(point.index),
-        reason: point.reason,
-      }))
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      throw new Error(`Failed to parse cut points: ${message}`)
+    // 尝试提取 JSON
+    let jsonStr = response.trim()
+    
+    // 如果响应包含 markdown 代码块，提取其中的 JSON
+    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1].trim()
     }
+
+    let parsed: any
+    try {
+      parsed = JSON.parse(jsonStr)
+    } catch (error) {
+      throw Errors.cutModelError(
+        `Failed to parse JSON response: ${error instanceof Error ? error.message : 'Unknown error'}`
+      )
+    }
+    
+    if (!parsed.cutPoints || !Array.isArray(parsed.cutPoints)) {
+      throw Errors.cutModelError('Invalid response format: missing cutPoints array')
+    }
+
+    return parsed.cutPoints.map((point: any) => ({
+      index: Number(point.index),
+      reason: point.reason,
+    }))
   }
 
   /**

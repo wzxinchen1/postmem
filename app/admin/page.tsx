@@ -1,6 +1,6 @@
-import Head from 'next/head'
+'use client'
+
 import { useState, useEffect } from 'react'
-import Link from 'next/link'
 
 // API 响应类型定义
 interface IngestResponse {
@@ -310,143 +310,62 @@ export default function Dashboard() {
 
   return (
     <>
-      <Head>
-        <title>PostMem Dashboard - 知识库管理</title>
-        <meta name="description" content="PostMem 知识库管理界面" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-      </Head>
+      {/* 消息提示 */}
+      {message && (
+        <div style={{ marginBottom: '1.5rem' }}>
+          <div style={{
+            padding: '0.875rem 1rem',
+            borderRadius: '8px',
+            background: message.type === 'success' ? COLORS.successLight : COLORS.errorLight,
+            color: message.type === 'success' ? '#065f46' : '#991b1b',
+            border: `1px solid ${message.type === 'success' ? '#6ee7b7' : '#fca5a5'}`,
+            fontSize: '0.875rem',
+            fontWeight: '500',
+            display: 'flex',
+            alignItems: 'center',
+            gap: '0.5rem'
+          }}>
+            <span>{message.type === 'success' ? '✓' : '✕'}</span>
+            {message.text}
+          </div>
+        </div>
+      )}
 
+      {/* Tab 选择器 */}
       <div style={{
-        minHeight: '100vh',
-        background: COLORS.bg,
-        fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif'
+        background: COLORS.cardBg,
+        borderRadius: '10px',
+        border: `1px solid ${COLORS.border}`,
+        marginBottom: '1.5rem',
+        display: 'flex',
+        gap: '0',
+        overflow: 'hidden'
       }}>
-        {/* 顶部导航栏 */}
-        <header style={{
-          background: COLORS.cardBg,
-          borderBottom: `1px solid ${COLORS.border}`,
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)',
-          position: 'sticky',
-          top: 0,
-          zIndex: 50
-        }}>
-          <div style={{
-            maxWidth: '1400px',
-            margin: '0 auto',
-            padding: '0 2rem'
-          }}>
-            {/* Logo 和标题 */}
-            <div style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'space-between',
-              height: '64px',
-              borderBottom: `1px solid ${COLORS.border}`
-            }}>
-              <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-                <div style={{
-                  width: '32px',
-                  height: '32px',
-                  background: `linear-gradient(135deg, ${COLORS.primary} 0%, #8b5cf6 100%)`,
-                  borderRadius: '8px',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  color: 'white',
-                  fontSize: '18px',
-                  fontWeight: 'bold'
-                }}>
-                  P
-                </div>
-                <h1 style={{
-                  fontSize: '1.25rem',
-                  fontWeight: '600',
-                  margin: 0,
-                  color: COLORS.text
-                }}>
-                  PostMem Dashboard
-                </h1>
-              </div>
-              <Link
-                href="/"
-                style={{
-                  padding: '0.5rem 1rem',
-                  color: COLORS.textSecondary,
-                  textDecoration: 'none',
-                  fontSize: '0.875rem',
-                  fontWeight: '500',
-                  borderRadius: '6px',
-                  transition: 'all 0.2s'
-                }}
-              >
-                ← 返回首页
-              </Link>
-            </div>
-
-            {/* 顶部菜单 */}
-            <nav style={{
-              display: 'flex',
-              gap: '0',
-              height: '48px'
-            }}>
-              {menuItems.map((item) => (
-                <button
-                  key={item.id}
-                  onClick={() => setActiveTab(item.id)}
-                  style={{
-                    padding: '0 1.25rem',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: activeTab === item.id ? `2px solid ${COLORS.primary}` : '2px solid transparent',
-                    color: activeTab === item.id ? COLORS.primary : COLORS.textSecondary,
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    fontWeight: activeTab === item.id ? '600' : '500',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  <span>{item.icon}</span>
-                  {item.label}
-                </button>
-              ))}
-            </nav>
-          </div>
-        </header>
-
-        {/* 消息提示 */}
-        {message && (
-          <div style={{
-            maxWidth: '1400px',
-            margin: '1rem auto',
-            padding: '0 2rem'
-          }}>
-            <div style={{
-              padding: '0.875rem 1rem',
-              borderRadius: '8px',
-              background: message.type === 'success' ? COLORS.successLight : COLORS.errorLight,
-              color: message.type === 'success' ? '#065f46' : '#991b1b',
-              border: `1px solid ${message.type === 'success' ? '#6ee7b7' : '#fca5a5'}`,
+        {menuItems.map((item) => (
+          <button
+            key={item.id}
+            onClick={() => setActiveTab(item.id)}
+            style={{
+              padding: '0.75rem 1.25rem',
+              background: activeTab === item.id ? COLORS.primaryLight : 'transparent',
+              border: 'none',
+              borderBottom: activeTab === item.id ? `2px solid ${COLORS.primary}` : '2px solid transparent',
+              color: activeTab === item.id ? COLORS.primary : COLORS.textSecondary,
+              cursor: 'pointer',
               fontSize: '0.875rem',
-              fontWeight: '500',
+              fontWeight: activeTab === item.id ? '600' : '500',
+              transition: 'all 0.2s',
               display: 'flex',
               alignItems: 'center',
-              gap: '0.5rem'
-            }}>
-              <span>{message.type === 'success' ? '✓' : '✕'}</span>
-              {message.text}
-            </div>
-          </div>
-        )}
-
-        {/* 主内容区 */}
-        <main style={{
-          maxWidth: '1400px',
-          margin: '0 auto',
-          padding: '2rem'
-        }}>
+              gap: '0.5rem',
+              flex: 1
+            }}
+          >
+            <span>{item.icon}</span>
+            {item.label}
+          </button>
+        ))}
+      </div>
           {/* 知识库选择器 - 仅在非入库和统计页面显示 */}
           {activeTab !== 'ingest' && activeTab !== 'stats' && (
             <div style={{
@@ -1478,22 +1397,6 @@ export default function Dashboard() {
               </div>
             </div>
           )}
-        </main>
-
-        {/* Footer */}
-        <footer style={{
-          textAlign: 'center',
-          padding: '2rem',
-          color: COLORS.textMuted,
-          fontSize: '0.8125rem',
-          borderTop: `1px solid ${COLORS.border}`,
-          background: COLORS.cardBg
-        }}>
-          <p style={{ margin: 0 }}>
-            PostMem - 个人知识库管理系统 | 基于 Next.js 和 PostgreSQL 构建
-          </p>
-        </footer>
-      </div>
 
       {/* 新建知识库模态窗口 */}
       {showCreateModal && (
@@ -1883,21 +1786,6 @@ export default function Dashboard() {
         </div>
       )}
 
-      <style jsx global>{`
-        input:focus, textarea:focus {
-          border-color: ${COLORS.primary} !important;
-          box-shadow: 0 0 0 3px ${COLORS.primaryLight};
-        }
-        button:hover:not(:disabled) {
-          opacity: 0.85;
-        }
-        button:active:not(:disabled) {
-          transform: scale(0.98);
-        }
-        table tbody tr:hover {
-          background-color: ${COLORS.bg};
-        }
-      `}</style>
-    </>
+      </>
   )
 }

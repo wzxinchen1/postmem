@@ -131,3 +131,93 @@ export interface CutPoint {
   index: number
   reason?: string
 }
+
+/**
+ * 提供商类型
+ */
+export type ProviderType = 'openai' | 'anthropic' | 'local' | 'custom'
+
+/**
+ * 模型类型
+ */
+export type ModelType = 'embedding' | 'chat' | 'completion'
+
+/**
+ * 提供商
+ */
+export interface Provider {
+  id: number
+  name: string
+  type: ProviderType
+  apiKey?: string
+  baseUrl?: string
+  config: Record<string, unknown>
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
+ * 模型
+ */
+export interface Model {
+  id: number
+  providerId: number
+  name: string
+  displayName?: string
+  modelType: ModelType
+  config: Record<string, unknown>
+  isActive: boolean
+  isDefault: boolean
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
+ * 创建提供商请求
+ */
+export interface CreateProviderRequest {
+  name: string
+  type: ProviderType
+  apiKey?: string
+  baseUrl?: string
+  config?: Record<string, unknown>
+  isActive?: boolean
+}
+
+/**
+ * 更新提供商请求
+ */
+export interface UpdateProviderRequest {
+  name?: string
+  type?: ProviderType
+  apiKey?: string
+  baseUrl?: string
+  config?: Record<string, unknown>
+  isActive?: boolean
+}
+
+/**
+ * 创建模型请求
+ */
+export interface CreateModelRequest {
+  providerId: number
+  name: string
+  displayName?: string
+  modelType: ModelType
+  config?: Record<string, unknown>
+  isActive?: boolean
+  isDefault?: boolean
+}
+
+/**
+ * 更新模型请求
+ */
+export interface UpdateModelRequest {
+  name?: string
+  displayName?: string
+  modelType?: ModelType
+  config?: Record<string, unknown>
+  isActive?: boolean
+  isDefault?: boolean
+}

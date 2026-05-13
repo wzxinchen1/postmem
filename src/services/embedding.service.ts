@@ -16,32 +16,27 @@ export class EmbeddingService {
    * 生成文本的嵌入向量
    */
   async generateEmbedding(text: string): Promise<number[]> {
-    try {
-      const response = await fetch(`${this.baseUrl}/api/embeddings`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          model: this.model,
-          prompt: text,
-        }),
-      })
+    const response = await fetch(`${this.baseUrl}/api/embeddings`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        model: this.model,
+        prompt: text,
+      }),
+    })
 
-      if (!response.ok) {
-        const errorText = await response.text()
-        throw new Error(`Ollama API error: ${response.status} - ${errorText}`)
-      }
-
-      const data = await response.json()
-      
-      if (!data.embedding || !Array.isArray(data.embedding)) {
-        throw new Error('Invalid embedding response from Ollama')
-      }
-
-      return data.embedding as number[]
-    } catch (error) {
-      const message = error instanceof Error ? error.message : 'Unknown error'
-      throw Errors.embeddingError(`Failed to generate embedding: ${message}`)
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw Errors.embeddingError(`Ollama API error: ${response.status} - ${errorText}`)
     }
+
+    const data = await response.json()
+    
+    if (!data.embedding || !Array.isArray(data.embedding)) {
+      throw Errors.embeddingError('Invalid embedding response from Ollama')
+    }
+
+    return data.embedding as number[]
   }
 
   /**
