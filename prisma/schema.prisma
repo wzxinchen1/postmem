@@ -1,0 +1,29 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Memory {
+  id         Int                    @id @default(autoincrement())
+  kbName     String                 @map("kb_name") @db.VarChar(100)
+  content    String                 @db.Text
+  embedding  Unsupported("vector(1024)")?
+  chunkIndex Int                    @map("chunk_index")
+  metadata   Json                   @default("{}")
+  createdAt  DateTime               @default(now()) @map("created_at") @db.Timestamptz()
+
+  @@index([kbName])
+  @@index([createdAt])
+  @@map("memories")
+}
+
+// HNSW 索引用于向量相似度搜索
+// 执行以下 SQL 创建索引：
+// CREATE INDEX ON memories USING hnsw (embedding vector_cosine_ops);

@@ -1,0 +1,55 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: pgvector/pgvector:pg18
+    container_name: postmem-postgres
+    environment:
+      POSTGRES_USER: postmem
+      POSTGRES_PASSWORD: postmem123
+      POSTGRES_DB: postmem
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    ports:
+      - "5432:5432"
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postmem"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  ollama:
+    image: ollama/ollama:latest
+    container_name: postmem-ollama
+    volumes:
+      - ollama-data:/root/.ollama
+    ports:
+      - "11434:11434"
+    deploy:
+      resources:
+        reservations:
+          devices:
+            - driver: nvidia
+              count: all
+              capabilities: [gpu]
+
+  app:
+    build: .
+    container_name: postmem-app
+    environment:
+      DATABASE_URL: postgresql://postmem:postmem123@postgres:5432/postmem?schema=public
+      OLLAMA_BASE_URL: http://ollama:11434
+      CHUNK_MODEL_TYPE: local
+      CHUNK_MODEL_NAME: mistral:7b
+      EMBEDDING_MODEL: bge-m3
+    ports:
+      - "3000:3000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      ollama:
+        condition: service_started
+
+volumes:
+  postgres-data:
+  ollama-data:
