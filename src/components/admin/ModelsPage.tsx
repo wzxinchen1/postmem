@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { message, Card, Button, Space, Typography, Tag, Empty, Modal, Form, Input, Select, Switch, Popconfirm } from 'antd'
+import { message, Card, Button, Space, Typography, Tag, Empty, Modal, Form, Input, Select, Switch, Popconfirm, Spin } from 'antd'
 import { PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography
@@ -10,6 +10,8 @@ interface Provider {
   id: number
   name: string
   type: string
+  apiKey?: string
+  baseUrl?: string
   isActive: boolean
 }
 
@@ -44,6 +46,8 @@ export default function ModelsPage() {
     isActive: true,
     isDefault: false,
   })
+  const [availableModels, setAvailableModels] = useState<string[]>([])
+  const [fetchingModels, setFetchingModels] = useState(false)
 
   const [msg, contextHolder] = message.useMessage()
   const [form] = Form.useForm()
@@ -74,6 +78,48 @@ export default function ModelsPage() {
       }
     } catch (err) {
       msg.error('网络请求失败')
+    }
+  }
+
+  const fetchAvailableModels = async (providerId: number) => {
+    const provider = providers.find(p => p.id === providerId)
+    if (!provider) return
+
+    setFetchingModels(true)
+    setAvailableModels([])
+
+    try {
+      const res = await fetch('/api/providers/models', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: provider.type,
+          apiKey: provider.apiKey,
+          baseUrl: provider.baseUrl,
+        }),
+      })
+
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('获取模型列表失败')
+        }
+        return
+      }
+
+      const data = await res.json()
+      if (data.success) {
+        setAvailableModels(data.data.models)
+        if (data.data.models.length === 0) {
+          msg.info('该提供商暂无可用模型，请手动输入模型名称')
+        }
+      }
+    } catch (err) {
+      msg.error('网络请求失败')
+    } finally {
+      setFetchingModels(false)
     }
   }
 
@@ -180,6 +226,7 @@ export default function ModelsPage() {
       isActive: model.isActive,
       isDefault: model.isDefault,
     })
+    fetchAvailableModels(model.providerId)
     setShowModal(true)
   }
 
@@ -222,6 +269,7 @@ export default function ModelsPage() {
       isDefault: false,
     })
     setEditingModel(null)
+    setAvailableModels([])
     form.resetFields()
   }
 
@@ -325,16 +373,35 @@ export default function ModelsPage() {
           <Form.Item label="提供商" required>
             <Select
               value={formData.providerId}
-              onChange={(value) => setFormData({ ...formData, providerId: value })}
+              onChange={(value) => {
+                setFormData({ ...formData, providerId: value, name: '' })
+                fetchAvailableModels(Number(value))
+              }}
               options={providers.map(p => ({ value: p.id.toString(), label: p.name }))}
             />
           </Form.Item>
           <Form.Item label="模型名称" required>
-            <Input
-              value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
-              placeholder="如：text-embedding-3-small"
-            />
+            {fetchingModels ? (
+              <Spin size="small" style={{ marginRight: 8 }} />
+            ) : availableModels.length > 0 ? (
+              <Select
+                value={formData.name}
+                onChange={(value) => setFormData({ ...formData, name: value })}
+                options={availableModels.map(m => ({ value: m, label: m }))}
+                placeholder="请选择模型"
+                showSearch
+                filterOption={(input, option) =>
+                  (option?.label ?? '').toLowerCase().includes(input.toLowerCase())
+                }
+              />
+            ) : (
+              <Input
+                value={formData.name}
+                onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+                placeholder={editingModel ? '编辑时可直接输入' : '请先选择提供商'}
+                disabled={!editingModel && !formData.providerId}
+              />
+            )}
           </Form.Item>
           <Form.Item label="显示名称">
             <Input

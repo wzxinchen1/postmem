@@ -8,6 +8,7 @@ import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
 import { SettingService } from '@/src/services/setting.service'
 import { SessionService } from '@/src/services/session.service'
+import { ProviderValidateService } from '@/src/services/provider-validate.service'
 
 /**
  * 依赖注入容器
@@ -25,6 +26,7 @@ container.register({
   kbService: asClass(KBService).scoped(),
   providerService: asClass(ProviderService).scoped(),
   modelService: asClass(ModelService).scoped(),
+  providerValidateService: asClass(ProviderValidateService).scoped(),
 })
 
 export default container

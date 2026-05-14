@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { message, Card, Button, Space, Typography, Tag, Empty, Modal, Form, Input, Select, Switch, Popconfirm } from 'antd'
-import { PlusOutlined, EditOutlined, DeleteOutlined } from '@ant-design/icons'
+import { message, Card, Button, Space, Typography, Tag, Empty, Modal, Form, Input, Select, Switch, Popconfirm, Spin } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseCircleOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography
 
@@ -49,6 +49,8 @@ export default function ProvidersPage() {
     baseUrl: '',
     isActive: true,
   })
+  const [validating, setValidating] = useState(false)
+  const [validationResult, setValidationResult] = useState<{ valid: boolean; error?: string } | null>(null)
 
   const [msg, contextHolder] = message.useMessage()
   const [form] = Form.useForm()
@@ -81,7 +83,69 @@ export default function ProvidersPage() {
     }
   }
 
+  const handleValidate = async () => {
+    if (!formData.type) {
+      msg.info('请选择提供商类型')
+      return
+    }
+
+    if (formData.type === 'openai' && !formData.apiKey) {
+      msg.info('OpenAI 需要 API Key')
+      return
+    }
+
+    if (formData.type === 'anthropic' && !formData.apiKey) {
+      msg.info('Anthropic 需要 API Key')
+      return
+    }
+
+    if (formData.type === 'custom' && !formData.baseUrl) {
+      msg.info('自定义提供商需要 Base URL')
+      return
+    }
+
+    setValidating(true)
+    setValidationResult(null)
+
+    try {
+      const res = await fetch('/api/providers/validate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: formData.type,
+          apiKey: formData.apiKey || undefined,
+          baseUrl: formData.baseUrl || undefined,
+        }),
+      })
+
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          setValidationResult({ valid: false, error: errorMessage })
+        } else {
+          setValidationResult({ valid: false, error: '验证失败' })
+        }
+        return
+      }
+
+      const data = await res.json()
+      if (data.success) {
+        setValidationResult({ valid: true })
+        msg.success('验证成功')
+      }
+    } catch (err) {
+      setValidationResult({ valid: false, error: '网络请求失败' })
+    } finally {
+      setValidating(false)
+    }
+  }
+
   const handleSubmit = async () => {
+    if (!validationResult?.valid) {
+      msg.info('请先验证提供商配置')
+      return
+    }
+
     setLoading(true)
 
     try {
@@ -160,6 +224,7 @@ export default function ProvidersPage() {
       baseUrl: provider.baseUrl || '',
       isActive: provider.isActive,
     })
+    setValidationResult({ valid: true })
     setShowModal(true)
   }
 
@@ -172,6 +237,7 @@ export default function ProvidersPage() {
       isActive: true,
     })
     setEditingProvider(null)
+    setValidationResult(null)
     form.resetFields()
   }
 
@@ -280,28 +346,28 @@ export default function ProvidersPage() {
           <Form.Item label="名称" required>
             <Input
               value={formData.name}
-              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setValidationResult(null) }}
             />
           </Form.Item>
           <Form.Item label="类型" required>
             <Select
               value={formData.type}
-              onChange={(value) => setFormData({ ...formData, type: value })}
+              onChange={(value) => { setFormData({ ...formData, type: value }); setValidationResult(null) }}
               options={PROVIDER_TYPES}
             />
           </Form.Item>
-          <Form.Item label="API Key">
+          <Form.Item label="API Key" required={formData.type === 'openai' || formData.type === 'anthropic'}>
             <Input.Password
               value={formData.apiKey}
-              onChange={(e) => setFormData({ ...formData, apiKey: e.target.value })}
-              placeholder="可选"
+              onChange={(e) => { setFormData({ ...formData, apiKey: e.target.value }); setValidationResult(null) }}
+              placeholder={formData.type === 'openai' || formData.type === 'anthropic' ? '必填' : '可选'}
             />
           </Form.Item>
-          <Form.Item label="Base URL">
+          <Form.Item label="Base URL" required={formData.type === 'custom'}>
             <Input
               value={formData.baseUrl}
-              onChange={(e) => setFormData({ ...formData, baseUrl: e.target.value })}
-              placeholder="可选，用于自定义端点"
+              onChange={(e) => { setFormData({ ...formData, baseUrl: e.target.value }); setValidationResult(null) }}
+              placeholder={formData.type === 'custom' ? '必填，如：http://localhost:8000' : '可选，用于自定义端点'}
             />
           </Form.Item>
           <Form.Item>
@@ -313,10 +379,36 @@ export default function ProvidersPage() {
               <Text>启用此提供商</Text>
             </Space>
           </Form.Item>
+          
+          {validationResult && (
+            <Form.Item>
+              <Space>
+                {validationResult.valid ? (
+                  <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />
+                ) : (
+                  <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
+                )}
+                <Text type={validationResult.valid ? 'success' : 'danger'}>
+                  {validationResult.valid ? '验证成功' : validationResult.error}
+                </Text>
+              </Space>
+            </Form.Item>
+          )}
+
           <Form.Item style={{ marginBottom: 0 }}>
-            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
-              <Button onClick={() => { setShowModal(false); resetForm(); }}>取消</Button>
-              <Button type="primary" onClick={handleSubmit} loading={loading}>保存</Button>
+            <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+              <Button 
+                icon={validating ? <Spin size="small" /> : undefined}
+                onClick={handleValidate} 
+                loading={validating}
+                disabled={validating}
+              >
+                {validating ? '验证中...' : '验证配置'}
+              </Button>
+              <Space>
+                <Button onClick={() => { setShowModal(false); resetForm(); }}>取消</Button>
+                <Button type="primary" onClick={handleSubmit} loading={loading} disabled={!validationResult?.valid}>保存</Button>
+              </Space>
             </Space>
           </Form.Item>
         </Form>
