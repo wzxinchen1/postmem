@@ -3,16 +3,20 @@ import type {
   Provider,
   CreateProviderRequest,
   UpdateProviderRequest,
+  VendorInfo,
 } from '@/src/types'
+import { VendorRegistryService } from './vendor-registry.service'
 
 /**
  * 提供商服务
  */
 export class ProviderService {
   private prisma: PrismaClient
+  private vendorRegistry: VendorRegistryService
 
   constructor({ prisma }: { prisma: PrismaClient }) {
     this.prisma = prisma
+    this.vendorRegistry = new VendorRegistryService()
   }
 
   /**
@@ -46,35 +50,42 @@ export class ProviderService {
   }
 
   /**
+   * 获取提供商的厂商信息
+   */
+  getVendorInfo(baseUrl: string): VendorInfo {
+    return this.vendorRegistry.identify(baseUrl)
+  }
+
+  /**
    * 创建提供商
    */
   async create(data: CreateProviderRequest): Promise<Provider> {
-    return this.prisma.provider.create({
+    const provider = await this.prisma.provider.create({
       data: {
         name: data.name,
-        type: data.type,
-        apiKey: data.apiKey,
+        apiKey: data.apiKey ?? null,
         baseUrl: data.baseUrl,
-        config: data.config || {},
+        config: (data.config ?? {}) as any,
         isActive: data.isActive ?? true,
-      },
-    }) as Promise<Provider>
+      } as any,
+    })
+    return provider as Provider
   }
 
   /**
    * 更新提供商
    */
   async update(id: number, data: UpdateProviderRequest): Promise<Provider> {
+    const updateData: Record<string, unknown> = {
+      ...(data.name && { name: data.name }),
+      ...(data.apiKey !== undefined && { apiKey: data.apiKey }),
+      ...(data.baseUrl !== undefined && { baseUrl: data.baseUrl }),
+      ...(data.config !== undefined && { config: data.config }),
+      ...(data.isActive !== undefined && { isActive: data.isActive }),
+    }
     return this.prisma.provider.update({
       where: { id },
-      data: {
-        ...(data.name && { name: data.name }),
-        ...(data.type && { type: data.type }),
-        ...(data.apiKey !== undefined && { apiKey: data.apiKey }),
-        ...(data.baseUrl !== undefined && { baseUrl: data.baseUrl }),
-        ...(data.config && { config: data.config }),
-        ...(data.isActive !== undefined && { isActive: data.isActive }),
-      },
+      data: updateData as any,
     }) as Promise<Provider>
   }
 

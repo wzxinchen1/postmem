@@ -23,8 +23,8 @@ export default createApiHandler<Deps>({
       POST: async (deps) => {
         const data = req.body as CreateProviderRequest
 
-        if (!data.name || !data.type) {
-          return errorResponse(res, 'VALIDATION_ERROR', '名称和类型为必填项', 400)
+        if (!data.name || !data.baseUrl) {
+          return errorResponse(res, 'VALIDATION_ERROR', '名称和Base URL为必填项', 400)
         }
 
         const exists = await deps.providerService.exists(data.name)

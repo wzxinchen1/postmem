@@ -1,25 +1,38 @@
 import { ChatOpenAI } from '@langchain/openai'
-import { ChatOllama } from '@langchain/ollama'
-import type { ProviderType } from '@/src/types'
+import { VendorRegistryService } from './vendor-registry.service'
+import type { VendorInfo } from '@/src/types'
 
 export class ProviderValidateService {
+  private vendorRegistry: VendorRegistryService
+
+  constructor() {
+    this.vendorRegistry = new VendorRegistryService()
+  }
+
   async validateProvider(
-    type: ProviderType,
     apiKey?: string,
     baseUrl?: string
-  ): Promise<{ valid: boolean; error?: string }> {
+  ): Promise<{ valid: boolean; error?: string; vendor?: VendorInfo }> {
+    if (!baseUrl) {
+      return { valid: false, error: 'Base URL 为必填项' }
+    }
+
+    const vendor = this.vendorRegistry.identify(baseUrl)
+
     try {
-      switch (type) {
+      switch (vendor.apiFormat) {
         case 'openai':
-          return await this.validateOpenAI(apiKey)
         case 'anthropic':
-          return await this.validateAnthropic(apiKey)
-        case 'local':
-          return await this.validateOllama(baseUrl)
-        case 'custom':
-          return await this.validateCustom(apiKey, baseUrl)
+        case 'alibaba':
+        case 'zhipu':
+        case 'deepseek':
+        case 'openrouter':
+          return await this.validateOpenAICompatible(apiKey, baseUrl, vendor)
+        case 'baidu':
+        case 'tencent':
+          return { valid: true, vendor }
         default:
-          return { valid: false, error: '不支持的提供商类型' }
+          return await this.validateOpenAICompatible(apiKey, baseUrl, vendor)
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '验证失败'
@@ -27,117 +40,87 @@ export class ProviderValidateService {
     }
   }
 
-  private async validateOpenAI(apiKey?: string): Promise<{ valid: boolean; error?: string }> {
-    if (!apiKey) {
-      return { valid: false, error: 'OpenAI 需要 API Key' }
+  private async validateOpenAICompatible(
+    apiKey?: string,
+    baseUrl: string,
+    vendor: VendorInfo
+  ): Promise<{ valid: boolean; error?: string; vendor?: VendorInfo }> {
+    if (vendor.authType !== 'custom' && !apiKey) {
+      return { valid: false, error: `${vendor.name} 需要 API Key` }
     }
 
-    const chatModel = new ChatOpenAI({
-      model: 'gpt-3.5-turbo',
-      apiKey,
-      configuration: {
-        baseURL: 'https://api.openai.com/v1',
-      },
-    })
+    const headers = this.vendorRegistry.buildAuthHeaders(vendor, apiKey || 'test')
+    const testUrl = this.vendorRegistry.buildRequestUrl(baseUrl, vendor)
 
     try {
-      await chatModel.invoke(['Hello'])
-      return { valid: true }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '验证失败'
-      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
-        return { valid: false, error: 'API Key 无效' }
-      }
-      if (errorMessage.includes('403') || errorMessage.includes('Forbidden')) {
-        return { valid: false, error: 'API Key 权限不足' }
-      }
-      return { valid: false, error: `连接失败: ${errorMessage}` }
-    }
-  }
-
-  private async validateAnthropic(apiKey?: string): Promise<{ valid: boolean; error?: string }> {
-    if (!apiKey) {
-      return { valid: false, error: 'Anthropic 需要 API Key' }
-    }
-
-    return { valid: true }
-  }
-
-  private async validateOllama(baseUrl?: string): Promise<{ valid: boolean; error?: string }> {
-    const url = baseUrl || 'http://localhost:11434'
-
-    try {
-      const response = await fetch(`${url}/api/tags`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(5000),
+      const response = await fetch(testUrl, {
+        method: 'POST',
+        headers,
+        body: JSON.stringify({
+          model: 'test',
+          messages: [{ role: 'user', content: 'test' }],
+          max_tokens: 1,
+        }),
+        signal: AbortSignal.timeout(10000),
       })
 
-      if (!response.ok) {
-        return { valid: false, error: `Ollama 服务响应错误: ${response.status}` }
+      if (response.status === 401) {
+        return { valid: false, error: 'API Key 无效', vendor }
       }
 
-      return { valid: true }
+      if (response.status === 403) {
+        return { valid: false, error: 'API Key 权限不足', vendor }
+      }
+
+      return { valid: true, vendor }
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '连接失败'
+      const errorMessage = err instanceof Error ? err.message : '验证失败'
       if (errorMessage.includes('timeout')) {
-        return { valid: false, error: '连接超时，请检查 Ollama 服务是否运行' }
+        return { valid: false, error: '连接超时', vendor }
       }
-      return { valid: false, error: `无法连接到 Ollama 服务: ${errorMessage}` }
-    }
-  }
-
-  private async validateCustom(apiKey?: string, baseUrl?: string): Promise<{ valid: boolean; error?: string }> {
-    if (!baseUrl) {
-      return { valid: false, error: '自定义提供商需要 Base URL' }
-    }
-
-    try {
-      const chatModel = new ChatOpenAI({
-        model: 'test',
-        apiKey: apiKey || 'test',
-        configuration: {
-          baseURL: baseUrl,
-        },
-      })
-
-      await chatModel.invoke(['Hello'])
-      return { valid: true }
-    } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : '验证失败'
-      if (errorMessage.includes('401') || errorMessage.includes('Unauthorized')) {
-        return { valid: false, error: 'API Key 无效或 Base URL 不正确' }
-      }
-      return { valid: true }
+      return { valid: false, error: `连接失败: ${errorMessage}`, vendor }
     }
   }
 
   async fetchModels(
-    type: ProviderType,
     apiKey?: string,
     baseUrl?: string
-  ): Promise<{ models: string[]; error?: string }> {
+  ): Promise<{ models: string[]; error?: string; vendor?: VendorInfo }> {
+    if (!baseUrl) {
+      return { models: [], error: 'Base URL 为必填项' }
+    }
+
+    const vendor = this.vendorRegistry.identify(baseUrl)
+
     try {
-      switch (type) {
+      switch (vendor.apiFormat) {
         case 'openai':
-          return await this.fetchOpenAIModels(apiKey)
+          return await this.fetchOpenAIModels(apiKey, vendor)
         case 'anthropic':
-          return await this.fetchAnthropicModels(apiKey)
-        case 'local':
-          return await this.fetchOllamaModels(baseUrl)
-        case 'custom':
-          return await this.fetchCustomModels(apiKey, baseUrl)
+          return await this.fetchAnthropicModels(vendor)
+        case 'openrouter':
+          return await this.fetchOpenRouterModels(apiKey, vendor)
+        case 'deepseek':
+          return await this.fetchDeepSeekModels(apiKey, vendor)
+        case 'alibaba':
+          return await this.fetchAlibabaModels(vendor)
+        case 'zhipu':
+          return await this.fetchZhipuModels(vendor)
         default:
-          return { models: [], error: '不支持的提供商类型' }
+          return await this.fetchGenericModels(apiKey, baseUrl, vendor)
       }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取模型列表失败'
-      return { models: [], error: errorMessage }
+      return { models: [], error: errorMessage, vendor }
     }
   }
 
-  private async fetchOpenAIModels(apiKey?: string): Promise<{ models: string[]; error?: string }> {
+  private async fetchOpenAIModels(
+    apiKey?: string,
+    vendor: VendorInfo
+  ): Promise<{ models: string[]; error?: string; vendor?: VendorInfo }> {
     if (!apiKey) {
-      return { models: [], error: '需要 API Key' }
+      return { models: [], error: '需要 API Key', vendor }
     }
 
     try {
@@ -150,67 +133,109 @@ export class ProviderValidateService {
 
       if (!response.ok) {
         const errorMessage = response.status === 401 ? 'API Key 无效' : `请求失败: ${response.status}`
-        return { models: [], error: errorMessage }
+        return { models: [], error: errorMessage, vendor }
       }
 
       const data = await response.json()
       const models = data.data
         .map((model: any) => model.id)
-        .filter((id: string) => 
-          id.includes('gpt') || 
-          id.includes('text-embedding') || 
+        .filter((id: string) =>
+          id.includes('gpt') ||
+          id.includes('text-embedding') ||
           id.includes('o1') ||
           id.includes('o3')
         )
         .sort()
 
-      return { models }
+      return { models, vendor }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取模型列表失败'
-      return { models: [], error: errorMessage }
+      return { models: [], error: errorMessage, vendor }
     }
   }
 
-  private async fetchAnthropicModels(apiKey?: string): Promise<{ models: string[]; error?: string }> {
+  private async fetchAnthropicModels(
+    vendor: VendorInfo
+  ): Promise<{ models: string[]; error?: string; vendor?: VendorInfo }> {
     return {
       models: [
+        'claude-opus-4-7-20260514',
+        'claude-sonnet-4-6-20260514',
+        'claude-haiku-4-5-20260514',
         'claude-3-5-sonnet-20241022',
         'claude-3-5-haiku-20241022',
         'claude-3-opus-20240229',
-        'claude-3-sonnet-20240229',
-        'claude-3-haiku-20240307',
       ],
+      vendor,
     }
   }
 
-  private async fetchOllamaModels(baseUrl?: string): Promise<{ models: string[]; error?: string }> {
-    const url = baseUrl || 'http://localhost:11434'
-
+  private async fetchOpenRouterModels(
+    apiKey?: string,
+    vendor: VendorInfo
+  ): Promise<{ models: string[]; error?: string; vendor?: VendorInfo }> {
     try {
-      const response = await fetch(`${url}/api/tags`, {
-        method: 'GET',
-        signal: AbortSignal.timeout(5000),
+      const response = await fetch('https://openrouter.ai/api/v1/models', {
+        headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
+        signal: AbortSignal.timeout(10000),
       })
 
       if (!response.ok) {
-        return { models: [], error: `Ollama 服务响应错误: ${response.status}` }
+        return { models: [], error: `请求失败: ${response.status}`, vendor }
       }
 
       const data = await response.json()
-      const models = data.models?.map((model: any) => model.name) || []
+      const models = data.data?.map((model: any) => model.id).sort() || []
 
-      return { models }
+      return { models, vendor }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取模型列表失败'
-      return { models: [], error: errorMessage }
+      return { models: [], error: errorMessage, vendor }
     }
   }
 
-  private async fetchCustomModels(apiKey?: string, baseUrl?: string): Promise<{ models: string[]; error?: string }> {
-    if (!baseUrl) {
-      return { models: [], error: '需要 Base URL' }
+  private async fetchDeepSeekModels(
+    apiKey?: string,
+    vendor: VendorInfo
+  ): Promise<{ models: string[]; error?: string; vendor?: VendorInfo }> {
+    return {
+      models: ['deepseek-v4-pro', 'deepseek-v4-flash'],
+      vendor,
     }
+  }
 
+  private async fetchAlibabaModels(
+    vendor: VendorInfo
+  ): Promise<{ models: string[]; error?: string; vendor?: VendorInfo }> {
+    return {
+      models: [
+        'qwen-max',
+        'qwen-plus',
+        'qwen-turbo',
+        'qwen3-max',
+        'qwen3-plus',
+        'qwen3-turbo',
+        'qwen3-vl-plus',
+        'qwen-coder-plus',
+      ],
+      vendor,
+    }
+  }
+
+  private async fetchZhipuModels(
+    vendor: VendorInfo
+  ): Promise<{ models: string[]; error?: string; vendor?: VendorInfo }> {
+    return {
+      models: ['glm-4-plus', 'glm-4', 'glm-4-air', 'glm-4-flash'],
+      vendor,
+    }
+  }
+
+  private async fetchGenericModels(
+    apiKey?: string,
+    baseUrl: string,
+    vendor: VendorInfo
+  ): Promise<{ models: string[]; error?: string; vendor?: VendorInfo }> {
     try {
       const response = await fetch(`${baseUrl}/v1/models`, {
         headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
@@ -218,16 +243,16 @@ export class ProviderValidateService {
       })
 
       if (!response.ok) {
-        return { models: [], error: `请求失败: ${response.status}` }
+        return { models: [], error: `请求失败: ${response.status}`, vendor }
       }
 
       const data = await response.json()
       const models = data.data?.map((model: any) => model.id) || []
 
-      return { models }
+      return { models, vendor }
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : '获取模型列表失败'
-      return { models: [], error: errorMessage }
+      return { models: [], error: errorMessage, vendor }
     }
   }
 }

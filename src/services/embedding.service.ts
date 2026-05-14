@@ -2,6 +2,7 @@ import { Errors } from '@/src/lib/errors'
 import type { PrismaClient } from '@prisma/client'
 import type { Model, Provider } from '@/src/types'
 import { SessionService } from '@/src/services/session.service'
+import { VendorRegistryService } from './vendor-registry.service'
 
 /**
  * 嵌入服务 - 从数据库配置动态使用模型
@@ -9,11 +10,13 @@ import { SessionService } from '@/src/services/session.service'
 export class EmbeddingService {
   private prisma: PrismaClient
   private sessionService: SessionService
+  private vendorRegistry: VendorRegistryService
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map()
 
   constructor({ prisma, sessionService }: { prisma: PrismaClient; sessionService: SessionService }) {
     this.prisma = prisma
     this.sessionService = sessionService
+    this.vendorRegistry = new VendorRegistryService()
   }
 
   /**
@@ -50,6 +53,7 @@ export class EmbeddingService {
    */
   async generateEmbedding(text: string, kbId?: number): Promise<number[]> {
     const { model, provider } = await this.getDefaultModel()
+    const vendor = this.vendorRegistry.identify(provider.baseUrl)
 
     const session = await this.sessionService.create({
       kbId,
@@ -58,26 +62,19 @@ export class EmbeddingService {
       provider: provider.name,
       metadata: {
         displayName: model.displayName,
-        providerType: provider.type,
+        vendorId: vendor.id,
+        vendorName: vendor.name,
       },
     })
 
     let result: number[]
-    
-    switch (provider.type) {
-      case 'local':
-        result = await this.generateWithOllama(text, model.name, provider.baseUrl || 'http://localhost:11434', session.id)
-        break
-      case 'openai':
-        result = await this.generateWithOpenAI(text, model.name, provider.apiKey!, session.id)
-        break
-      case 'anthropic':
-        throw Errors.embeddingError('Anthropic 不支持嵌入模型')
-      case 'custom':
-        result = await this.generateWithCustom(text, model.name, provider.baseUrl!, provider.apiKey, session.id)
-        break
-      default:
-        throw Errors.embeddingError(`未知的提供商类型: ${provider.type}`)
+
+    if (provider.baseUrl.includes('localhost:11434') || vendor.id === 'ollama') {
+      result = await this.generateWithOllama(text, model.name, provider.baseUrl, session.id)
+    } else if (vendor.id === 'openai') {
+      result = await this.generateWithOpenAI(text, model.name, provider.apiKey!, session.id)
+    } else {
+      result = await this.generateWithCustom(text, model.name, provider.baseUrl, provider.apiKey, session.id)
     }
 
     await this.sessionService.complete(session.id)
@@ -110,7 +107,7 @@ export class EmbeddingService {
     }
 
     const data = await response.json()
-    
+
     if (!data.embedding || !Array.isArray(data.embedding)) {
       throw Errors.embeddingError('Ollama 返回的嵌入响应无效')
     }
@@ -154,7 +151,7 @@ export class EmbeddingService {
     }
 
     const data = await response.json()
-    
+
     if (!data.data || !data.data[0]?.embedding) {
       throw Errors.embeddingError('OpenAI 返回的嵌入响应无效')
     }
@@ -184,7 +181,7 @@ export class EmbeddingService {
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
-    
+
     if (apiKey) {
       headers['Authorization'] = `Bearer ${apiKey}`
     }
@@ -204,9 +201,9 @@ export class EmbeddingService {
     }
 
     const data = await response.json()
-    
+
     let embedding: number[]
-    
+
     if (data.embedding && Array.isArray(data.embedding)) {
       embedding = data.embedding
     } else if (data.data && data.data[0]?.embedding) {
@@ -244,14 +241,14 @@ export class EmbeddingService {
   async healthCheck(): Promise<boolean> {
     try {
       const { provider } = await this.getDefaultModel()
-      
-      if (provider.type === 'local') {
-        const response = await fetch(`${provider.baseUrl || 'http://localhost:11434'}/api/tags`, {
+
+      if (provider.baseUrl.includes('localhost:11434')) {
+        const response = await fetch(`${provider.baseUrl}/api/tags`, {
           method: 'GET',
         })
         return response.ok
       }
-      
+
       return true
     } catch {
       return false

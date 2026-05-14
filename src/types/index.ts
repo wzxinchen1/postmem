@@ -187,14 +187,31 @@ export type ProviderType = 'openai' | 'anthropic' | 'local' | 'custom'
 export type ModelType = 'embedding' | 'chat'
 
 /**
+ * 厂商识别结果
+ */
+export interface VendorInfo {
+  id: string
+  name: string
+  apiFormat: 'openai' | 'anthropic' | 'alibaba' | 'zhipu' | 'deepseek' | 'openrouter'
+  authType: 'bearer' | 'x-api-key' | 'custom'
+  requiredHeaders: Record<string, string>
+  defaultPath: string
+  features: {
+    thinking: boolean
+    streaming: boolean
+    tools: boolean
+    multimodal: boolean
+  }
+}
+
+/**
  * 提供商
  */
 export interface Provider {
   id: number
   name: string
-  type: ProviderType
   apiKey?: string
-  baseUrl?: string
+  baseUrl: string
   config: Record<string, unknown>
   isActive: boolean
   createdAt: Date
@@ -222,9 +239,8 @@ export interface Model {
  */
 export interface CreateProviderRequest {
   name: string
-  type: ProviderType
   apiKey?: string
-  baseUrl?: string
+  baseUrl: string
   config?: Record<string, unknown>
   isActive?: boolean
 }
@@ -234,7 +250,6 @@ export interface CreateProviderRequest {
  */
 export interface UpdateProviderRequest {
   name?: string
-  type?: ProviderType
   apiKey?: string
   baseUrl?: string
   config?: Record<string, unknown>

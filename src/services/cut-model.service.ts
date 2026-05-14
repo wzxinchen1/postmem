@@ -3,17 +3,20 @@ import { ChatOllama } from '@langchain/ollama'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { Errors } from '@/src/lib/errors'
 import type { PrismaClient } from '@prisma/client'
-import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelType, ProviderType } from '@/src/types'
+import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelType } from '@/src/types'
 import { SessionService } from '@/src/services/session.service'
+import { VendorRegistryService } from './vendor-registry.service'
 
 export class CutModelService {
   private prisma: PrismaClient
   private sessionService: SessionService
-  private modelCache: Map<string, { model: Model; provider: Provider }> = new Map()
+  private vendorRegistry: VendorRegistryService
+  private modelCache: Map<string, { model: Model; provider: Provider }> = new Map<string, { model: Model; provider: Provider }>()
 
   constructor({ prisma, sessionService }: { prisma: PrismaClient; sessionService: SessionService }) {
     this.prisma = prisma
     this.sessionService = sessionService
+    this.vendorRegistry = new VendorRegistryService()
   }
 
   private async getDefaultModel(): Promise<{ model: Model; provider: Provider }> {
@@ -37,7 +40,7 @@ export class CutModelService {
       throw Errors.cutModelError('未配置默认对话模型，请在 /admin/models 页面配置')
     }
 
-    const result = {
+    const result: { model: Model; provider: Provider } = {
       model: {
         id: model.id,
         providerId: model.providerId,
@@ -53,9 +56,8 @@ export class CutModelService {
       provider: {
         id: model.provider.id,
         name: model.provider.name,
-        type: model.provider.type as ProviderType,
         apiKey: model.provider.apiKey || undefined,
-        baseUrl: model.provider.baseUrl || undefined,
+        baseUrl: model.provider.baseUrl || '',
         config: model.provider.config as Record<string, unknown>,
         isActive: model.provider.isActive,
         createdAt: model.provider.createdAt,
@@ -67,32 +69,23 @@ export class CutModelService {
   }
 
   private createChatModel(model: Model, provider: Provider) {
-    switch (provider.type) {
-      case 'local':
-        return new ChatOllama({
-          model: model.name,
-          baseUrl: provider.baseUrl || 'http://localhost:11434',
-          format: 'json',
-        })
-      case 'openai':
-        return new ChatOpenAI({
-          model: model.name,
-          apiKey: provider.apiKey!,
-          configuration: {
-            baseURL: 'https://api.openai.com/v1',
-          },
-        })
-      case 'custom':
-        return new ChatOpenAI({
-          model: model.name,
-          apiKey: provider.apiKey || undefined,
-          configuration: {
-            baseURL: provider.baseUrl,
-          },
-        })
-      default:
-        throw Errors.cutModelError(`不支持的提供商类型: ${provider.type}`)
+    const vendor = this.vendorRegistry.identify(provider.baseUrl)
+
+    if (vendor.id === 'ollama' || provider.baseUrl.includes('localhost:11434')) {
+      return new ChatOllama({
+        model: model.name,
+        baseUrl: provider.baseUrl,
+        format: 'json',
+      })
     }
+
+    return new ChatOpenAI({
+      model: model.name,
+      apiKey: provider.apiKey || 'test',
+      configuration: {
+        baseURL: provider.baseUrl,
+      },
+    })
   }
 
   private async callLLM(
@@ -144,6 +137,7 @@ export class CutModelService {
 
   async analyzeCutPoints(text: string, kbId?: number): Promise<CutPoint[]> {
     const { model, provider } = await this.getDefaultModel()
+    const vendor = this.vendorRegistry.identify(provider.baseUrl)
 
     const session = await this.sessionService.create({
       kbId,
@@ -152,7 +146,8 @@ export class CutModelService {
       provider: provider.name,
       metadata: {
         displayName: model.displayName,
-        providerType: provider.type,
+        vendorId: vendor.id,
+        vendorName: vendor.name,
       },
     })
 
@@ -176,6 +171,7 @@ export class CutModelService {
 
   async analyzeMessageGroups(messages: IngestMessage[], kbId?: number): Promise<MessageGroup[]> {
     const { model, provider } = await this.getDefaultModel()
+    const vendor = this.vendorRegistry.identify(provider.baseUrl)
 
     const session = await this.sessionService.create({
       kbId,
@@ -184,7 +180,8 @@ export class CutModelService {
       provider: provider.name,
       metadata: {
         displayName: model.displayName,
-        providerType: provider.type,
+        vendorId: vendor.id,
+        vendorName: vendor.name,
       },
     })
 
@@ -209,6 +206,7 @@ export class CutModelService {
 
   async analyzeTextGroups(text: string, kbId?: number): Promise<MessageGroup[]> {
     const { model, provider } = await this.getDefaultModel()
+    const vendor = this.vendorRegistry.identify(provider.baseUrl)
 
     const session = await this.sessionService.create({
       kbId,
@@ -217,7 +215,8 @@ export class CutModelService {
       provider: provider.name,
       metadata: {
         displayName: model.displayName,
-        providerType: provider.type,
+        vendorId: vendor.id,
+        vendorName: vendor.name,
       },
     })
 
