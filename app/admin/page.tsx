@@ -1,13 +1,17 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { COLORS } from '@/app/admin/constants'
+import { Card, Row, Col, Statistic, Typography, Button, Empty, Space, message } from 'antd'
+import { BookOutlined, FileTextOutlined, CheckCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import { StatsResponse } from '@/app/admin/types'
 import { post } from '@/app/admin/lib/request'
+
+const { Title, Text } = Typography
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [statsResults, setStatsResults] = useState<StatsResponse | null>(null)
+  const [msg, contextHolder] = message.useMessage()
 
   useEffect(() => {
     handleStats()
@@ -19,267 +23,100 @@ export default function Dashboard() {
       const data = await post<StatsResponse>('/api/kb/stats', {})
       setStatsResults(data)
     } catch (err) {
+      msg.error('加载统计数据失败')
     } finally {
       setLoading(false)
     }
   }
 
+  const totalFragments = statsResults?.data?.kbNames?.reduce((sum, kb) => sum + kb.total, 0) || 0
+
   return (
     <>
-      {/* 统计卡片 */}
-      <div style={{
-        display: 'grid',
-        gridTemplateColumns: 'repeat(auto-fit, minmax(240px, 1fr))',
-        gap: '1rem',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{
-          background: COLORS.cardBg,
-          padding: '1.5rem',
-          borderRadius: '10px',
-          border: `1px solid ${COLORS.border}`,
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '0.75rem'
-          }}>
-            <span style={{
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              color: COLORS.textSecondary
-            }}>
-              知识库总数
-            </span>
-            <span style={{
-              width: '32px',
-              height: '32px',
-              background: COLORS.primaryLight,
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1rem'
-            }}>
-              📚
-            </span>
-          </div>
-          <div style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: COLORS.text
-          }}>
-            {statsResults?.data?.kbNames?.length || 0}
-          </div>
-        </div>
+      {contextHolder}
+      
+      <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic
+              title="知识库总数"
+              value={statsResults?.data?.kbNames?.length || 0}
+              prefix={<BookOutlined style={{ color: '#1677ff' }} />}
+              style={{ color: '#1677ff' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic
+              title="片段总数"
+              value={totalFragments}
+              prefix={<FileTextOutlined style={{ color: '#52c41a' }} />}
+              style={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+        <Col xs={24} sm={8}>
+          <Card>
+            <Statistic
+              title="系统状态"
+              value="运行正常"
+              prefix={<CheckCircleOutlined style={{ color: '#52c41a' }} />}
+              style={{ color: '#52c41a' }}
+            />
+          </Card>
+        </Col>
+      </Row>
 
-        <div style={{
-          background: COLORS.cardBg,
-          padding: '1.5rem',
-          borderRadius: '10px',
-          border: `1px solid ${COLORS.border}`,
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '0.75rem'
-          }}>
-            <span style={{
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              color: COLORS.textSecondary
-            }}>
-              片段总数
-            </span>
-            <span style={{
-              width: '32px',
-              height: '32px',
-              background: '#d1fae5',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1rem'
-            }}>
-              📝
-            </span>
-          </div>
-          <div style={{
-            fontSize: '2rem',
-            fontWeight: '700',
-            color: COLORS.text
-          }}>
-            {statsResults?.data?.kbNames?.reduce((sum, kb) => sum + kb.total, 0) || 0}
-          </div>
-        </div>
-
-        <div style={{
-          background: COLORS.cardBg,
-          padding: '1.5rem',
-          borderRadius: '10px',
-          border: `1px solid ${COLORS.border}`,
-          boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)'
-        }}>
-          <div style={{
-            display: 'flex',
-            alignItems: 'center',
-            justifyContent: 'space-between',
-            marginBottom: '0.75rem'
-          }}>
-            <span style={{
-              fontSize: '0.875rem',
-              fontWeight: '500',
-              color: COLORS.textSecondary
-            }}>
-              系统状态
-            </span>
-            <span style={{
-              width: '32px',
-              height: '32px',
-              background: '#d1fae5',
-              borderRadius: '8px',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1rem'
-            }}>
-              ✓
-            </span>
-          </div>
-          <div style={{
-            fontSize: '1.25rem',
-            fontWeight: '600',
-            color: COLORS.success
-          }}>
-            运行正常
-          </div>
-        </div>
-      </div>
-
-      {/* 知识库列表 */}
-      <div style={{
-        background: COLORS.cardBg,
-        borderRadius: '10px',
-        border: `1px solid ${COLORS.border}`,
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
-        overflow: 'hidden',
-        marginBottom: '1.5rem'
-      }}>
-        <div style={{
-          padding: '1.25rem 1.5rem',
-          borderBottom: `1px solid ${COLORS.border}`,
-          background: COLORS.bg,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <h2 style={{
-            margin: 0,
-            fontSize: '1rem',
-            fontWeight: '600',
-            color: COLORS.text
-          }}>
-            知识库概览
-          </h2>
-          <button
+      <Card
+        title={
+          <Space>
+            <Title level={4} style={{ margin: 0 }}>知识库概览</Title>
+          </Space>
+        }
+        extra={
+          <Button 
+            type="primary" 
+            icon={<ReloadOutlined />} 
             onClick={handleStats}
-            disabled={loading}
-            style={{
-              padding: '0.5rem 1rem',
-              background: loading ? COLORS.border : COLORS.primary,
-              color: loading ? COLORS.textMuted : 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: '500',
-              fontSize: '0.8125rem'
-            }}
+            loading={loading}
           >
-            {loading ? '刷新中...' : '刷新数据'}
-          </button>
-        </div>
-        <div style={{ padding: '1.5rem' }}>
-          {statsResults?.data?.kbNames && statsResults.data.kbNames.length > 0 ? (
-            <div style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-              gap: '1rem'
-            }}>
-              {statsResults.data.kbNames.map((proj) => (
-                <div
-                  key={proj.kbName}
-                  style={{
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: '8px',
-                    padding: '1.25rem',
-                    background: COLORS.bg,
-                    transition: 'all 0.2s'
-                  }}
+            刷新数据
+          </Button>
+        }
+      >
+        {statsResults?.data?.kbNames && statsResults.data.kbNames.length > 0 ? (
+          <Row gutter={[16, 16]}>
+            {statsResults.data.kbNames.map((proj) => (
+              <Col xs={24} sm={12} md={8} lg={6} key={proj.kbName}>
+                <Card 
+                  size="small"
+                  style={{ background: '#fafafa' }}
                 >
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'flex-start',
-                    marginBottom: '0.75rem'
-                  }}>
-                    <h4 style={{
-                      margin: 0,
-                      fontSize: '0.9375rem',
-                      fontWeight: '600',
-                      color: COLORS.text
-                    }}>
-                      {proj.kbName}
-                    </h4>
-                    <span style={{
-                      background: COLORS.primaryLight,
-                      color: COLORS.primary,
-                      padding: '0.25rem 0.625rem',
-                      borderRadius: '12px',
-                      fontSize: '0.75rem',
-                      fontWeight: '600'
-                    }}>
-                      {proj.total} 条
-                    </span>
-                  </div>
-                  <div style={{
-                    fontSize: '0.8125rem',
-                    color: COLORS.textMuted
-                  }}>
-                    最后更新: {new Date(proj.lastUpdated).toLocaleString('zh-CN')}
-                  </div>
-                </div>
-              ))}
-            </div>
-          ) : (
-            <div style={{
-              border: `1px solid ${COLORS.border}`,
-              borderRadius: '8px',
-              padding: '2rem',
-              background: COLORS.bg,
-              textAlign: 'center'
-            }}>
-              <div style={{
-                fontSize: '1.125rem',
-                fontWeight: '600',
-                marginBottom: '0.5rem',
-                color: COLORS.text
-              }}>
-                暂无知识库
-              </div>
-              <div style={{
-                fontSize: '0.875rem',
-                color: COLORS.textSecondary
-              }}>
-                请前往"知识列表"创建知识库
-              </div>
-            </div>
-          )}
-        </div>
-      </div>
+                  <Space vertical style={{ width: '100%' }}>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Text strong>{proj.kbName}</Text>
+                      <Text type="success" strong>{proj.total} 条</Text>
+                    </Space>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      最后更新: {new Date(proj.lastUpdated).toLocaleString('zh-CN')}
+                    </Text>
+                  </Space>
+                </Card>
+              </Col>
+            ))}
+          </Row>
+        ) : (
+          <Empty
+            description={
+              <Space vertical>
+                <Text>暂无知识库</Text>
+                <Text type="secondary">请前往"知识列表"创建知识库</Text>
+              </Space>
+            }
+          />
+        )}
+      </Card>
     </>
   )
 }

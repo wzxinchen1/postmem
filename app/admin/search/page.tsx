@@ -1,10 +1,13 @@
 'use client'
 
 import { useState } from 'react'
-import { COLORS } from '@/app/admin/constants'
+import { Card, Input, InputNumber, Button, Space, Typography, Tag, Empty, message } from 'antd'
+import { SearchOutlined } from '@ant-design/icons'
 import { SearchResponse } from '@/app/admin/types'
-import { useMessage } from '@/app/admin/hooks/useMessage'
 import { KBSelector } from '@/app/admin/components/KBSelector'
+
+const { Title, Text } = Typography
+const { TextArea } = Input
 
 export default function SearchPage() {
   const [kbName, setKbName] = useState('')
@@ -14,11 +17,11 @@ export default function SearchPage() {
   const [searchContextWindow, setSearchContextWindow] = useState(1)
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null)
   
-  const { contextHolder, showMessage } = useMessage()
+  const [msg, contextHolder] = message.useMessage()
 
   const handleSearch = async () => {
     if (!kbName || !searchQuery) {
-      showMessage('error', '请填写知识库名和查询内容')
+      msg.info('请填写知识库名和查询内容')
       return
     }
 
@@ -34,15 +37,24 @@ export default function SearchPage() {
           context_window: searchContextWindow
         })
       })
+      
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('检索失败')
+        }
+        return
+      }
+      
       const data: SearchResponse = await res.json()
       setSearchResults(data)
       if (data.success) {
-        showMessage('success', `找到 ${data.data?.results.length || 0} 个相关结果`)
-      } else {
-        showMessage('error', data.error?.message || '检索失败')
+        msg.success(`找到 ${data.data?.results.length || 0} 个相关结果`)
       }
     } catch (err) {
-      showMessage('error', '网络请求失败')
+      msg.error('网络请求失败')
     } finally {
       setLoading(false)
     }
@@ -54,249 +66,108 @@ export default function SearchPage() {
       
       <KBSelector kbName={kbName} setKbName={setKbName} />
 
-      <div style={{
-        background: COLORS.cardBg,
-        borderRadius: '10px',
-        border: `1px solid ${COLORS.border}`,
-        boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)',
-        overflow: 'hidden'
-      }}>
-        <div style={{
-          padding: '1.25rem 1.5rem',
-          borderBottom: `1px solid ${COLORS.border}`,
-          background: COLORS.bg
-        }}>
-          <h2 style={{
-            margin: 0,
-            fontSize: '1rem',
-            fontWeight: '600',
-            color: COLORS.text
-          }}>
-            语义检索
-          </h2>
-        </div>
-        <div style={{ padding: '1.5rem' }}>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              color: COLORS.text
-            }}>
-              查询语句
-            </label>
-            <input
-              type="text"
+      <Card title={<Title level={4} style={{ margin: 0 }}>语义检索</Title>}>
+        <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+          <div>
+            <Text strong style={{ display: 'block', marginBottom: 8 }}>查询语句</Text>
+            <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="输入查询内容..."
-              style={{
-                width: '100%',
-                padding: '0.625rem 0.875rem',
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                outline: 'none',
-                background: COLORS.bg
-              }}
+              size="large"
             />
           </div>
-          <div style={{
-            display: 'grid',
-            gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))',
-            gap: '1rem',
-            marginBottom: '1.5rem'
-          }}>
+          
+          <Space size="large">
             <div>
-              <label style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                color: COLORS.text
-              }}>
-                返回结果数量 (top_k)
-              </label>
-              <input
-                type="number"
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>返回结果数量 (top_k)</Text>
+              <InputNumber
                 value={searchTopK}
-                onChange={(e) => setSearchTopK(Number(e.target.value))}
+                onChange={(value) => setSearchTopK(value || 5)}
                 min={1}
                 max={100}
-                style={{
-                  width: '100%',
-                  padding: '0.625rem 0.875rem',
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  background: COLORS.bg
-                }}
+                style={{ width: 150 }}
               />
             </div>
             <div>
-              <label style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                color: COLORS.text
-              }}>
-                上下文窗口大小
-              </label>
-              <input
-                type="number"
+              <Text strong style={{ display: 'block', marginBottom: 8 }}>上下文窗口大小</Text>
+              <InputNumber
                 value={searchContextWindow}
-                onChange={(e) => setSearchContextWindow(Number(e.target.value))}
+                onChange={(value) => setSearchContextWindow(value || 1)}
                 min={0}
                 max={5}
-                style={{
-                  width: '100%',
-                  padding: '0.625rem 0.875rem',
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  background: COLORS.bg
-                }}
+                style={{ width: 150 }}
               />
             </div>
-          </div>
-          <button
+          </Space>
+          
+          <Button
+            type="primary"
+            icon={<SearchOutlined />}
             onClick={handleSearch}
-            disabled={loading}
-            style={{
-              padding: '0.625rem 1.5rem',
-              background: loading ? COLORS.border : COLORS.primary,
-              color: loading ? COLORS.textMuted : 'white',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: loading ? 'not-allowed' : 'pointer',
-              fontWeight: '500',
-              fontSize: '0.875rem'
-            }}
+            loading={loading}
+            size="large"
           >
-            {loading ? '检索中...' : '开始检索'}
-          </button>
+            开始检索
+          </Button>
+        </Space>
 
-          {searchResults && searchResults.data && (
-            <div style={{ marginTop: '1.5rem' }}>
-              <div style={{
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                marginBottom: '1rem',
-                color: COLORS.text,
-                display: 'flex',
-                alignItems: 'center',
-                gap: '0.5rem'
-              }}>
-                检索结果
-                <span style={{
-                  background: COLORS.primaryLight,
-                  color: COLORS.primary,
-                  padding: '0.125rem 0.625rem',
-                  borderRadius: '12px',
-                  fontSize: '0.75rem',
-                  fontWeight: '500'
-                }}>
-                  {searchResults.data.results.length} 条
-                </span>
-              </div>
-              {searchResults.data.results.map((result, index) => (
-                <div
-                  key={result.id}
-                  style={{
-                    border: `1px solid ${COLORS.border}`,
-                    borderRadius: '8px',
-                    padding: '1.25rem',
-                    marginBottom: '0.75rem',
-                    background: COLORS.bg,
-                    transition: 'all 0.2s'
-                  }}
-                >
-                  <div style={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    marginBottom: '0.75rem'
-                  }}>
-                    <span style={{
-                      fontSize: '0.875rem',
-                      fontWeight: '600',
-                      color: COLORS.text
-                    }}>
-                      #{index + 1} · ID: {result.id}
-                    </span>
-                    <span style={{
-                      background: COLORS.successLight,
-                      color: '#065f46',
-                      padding: '0.25rem 0.75rem',
-                      borderRadius: '12px',
-                      fontSize: '0.75rem',
-                      fontWeight: '600'
-                    }}>
-                      {(result.score * 100).toFixed(1)}% 相似度
-                    </span>
-                  </div>
-                  {result.context?.prev && (
-                    <div style={{
-                      marginBottom: '0.5rem',
-                      padding: '0.625rem',
-                      background: '#eff6ff',
-                      borderRadius: '4px',
-                      fontSize: '0.8125rem',
-                      color: '#1e40af',
-                      borderLeft: '3px solid #3b82f6'
-                    }}>
-                      <strong style={{ fontSize: '0.75rem' }}>上文：</strong>
-                      {result.context.prev}
-                    </div>
-                  )}
-                  <div style={{
-                    padding: '0.875rem',
-                    background: COLORS.cardBg,
-                    borderRadius: '4px',
-                    fontSize: '0.875rem',
-                    color: COLORS.text,
-                    lineHeight: '1.6',
-                    border: `1px solid ${COLORS.border}`
-                  }}>
-                    {result.content}
-                  </div>
-                  {result.context?.next && (
-                    <div style={{
-                      marginTop: '0.5rem',
-                      padding: '0.625rem',
-                      background: '#eff6ff',
-                      borderRadius: '4px',
-                      fontSize: '0.8125rem',
-                      color: '#1e40af',
-                      borderLeft: '3px solid #3b82f6'
-                    }}>
-                      <strong style={{ fontSize: '0.75rem' }}>下文：</strong>
-                      {result.context.next}
-                    </div>
-                  )}
-                  {result.metadata && (
-                    <div style={{
-                      marginTop: '0.75rem',
-                      fontSize: '0.75rem',
-                      color: COLORS.textMuted,
-                      display: 'flex',
-                      gap: '1rem'
-                    }}>
-                      <span>片段索引: {result.chunkIndex}</span>
-                      <span>切割模型: {result.metadata.cutModel || 'N/A'}</span>
-                      <span>片段大小: {result.metadata.chunkSize || 'N/A'}</span>
-                    </div>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-      </div>
+        {searchResults && searchResults.data && (
+          <div style={{ marginTop: 24 }}>
+            <Space style={{ marginBottom: 16 }}>
+              <Text strong>检索结果</Text>
+              <Tag color="blue">{searchResults.data.results.length} 条</Tag>
+            </Space>
+            
+            {searchResults.data.results.length === 0 ? (
+              <Empty description="未找到相关结果" />
+            ) : (
+              <Space direction="vertical" size="middle" style={{ width: '100%' }}>
+                {searchResults.data.results.map((result, index) => (
+                  <Card
+                    key={result.id}
+                    size="small"
+                    style={{ background: '#fafafa' }}
+                  >
+                    <Space direction="vertical" size="small" style={{ width: '100%' }}>
+                      <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                        <Text strong>#{index + 1} · ID: {result.id}</Text>
+                        <Tag color="success">{(result.score * 100).toFixed(1)}% 相似度</Tag>
+                      </Space>
+                      
+                      {result.context?.prev && (
+                        <Card size="small" style={{ background: '#e6f4ff', borderLeft: '3px solid #1677ff' }}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>上文：</Text>
+                          <Text>{result.context.prev}</Text>
+                        </Card>
+                      )}
+                      
+                      <Card size="small">
+                        <Text>{result.content}</Text>
+                      </Card>
+                      
+                      {result.context?.next && (
+                        <Card size="small" style={{ background: '#e6f4ff', borderLeft: '3px solid #1677ff' }}>
+                          <Text type="secondary" style={{ fontSize: 12 }}>下文：</Text>
+                          <Text>{result.context.next}</Text>
+                        </Card>
+                      )}
+                      
+                      {result.metadata && (
+                        <Space size="large">
+                          <Text type="secondary" style={{ fontSize: 12 }}>片段索引: {result.chunkIndex}</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>切割模型: {result.metadata.cutModel || 'N/A'}</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>片段大小: {result.metadata.chunkSize || 'N/A'}</Text>
+                        </Space>
+                      )}
+                    </Space>
+                  </Card>
+                ))}
+              </Space>
+            )}
+          </div>
+        )}
+      </Card>
     </>
   )
 }

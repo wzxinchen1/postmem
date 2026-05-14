@@ -1,103 +1,83 @@
-import Link from 'next/link'
-import { Metadata } from 'next'
+'use client'
 
-export const metadata: Metadata = {
-  title: 'PostMem - 个人知识库系统',
-  description: '基于本地嵌入向量的个人知识库系统',
-}
+import { Layout, Typography, Row, Col, Card, Button, Space } from 'antd'
+import { LockOutlined, ThunderboltOutlined, BulbOutlined, SettingOutlined, BookOutlined, GithubOutlined } from '@ant-design/icons'
+import Link from 'next/link'
+
+const { Content } = Layout
+const { Title, Paragraph, Text } = Typography
 
 export default function Home() {
   return (
-    <main style={{
+    <Layout style={{ 
       minHeight: '100vh',
-      display: 'flex',
-      flexDirection: 'column',
-      alignItems: 'center',
-      justifyContent: 'center',
-      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)',
-      color: 'white',
-      fontFamily: 'system-ui, -apple-system, sans-serif'
+      background: 'linear-gradient(135deg, #667eea 0%, #764ba2 100%)'
     }}>
-      <div style={{ textAlign: 'center', maxWidth: '800px', padding: '2rem' }}>
-        <h1 style={{ fontSize: '4rem', marginBottom: '1rem', fontWeight: 700 }}>
-          PostMem
-        </h1>
-        <p style={{ fontSize: '1.5rem', marginBottom: '2rem', opacity: 0.9 }}>
-          个人知识库系统
-        </p>
-        <p style={{ fontSize: '1.1rem', marginBottom: '3rem', opacity: 0.8, lineHeight: 1.6 }}>
-          基于本地嵌入向量和智能文本切割的知识管理系统<br />
-          支持高精度语义检索，保障数据主权
-        </p>
-        
-        <div style={{ display: 'flex', gap: '1rem', justifyContent: 'center', flexWrap: 'wrap' }}>
-          <Link
-            href="/admin"
-            style={{
-              padding: '1rem 2rem',
-              background: 'white',
-              color: '#667eea',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontWeight: 600,
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            🎛️ 管理中心
-          </Link>
-          <Link
-            href="/api-docs"
-            style={{
-              padding: '1rem 2rem',
-              background: 'rgba(255, 255, 255, 0.95)',
-              color: '#667eea',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontWeight: 600,
-              transition: 'transform 0.2s, box-shadow 0.2s',
-              boxShadow: '0 4px 6px rgba(0, 0, 0, 0.1)'
-            }}
-          >
-            📚 API 文档
-          </Link>
-          <a
-            href="https://github.com"
-            target="_blank"
-            rel="noopener noreferrer"
-            style={{
-              padding: '1rem 2rem',
-              background: 'rgba(255, 255, 255, 0.2)',
-              color: 'white',
-              borderRadius: '8px',
-              textDecoration: 'none',
-              fontWeight: 600,
-              border: '2px solid rgba(255, 255, 255, 0.3)',
-              transition: 'transform 0.2s, box-shadow 0.2s'
-            }}
-          >
-            GitHub
-          </a>
-        </div>
+      <Content style={{ 
+        display: 'flex',
+        alignItems: 'center',
+        justifyContent: 'center',
+        padding: '48px 24px'
+      }}>
+        <div style={{ maxWidth: '1000px', textAlign: 'center' }}>
+          <Title level={1} style={{ color: '#fff', fontSize: '4rem', marginBottom: 8 }}>
+            PostMem
+          </Title>
+          <Title level={2} style={{ color: 'rgba(255, 255, 255, 0.9)', fontWeight: 400, marginTop: 0 }}>
+            个人知识库系统
+          </Title>
+          <Paragraph style={{ color: 'rgba(255, 255, 255, 0.8)', fontSize: '1.1rem', marginBottom: 48 }}>
+            基于本地嵌入向量和智能文本切割的知识管理系统<br />
+            支持高精度语义检索，保障数据主权
+          </Paragraph>
 
-        <div style={{ marginTop: '4rem', display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '2rem' }}>
-          <div style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '8px' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🔒</div>
-            <h3 style={{ marginBottom: '0.5rem' }}>数据隐私</h3>
-            <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>嵌入向量完全本地生成</p>
-          </div>
-          <div style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '8px' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>⚡</div>
-            <h3 style={{ marginBottom: '0.5rem' }}>高性能</h3>
-            <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>百万级向量毫秒级检索</p>
-          </div>
-          <div style={{ padding: '1.5rem', background: 'rgba(255, 255, 255, 0.1)', borderRadius: '8px' }}>
-            <div style={{ fontSize: '2rem', marginBottom: '0.5rem' }}>🧠</div>
-            <h3 style={{ marginBottom: '0.5rem' }}>智能切割</h3>
-            <p style={{ fontSize: '0.9rem', opacity: 0.8 }}>大模型驱动的语义切割</p>
-          </div>
+          <Space size="middle" wrap style={{ marginBottom: 64 }}>
+            <Link href="/admin">
+              <Button type="primary" size="large" icon={<SettingOutlined />}>
+                管理中心
+              </Button>
+            </Link>
+            <Link href="/api-docs">
+              <Button size="large" icon={<BookOutlined />} style={{ background: 'rgba(255, 255, 255, 0.95)', borderColor: 'transparent' }}>
+                API 文档
+              </Button>
+            </Link>
+            <a href="https://github.com" target="_blank" rel="noopener noreferrer">
+              <Button 
+                size="large" 
+                icon={<GithubOutlined />}
+                style={{ background: 'rgba(255, 255, 255, 0.2)', color: '#fff', borderColor: 'rgba(255, 255, 255, 0.3)' }}
+              >
+                GitHub
+              </Button>
+            </a>
+          </Space>
+
+          <Row gutter={[24, 24]} justify="center">
+            <Col xs={24} sm={8}>
+              <Card style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none' }}>
+                <LockOutlined style={{ fontSize: '2rem', color: '#fff', marginBottom: 16 }} />
+                <Title level={4} style={{ color: '#fff', marginBottom: 8 }}>数据隐私</Title>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.8)' }}>嵌入向量完全本地生成</Text>
+              </Card>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Card style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none' }}>
+                <ThunderboltOutlined style={{ fontSize: '2rem', color: '#fff', marginBottom: 16 }} />
+                <Title level={4} style={{ color: '#fff', marginBottom: 8 }}>高性能</Title>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.8)' }}>百万级向量毫秒级检索</Text>
+              </Card>
+            </Col>
+            <Col xs={24} sm={8}>
+              <Card style={{ background: 'rgba(255, 255, 255, 0.1)', border: 'none' }}>
+                <BulbOutlined style={{ fontSize: '2rem', color: '#fff', marginBottom: 16 }} />
+                <Title level={4} style={{ color: '#fff', marginBottom: 8 }}>智能切割</Title>
+                <Text style={{ color: 'rgba(255, 255, 255, 0.8)' }}>大模型驱动的语义切割</Text>
+              </Card>
+            </Col>
+          </Row>
         </div>
-      </div>
-    </main>
+      </Content>
+    </Layout>
   )
 }

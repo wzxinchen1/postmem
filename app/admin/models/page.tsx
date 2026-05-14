@@ -1,7 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { message } from 'antd'
+import { message, Card, Button, Space, Typography, Tag, Empty, Modal, Form, Input, Select, Switch, Popconfirm } from 'antd'
+import { PlusOutlined, EditOutlined, DeleteOutlined, StarOutlined } from '@ant-design/icons'
+
+const { Title, Text } = Typography
 
 interface Provider {
   id: number
@@ -20,24 +23,6 @@ interface Model {
   isActive: boolean
   isDefault: boolean
   provider?: Provider
-}
-
-const COLORS = {
-  primary: '#3b82f6',
-  primaryHover: '#2563eb',
-  primaryLight: '#eff6ff',
-  secondary: '#64748b',
-  success: '#10b981',
-  successLight: '#d1fae5',
-  error: '#ef4444',
-  errorLight: '#fee2e2',
-  warning: '#f59e0b',
-  border: '#e2e8f0',
-  bg: '#f8fafc',
-  cardBg: '#ffffff',
-  text: '#1e293b',
-  textSecondary: '#64748b',
-  textMuted: '#94a3b8',
 }
 
 const MODEL_TYPES = [
@@ -61,6 +46,7 @@ export default function ModelsPage() {
   })
 
   const [msg, contextHolder] = message.useMessage()
+  const [form] = Form.useForm()
 
   useEffect(() => {
     loadProviders()
@@ -70,6 +56,15 @@ export default function ModelsPage() {
   const loadProviders = async () => {
     try {
       const res = await fetch('/api/providers')
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('加载提供商失败')
+        }
+        return
+      }
       const data = await res.json()
       if (data.success) {
         setProviders(data.data.providers)
@@ -78,7 +73,7 @@ export default function ModelsPage() {
         }
       }
     } catch (err) {
-      msg.error('加载提供商失败')
+      msg.error('网络请求失败')
     }
   }
 
@@ -86,19 +81,27 @@ export default function ModelsPage() {
     setLoading(true)
     try {
       const res = await fetch('/api/models?includeInactive=true')
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('加载模型失败')
+        }
+        return
+      }
       const data = await res.json()
       if (data.success) {
         setModels(data.data.models)
       }
     } catch (err) {
-      msg.error('加载模型失败')
+      msg.error('网络请求失败')
     } finally {
       setLoading(false)
     }
   }
 
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault()
+  const handleSubmit = async () => {
     setLoading(true)
 
     try {
@@ -118,14 +121,22 @@ export default function ModelsPage() {
         }),
       })
 
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('操作失败')
+        }
+        return
+      }
+
       const data = await res.json()
       if (data.success) {
         msg.success(editingModel ? '更新成功' : '创建成功')
         setShowModal(false)
         resetForm()
         loadModels()
-      } else {
-        msg.error(data.error?.message || '操作失败')
       }
     } catch (err) {
       msg.error('网络请求失败')
@@ -135,17 +146,22 @@ export default function ModelsPage() {
   }
 
   const handleDelete = async (id: number) => {
-    if (!confirm('确定要删除此模型吗？')) return
-
     setLoading(true)
     try {
       const res = await fetch(`/api/models/${id}`, { method: 'DELETE' })
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('删除失败')
+        }
+        return
+      }
       const data = await res.json()
       if (data.success) {
         msg.success('删除成功')
         loadModels()
-      } else {
-        msg.error(data.error?.message || '删除失败')
       }
     } catch (err) {
       msg.error('网络请求失败')
@@ -175,12 +191,19 @@ export default function ModelsPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ isDefault: true }),
       })
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('操作失败')
+        }
+        return
+      }
       const data = await res.json()
       if (data.success) {
         msg.success('已设为默认模型')
         loadModels()
-      } else {
-        msg.error(data.error?.message || '操作失败')
       }
     } catch (err) {
       msg.error('网络请求失败')
@@ -199,6 +222,7 @@ export default function ModelsPage() {
       isDefault: false,
     })
     setEditingModel(null)
+    form.resetFields()
   }
 
   const getModelTypeLabel = (type: string) => {
@@ -213,111 +237,141 @@ export default function ModelsPage() {
     <>
       {contextHolder}
 
-      {/* 操作栏 */}
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
-        <div style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>
-          共 {models.length} 个模型
-        </div>
-        <button
-          onClick={() => { resetForm(); setShowModal(true); }}
-          disabled={providers.length === 0}
-          style={{ padding: '0.625rem 1.25rem', background: providers.length === 0 ? COLORS.border : COLORS.primary, color: providers.length === 0 ? COLORS.textMuted : 'white', border: 'none', borderRadius: '6px', cursor: providers.length === 0 ? 'not-allowed' : 'pointer', fontWeight: '500', fontSize: '0.875rem' }}
-        >
-          + 新增模型
-        </button>
-      </div>
+      <Card>
+        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+          <Text type="secondary">共 {models.length} 个模型</Text>
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => { resetForm(); setShowModal(true); }}
+            disabled={providers.length === 0}
+          >
+            新增模型
+          </Button>
+        </Space>
+      </Card>
 
-      {/* 模型列表 */}
-      <div style={{ display: 'grid', gap: '1rem' }}>
-        {models.map(model => (
-          <div key={model.id} style={{ background: COLORS.cardBg, borderRadius: '10px', border: `1px solid ${COLORS.border}`, boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.05)', padding: '1.25rem 1.5rem', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
-              <div style={{ width: '40px', height: '40px', background: COLORS.primaryLight, borderRadius: '8px', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '1.25rem' }}>
-                {model.modelType === 'embedding' ? '📊' : model.modelType === 'chat' ? '💬' : '⚡'}
-              </div>
-              <div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <h3 style={{ margin: 0, fontSize: '1rem', fontWeight: '600', color: COLORS.text }}>{model.displayName || model.name}</h3>
-                  {model.isDefault && <span style={{ background: COLORS.primary, color: 'white', padding: '0.125rem 0.5rem', borderRadius: '4px', fontSize: '0.6875rem', fontWeight: '600' }}>默认</span>}
-                </div>
-                <div style={{ fontSize: '0.8125rem', color: COLORS.textSecondary, marginTop: '0.25rem' }}>
-                  {model.name} · {getProviderName(model.providerId)} · {getModelTypeLabel(model.modelType)}
-                </div>
-              </div>
-            </div>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <span style={{ background: model.isActive ? COLORS.successLight : COLORS.errorLight, color: model.isActive ? '#065f46' : '#991b1b', padding: '0.25rem 0.75rem', borderRadius: '12px', fontSize: '0.75rem', fontWeight: '600' }}>
-                {model.isActive ? '启用' : '禁用'}
-              </span>
-              {!model.isDefault && (
-                <button onClick={() => handleSetDefault(model)} style={{ padding: '0.375rem 0.75rem', background: 'transparent', color: COLORS.warning, border: `1px solid ${COLORS.warning}`, borderRadius: '4px', cursor: 'pointer', fontSize: '0.8125rem' }}>设为默认</button>
-              )}
-              <button onClick={() => handleEdit(model)} style={{ padding: '0.375rem 0.75rem', background: 'transparent', color: COLORS.primary, border: `1px solid ${COLORS.primary}`, borderRadius: '4px', cursor: 'pointer', fontSize: '0.8125rem' }}>编辑</button>
-              <button onClick={() => handleDelete(model.id)} style={{ padding: '0.375rem 0.75rem', background: 'transparent', color: COLORS.error, border: `1px solid ${COLORS.error}`, borderRadius: '4px', cursor: 'pointer', fontSize: '0.8125rem' }}>删除</button>
-            </div>
-          </div>
-        ))}
-
-        {models.length === 0 && (
-          <div style={{ textAlign: 'center', padding: '4rem 2rem', background: COLORS.cardBg, borderRadius: '10px', border: `1px solid ${COLORS.border}` }}>
-            <div style={{ fontSize: '3rem', marginBottom: '1rem', opacity: 0.5 }}>🤖</div>
-            <div style={{ fontSize: '1rem', fontWeight: '600', color: COLORS.text, marginBottom: '0.5rem' }}>暂无模型</div>
-            <div style={{ fontSize: '0.875rem', color: COLORS.textSecondary }}>点击上方"新增模型"按钮创建</div>
-          </div>
+      <Space direction="vertical" size="middle" style={{ width: '100%', marginTop: 16 }}>
+        {models.length === 0 ? (
+          <Card>
+            <Empty
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+              description={
+                <Space direction="vertical">
+                  <Text>暂无模型</Text>
+                  <Text type="secondary">点击上方"新增模型"按钮创建</Text>
+                </Space>
+              }
+            />
+          </Card>
+        ) : (
+          models.map(model => (
+            <Card key={model.id}>
+              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Space>
+                  <Tag color="blue">{model.modelType === 'embedding' ? '📊' : model.modelType === 'chat' ? '💬' : '⚡'}</Tag>
+                  <Space direction="vertical" size={0}>
+                    <Space>
+                      <Text strong>{model.displayName || model.name}</Text>
+                      {model.isDefault && <Tag color="blue">默认</Tag>}
+                    </Space>
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      {model.name} · {getProviderName(model.providerId)} · {getModelTypeLabel(model.modelType)}
+                    </Text>
+                  </Space>
+                </Space>
+                <Space>
+                  <Tag color={model.isActive ? 'success' : 'error'}>
+                    {model.isActive ? '启用' : '禁用'}
+                  </Tag>
+                  {!model.isDefault && (
+                    <Button size="small" onClick={() => handleSetDefault(model)}>
+                      <StarOutlined /> 设为默认
+                    </Button>
+                  )}
+                  <Button size="small" icon={<EditOutlined />} onClick={() => handleEdit(model)}>
+                    编辑
+                  </Button>
+                  <Popconfirm
+                    title="确定要删除此模型吗？"
+                    onConfirm={() => handleDelete(model.id)}
+                    okText="确定"
+                    cancelText="取消"
+                  >
+                    <Button size="small" danger icon={<DeleteOutlined />} loading={loading}>
+                      删除
+                    </Button>
+                  </Popconfirm>
+                </Space>
+              </Space>
+            </Card>
+          ))
         )}
-      </div>
+      </Space>
 
-      {/* 模态窗口 */}
-      {showModal && (
-        <div style={{ position: 'fixed', top: 0, left: 0, right: 0, bottom: 0, background: 'rgba(0, 0, 0, 0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', zIndex: 100, padding: '1rem' }}>
-          <div style={{ background: COLORS.cardBg, borderRadius: '12px', width: '100%', maxWidth: '500px', boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1)' }}>
-            <div style={{ padding: '1.25rem 1.5rem', borderBottom: `1px solid ${COLORS.border}`, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-              <h3 style={{ margin: 0, fontSize: '1.125rem', fontWeight: '600', color: COLORS.text }}>{editingModel ? '编辑模型' : '新增模型'}</h3>
-              <button onClick={() => { setShowModal(false); resetForm(); }} style={{ width: '32px', height: '32px', background: 'transparent', border: 'none', borderRadius: '6px', cursor: 'pointer', fontSize: '1.5rem', color: COLORS.textMuted }}>×</button>
-            </div>
-            <form onSubmit={handleSubmit} style={{ padding: '1.5rem' }}>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: COLORS.text }}>提供商 *</label>
-                <select value={formData.providerId} onChange={e => setFormData({ ...formData, providerId: e.target.value })} required style={{ width: '100%', padding: '0.625rem 0.875rem', border: `1px solid ${COLORS.border}`, borderRadius: '6px', fontSize: '0.875rem', outline: 'none', background: COLORS.bg }}>
-                  {providers.map(provider => (
-                    <option key={provider.id} value={provider.id}>{provider.name}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: COLORS.text }}>模型名称 *</label>
-                <input type="text" value={formData.name} onChange={e => setFormData({ ...formData, name: e.target.value })} placeholder="如：text-embedding-3-small" required style={{ width: '100%', padding: '0.625rem 0.875rem', border: `1px solid ${COLORS.border}`, borderRadius: '6px', fontSize: '0.875rem', outline: 'none', background: COLORS.bg }} />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: COLORS.text }}>显示名称</label>
-                <input type="text" value={formData.displayName} onChange={e => setFormData({ ...formData, displayName: e.target.value })} placeholder="可选，用于友好显示" style={{ width: '100%', padding: '0.625rem 0.875rem', border: `1px solid ${COLORS.border}`, borderRadius: '6px', fontSize: '0.875rem', outline: 'none', background: COLORS.bg }} />
-              </div>
-              <div style={{ marginBottom: '1rem' }}>
-                <label style={{ display: 'block', marginBottom: '0.5rem', fontSize: '0.875rem', fontWeight: '600', color: COLORS.text }}>模型类型 *</label>
-                <select value={formData.modelType} onChange={e => setFormData({ ...formData, modelType: e.target.value })} required style={{ width: '100%', padding: '0.625rem 0.875rem', border: `1px solid ${COLORS.border}`, borderRadius: '6px', fontSize: '0.875rem', outline: 'none', background: COLORS.bg }}>
-                  {MODEL_TYPES.map(type => (
-                    <option key={type.value} value={type.value}>{type.label}</option>
-                  ))}
-                </select>
-              </div>
-              <div style={{ marginBottom: '1.5rem', display: 'flex', gap: '1.5rem' }}>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input type="checkbox" id="isActive" checked={formData.isActive} onChange={e => setFormData({ ...formData, isActive: e.target.checked })} />
-                  <label htmlFor="isActive" style={{ fontSize: '0.875rem', color: COLORS.text }}>启用</label>
-                </div>
-                <div style={{ display: 'flex', alignItems: 'center', gap: '0.5rem' }}>
-                  <input type="checkbox" id="isDefault" checked={formData.isDefault} onChange={e => setFormData({ ...formData, isDefault: e.target.checked })} />
-                  <label htmlFor="isDefault" style={{ fontSize: '0.875rem', color: COLORS.text }}>设为默认</label>
-                </div>
-              </div>
-              <div style={{ display: 'flex', gap: '0.75rem' }}>
-                <button type="submit" disabled={loading} style={{ flex: 1, padding: '0.75rem 1.5rem', background: loading ? COLORS.border : COLORS.primary, color: loading ? COLORS.textMuted : 'white', border: 'none', borderRadius: '6px', cursor: loading ? 'not-allowed' : 'pointer', fontWeight: '500', fontSize: '0.875rem' }}>{loading ? '处理中...' : '保存'}</button>
-                <button type="button" onClick={() => { setShowModal(false); resetForm(); }} style={{ padding: '0.75rem 1.5rem', background: 'transparent', color: COLORS.textSecondary, border: `1px solid ${COLORS.border}`, borderRadius: '6px', cursor: 'pointer', fontWeight: '500', fontSize: '0.875rem' }}>取消</button>
-              </div>
-            </form>
-          </div>
-        </div>
-      )}
+      <Modal
+        title={editingModel ? '编辑模型' : '新增模型'}
+        open={showModal}
+        onCancel={() => { setShowModal(false); resetForm(); }}
+        footer={null}
+        width={500}
+      >
+        <Form
+          form={form}
+          layout="vertical"
+          style={{ marginTop: 16 }}
+          initialValues={formData}
+        >
+          <Form.Item label="提供商" required>
+            <Select
+              value={formData.providerId}
+              onChange={(value) => setFormData({ ...formData, providerId: value })}
+              options={providers.map(p => ({ value: p.id.toString(), label: p.name }))}
+            />
+          </Form.Item>
+          <Form.Item label="模型名称" required>
+            <Input
+              value={formData.name}
+              onChange={(e) => setFormData({ ...formData, name: e.target.value })}
+              placeholder="如：text-embedding-3-small"
+            />
+          </Form.Item>
+          <Form.Item label="显示名称">
+            <Input
+              value={formData.displayName}
+              onChange={(e) => setFormData({ ...formData, displayName: e.target.value })}
+              placeholder="可选，用于友好显示"
+            />
+          </Form.Item>
+          <Form.Item label="模型类型" required>
+            <Select
+              value={formData.modelType}
+              onChange={(value) => setFormData({ ...formData, modelType: value })}
+              options={MODEL_TYPES}
+            />
+          </Form.Item>
+          <Form.Item>
+            <Space>
+              <Switch
+                checked={formData.isActive}
+                onChange={(checked) => setFormData({ ...formData, isActive: checked })}
+              />
+              <Text>启用</Text>
+              <Switch
+                checked={formData.isDefault}
+                onChange={(checked) => setFormData({ ...formData, isDefault: checked })}
+              />
+              <Text>设为默认</Text>
+            </Space>
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={() => { setShowModal(false); resetForm(); }}>取消</Button>
+              <Button type="primary" onClick={handleSubmit} loading={loading}>保存</Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
     </>
   )
 }

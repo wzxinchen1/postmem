@@ -1,118 +1,64 @@
 'use client'
 
-import Link from 'next/link'
-import { usePathname } from 'next/navigation'
 import { ReactNode } from 'react'
+import { Layout, Menu, Typography, Space, Button } from 'antd'
+import { HomeOutlined, BookOutlined, SearchOutlined, UnorderedListOutlined, ApiOutlined, RobotOutlined, SettingOutlined, ArrowLeftOutlined } from '@ant-design/icons'
+import { usePathname, useRouter } from 'next/navigation'
 
-const COLORS = {
-  primary: '#3b82f6',
-  primaryHover: '#2563eb',
-  primaryLight: '#eff6ff',
-  secondary: '#64748b',
-  success: '#10b981',
-  successLight: '#d1fae5',
-  error: '#ef4444',
-  errorLight: '#fee2e2',
-  warning: '#f59e0b',
-  border: '#e2e8f0',
-  bg: '#f8fafc',
-  cardBg: '#ffffff',
-  text: '#1e293b',
-  textSecondary: '#64748b',
-  textMuted: '#94a3b8',
-}
+const { Header, Content } = Layout
+const { Title } = Typography
 
 const menuItems = [
-  { id: 'dashboard', label: '概览', icon: '📊', href: '/admin' },
-  { id: 'kb', label: '知识列表', icon: '📚', href: '/admin/kb' },
-  { id: 'search', label: '语义检索', icon: '🔍', href: '/admin/search' },
-  { id: 'list', label: '片段列表', icon: '📋', href: '/admin/list' },
-  { id: 'providers', label: '提供商管理', icon: '🔌', href: '/admin/providers' },
-  { id: 'models', label: '模型管理', icon: '🤖', href: '/admin/models' },
-  { id: 'settings', label: '应用设置', icon: '⚙️', href: '/admin/settings' },
+  { key: '/admin', label: '概览', icon: <HomeOutlined /> },
+  { key: '/admin/kb', label: '知识列表', icon: <BookOutlined /> },
+  { key: '/admin/search', label: '语义检索', icon: <SearchOutlined /> },
+  { key: '/admin/list', label: '片段列表', icon: <UnorderedListOutlined /> },
+  { key: '/admin/providers', label: '提供商管理', icon: <ApiOutlined /> },
+  { key: '/admin/models', label: '模型管理', icon: <RobotOutlined /> },
+  { key: '/admin/settings', label: '应用设置', icon: <SettingOutlined /> },
 ]
 
 export default function AdminLayout({ children }: { children: ReactNode }) {
   const pathname = usePathname()
+  const router = useRouter()
+
+  const activeKey = menuItems.find(item => 
+    item.key === pathname || (item.key !== '/admin' && pathname.startsWith(item.key))
+  )?.key || '/admin'
 
   return (
-    <div style={{ minHeight: '100vh', background: COLORS.bg, fontFamily: '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif' }}>
-      {/* 顶部导航栏 */}
-      <header style={{ background: COLORS.cardBg, borderBottom: `1px solid ${COLORS.border}`, boxShadow: '0 1px 3px 0 rgba(0, 0, 0, 0.1)' }}>
-        <div style={{ maxWidth: '1400px', margin: '0 auto', padding: '0 2rem' }}>
-          <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', height: '64px' }}>
-            <div style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
-              <div style={{
-                width: '32px',
-                height: '32px',
-                background: `linear-gradient(135deg, ${COLORS.primary} 0%, #8b5cf6 100%)`,
-                borderRadius: '8px',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-                color: 'white',
-                fontSize: '18px',
-                fontWeight: 'bold'
-              }}>
-                P
-              </div>
-              <h1 style={{ fontSize: '1.25rem', fontWeight: '600', margin: 0, color: COLORS.text }}>
-                PostMem Dashboard
-              </h1>
-            </div>
-            <Link
-              href="/"
-              style={{
-                padding: '0.5rem 1rem',
-                color: COLORS.textSecondary,
-                textDecoration: 'none',
-                fontSize: '0.875rem',
-                fontWeight: '500',
-                borderRadius: '6px',
-                transition: 'all 0.2s'
-              }}
-            >
-              ← 返回首页
-            </Link>
-          </div>
-
-          {/* 顶部菜单 */}
-          <nav style={{ display: 'flex', gap: '0', height: '48px' }}>
-            {menuItems.map((item) => {
-              const isActive = pathname === item.href || (item.href !== '/admin' && pathname.startsWith(item.href))
-              return (
-                <Link
-                  key={item.id}
-                  href={item.href}
-                  style={{
-                    padding: '0 1.25rem',
-                    background: 'transparent',
-                    border: 'none',
-                    borderBottom: isActive ? `2px solid ${COLORS.primary}` : '2px solid transparent',
-                    color: isActive ? COLORS.primary : COLORS.textSecondary,
-                    textDecoration: 'none',
-                    cursor: 'pointer',
-                    fontSize: '0.875rem',
-                    fontWeight: isActive ? '600' : '500',
-                    transition: 'all 0.2s',
-                    display: 'flex',
-                    alignItems: 'center',
-                    gap: '0.5rem'
-                  }}
-                >
-                  <span>{item.icon}</span>
-                  {item.label}
-                </Link>
-              )
-            })}
-          </nav>
-        </div>
-      </header>
-
-      {/* 主内容区 */}
-      <main style={{ maxWidth: '1400px', margin: '0 auto', padding: '2rem' }}>
+    <Layout style={{ minHeight: '100vh' }}>
+      <Header style={{ 
+        display: 'flex', 
+        alignItems: 'center',
+        padding: '0 24px',
+        background: '#001529'
+      }}>
+        <Space size="middle">
+          <Title level={4} style={{ margin: 0, color: '#fff', fontWeight: 600 }}>
+            PostMem Dashboard
+          </Title>
+        </Space>
+        <Menu
+          theme="dark"
+          mode="horizontal"
+          selectedKeys={[activeKey]}
+          items={menuItems}
+          onClick={({ key }) => router.push(key)}
+          style={{ flex: 1, minWidth: 0, marginLeft: 24 }}
+        />
+        <Button 
+          type="link" 
+          icon={<ArrowLeftOutlined />}
+          onClick={() => router.push('/')}
+          style={{ color: 'rgba(255, 255, 255, 0.85)' }}
+        >
+          返回首页
+        </Button>
+      </Header>
+      <Content style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
         {children}
-      </main>
-    </div>
+      </Content>
+    </Layout>
   )
 }

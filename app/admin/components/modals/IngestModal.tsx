@@ -1,9 +1,11 @@
 'use client'
 
 import { useEffect } from 'react'
-import { message } from 'antd'
-import { COLORS } from '@/app/admin/constants'
+import { message, Modal, Input, Button, Form, Typography, Space } from 'antd'
 import { IngestResponse } from '@/app/admin/types'
+
+const { Text } = Typography
+const { TextArea } = Input
 
 interface IngestModalProps {
   show: boolean
@@ -38,167 +40,61 @@ export function IngestModal({
     }
   }, [result, msg])
 
-  if (!show) return null
-
   return (
-    <div style={{
-      position: 'fixed',
-      top: 0,
-      left: 0,
-      right: 0,
-      bottom: 0,
-      background: 'rgba(0, 0, 0, 0.5)',
-      display: 'flex',
-      alignItems: 'center',
-      justifyContent: 'center',
-      zIndex: 100,
-      padding: '1rem'
-    }}>
+    <>
       {contextHolder}
-      <div style={{
-        background: COLORS.cardBg,
-        borderRadius: '12px',
-        width: '100%',
-        maxWidth: '600px',
-        maxHeight: '90vh',
-        overflow: 'hidden',
-        boxShadow: '0 20px 25px -5px rgba(0, 0, 0, 0.1), 0 10px 10px -5px rgba(0, 0, 0, 0.04)'
-      }}>
-        <div style={{
-          padding: '1.25rem 1.5rem',
-          borderBottom: `1px solid ${COLORS.border}`,
-          display: 'flex',
-          justifyContent: 'space-between',
-          alignItems: 'center'
-        }}>
-          <div>
-            <h3 style={{
-              margin: 0,
-              fontSize: '1.125rem',
-              fontWeight: '600',
-              color: COLORS.text
-            }}>
-              知识入库
-            </h3>
-            <div style={{
-              fontSize: '0.875rem',
-              color: COLORS.textSecondary,
-              marginTop: '0.25rem'
-            }}>
-              目标知识库: {selectedKb}
-            </div>
-          </div>
-          <button
-            onClick={onClose}
-            style={{
-              width: '32px',
-              height: '32px',
-              background: 'transparent',
-              border: 'none',
-              borderRadius: '6px',
-              cursor: 'pointer',
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              fontSize: '1.5rem',
-              color: COLORS.textMuted,
-              transition: 'all 0.2s'
-            }}
+      <Modal
+        title={
+          <Space direction="vertical" size={0}>
+            <Text strong style={{ fontSize: 16 }}>知识入库</Text>
+            <Text type="secondary" style={{ fontSize: 12 }}>目标知识库: {selectedKb}</Text>
+          </Space>
+        }
+        open={show}
+        onCancel={onClose}
+        footer={null}
+        width={600}
+      >
+        <Form
+          layout="vertical"
+          style={{ marginTop: 16 }}
+        >
+          <Form.Item
+            label={
+              <Space>
+                <Text>文本内容</Text>
+                <Text type="secondary" style={{ fontSize: 12 }}>(最大 20000 字符)</Text>
+              </Space>
+            }
+            required
           >
-            ×
-          </button>
-        </div>
-
-        <div style={{
-          padding: '1.5rem',
-          overflowY: 'auto',
-          maxHeight: 'calc(90vh - 140px)'
-        }}>
-          <div style={{ marginBottom: '1.25rem' }}>
-            <label style={{
-              display: 'block',
-              marginBottom: '0.5rem',
-              fontSize: '0.875rem',
-              fontWeight: '600',
-              color: COLORS.text
-            }}>
-              文本内容
-              <span style={{
-                color: COLORS.textMuted,
-                fontWeight: '400',
-                marginLeft: '0.5rem'
-              }}>
-                （最大 20000 字符）
-              </span>
-            </label>
-            <textarea
+            <TextArea
               value={content}
               onChange={(e) => setContent(e.target.value)}
               placeholder="输入要入库的文本内容..."
               rows={12}
-              style={{
-                width: '100%',
-                padding: '0.75rem',
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: '6px',
-                fontSize: '0.875rem',
-                resize: 'vertical',
-                outline: 'none',
-                fontFamily: 'inherit',
-                background: COLORS.bg,
-                lineHeight: '1.6'
-              }}
+              maxLength={20000}
+              showCount
             />
-            <div style={{
-              marginTop: '0.5rem',
-              fontSize: '0.75rem',
-              color: COLORS.textMuted,
-              display: 'flex',
-              justifyContent: 'space-between'
-            }}>
-              <span>支持长文本,系统会自动进行分块处理</span>
-              <span style={{ fontWeight: '500' }}>
-                {content.length} / 20000
-              </span>
-            </div>
-          </div>
-
-          <div style={{ display: 'flex', gap: '0.75rem' }}>
-            <button
-              onClick={onIngest}
-              disabled={loading || !content}
-              style={{
-                flex: 1,
-                padding: '0.75rem 1.5rem',
-                background: loading || !content ? COLORS.border : COLORS.primary,
-                color: loading || !content ? COLORS.textMuted : 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: loading || !content ? 'not-allowed' : 'pointer',
-                fontWeight: '500',
-                fontSize: '0.875rem'
-              }}
-            >
-              {loading ? '处理中...' : '开始入库'}
-            </button>
-            <button
-              onClick={onClose}
-              style={{
-                padding: '0.75rem 1.5rem',
-                background: 'transparent',
-                color: COLORS.textSecondary,
-                border: `1px solid ${COLORS.border}`,
-                borderRadius: '6px',
-                cursor: 'pointer',
-                fontWeight: '500',
-                fontSize: '0.875rem'
-              }}
-            >
-              稍后添加
-            </button>
-          </div>
-        </div>
-      </div>
-    </div>
+            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+              支持长文本,系统会自动进行分块处理
+            </Text>
+          </Form.Item>
+          <Form.Item style={{ marginBottom: 0 }}>
+            <Space style={{ width: '100%', justifyContent: 'flex-end' }}>
+              <Button onClick={onClose}>稍后添加</Button>
+              <Button
+                type="primary"
+                onClick={onIngest}
+                disabled={loading || !content}
+                loading={loading}
+              >
+                开始入库
+              </Button>
+            </Space>
+          </Form.Item>
+        </Form>
+      </Modal>
+    </>
   )
 }
