@@ -23,10 +23,11 @@
 - **服务**：Vertex AI、Gemini API
 
 ### 4. Meta
-- **官网**：https://llama.meta.com
-- **代表模型**：Llama 4 Ultra、Llama 4 Base、Llama 4 Mini
-- **特点**：开源领先，社区活跃，可本地部署，Llama 4 Ultra采用MoE架构，1.2万亿参数
-- **服务**：开源模型下载、Hugging Face托管
+- **官网**：https://llama.meta.com / https://www.llama.com
+- **AI平台**：https://meta.ai
+- **代表模型**：Llama 4 Scout、Llama 4 Maverick、Llama 4 Behemoth（训练中）
+- **特点**：开源领先，原生多模态，MoE架构，超长上下文（Scout支持10M tokens），社区活跃，可本地部署
+- **服务**：开源模型下载、Hugging Face托管、Meta AI网页版、第三方API平台
 
 ### 5. Mistral AI
 - **官网**：https://mistral.ai
@@ -1194,6 +1195,166 @@ data: [DONE]
 
 ---
 
+### 11. Meta Llama API 协议
+
+#### 11.1 基础请求格式
+
+Meta Llama API 完全兼容 OpenAI 格式，可通过多个提供商访问：
+
+```http
+POST /v1/chat/completions HTTP/1.1
+Host: api.groq.com  # 或 api.together.xyz、api.deepinfra.com 等
+Authorization: Bearer xxx
+Content-Type: application/json
+
+{
+  "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+  "messages": [
+    {"role": "user", "content": "解释量子计算的基本原理"}
+  ],
+  "stream": true
+}
+```
+
+#### 11.2 多模态输入（Llama 4 特有）
+
+Llama 4 原生支持多模态，每个提示最多5张图片：
+
+```http
+POST /v1/chat/completions HTTP/1.1
+Host: api.groq.com
+Authorization: Bearer xxx
+Content-Type: application/json
+
+{
+  "model": "meta-llama/llama-4-scout-17b-16e-instruct",
+  "messages": [
+    {
+      "role": "user",
+      "content": [
+        {"type": "text", "text": "描述这张图片"},
+        {"type": "image_url", "image_url": {"url": "https://example.com/image.jpg"}}
+      ]
+    }
+  ],
+  "max_tokens": 500
+}
+```
+
+**关键技术**：
+- 早期融合：同时处理文本和图像
+- 图像分割：336×336像素tiles
+- 专家图像基础：精确视觉推理
+
+#### 11.3 工具调用（Function Calling）
+
+```http
+POST /v1/chat/completions HTTP/1.1
+Host: api.groq.com
+Authorization: Bearer xxx
+Content-Type: application/json
+
+{
+  "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+  "messages": [
+    {"role": "user", "content": "北京今天天气怎么样？"}
+  ],
+  "tools": [
+    {
+      "type": "function",
+      "function": {
+        "name": "get_weather",
+        "description": "获取指定城市的天气信息",
+        "parameters": {
+          "type": "object",
+          "properties": {
+            "city": {"type": "string", "description": "城市名称"}
+          },
+          "required": ["city"]
+        }
+      }
+    }
+  ],
+  "tool_choice": "auto"
+}
+```
+
+**工具调用响应**：
+
+```json
+{
+  "id": "chatcmpl-123",
+  "object": "chat.completion",
+  "created": 1234567890,
+  "model": "meta-llama/llama-4-maverick-17b-128e-instruct",
+  "choices": [
+    {
+      "index": 0,
+      "message": {
+        "role": "assistant",
+        "content": null,
+        "tool_calls": [
+          {
+            "id": "call_abc123",
+            "type": "function",
+            "function": {
+              "name": "get_weather",
+              "arguments": "{\"city\":\"北京\"}"
+            }
+          }
+        ]
+      },
+      "finish_reason": "tool_calls"
+    }
+  ]
+}
+```
+
+#### 11.4 流式响应报文示例
+
+格式与 OpenAI 完全相同：
+
+```http
+HTTP/1.1 200 OK
+Content-Type: text/event-stream
+Cache-Control: no-cache
+Connection: keep-alive
+
+// 第一个数据块：包含角色信息
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"meta-llama/llama-4-scout-17b-16e-instruct","choices":[{"index":0,"delta":{"role":"assistant","content":""},"finish_reason":null}]}
+
+// 后续数据块：逐步返回内容
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"meta-llama/llama-4-scout-17b-16e-instruct","choices":[{"index":0,"delta":{"content":"量"},"finish_reason":null}]}
+
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"meta-llama/llama-4-scout-17b-16e-instruct","choices":[{"index":0,"delta":{"content":"子"},"finish_reason":null}]}
+
+// ... 更多内容
+
+// 最后一个数据块：标记结束
+data: {"id":"chatcmpl-123","object":"chat.completion.chunk","created":1234567890,"model":"meta-llama/llama-4-scout-17b-16e-instruct","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}
+
+// 最终结束标记
+data: [DONE]
+```
+
+#### 11.5 API 提供商对比
+
+| 提供商 | 端点 | 模型ID格式 | 速率限制 | 价格（输入/输出） |
+|--------|------|-----------|---------|-----------------|
+| GroqCloud | api.groq.com | `meta-llama/llama-4-scout-17b-16e-instruct` | 30请求/分钟（免费） | 免费 |
+| OpenRouter | openrouter.ai/api/v1 | `meta-llama/llama-4-scout` | 有速率限制 | 免费 |
+| Together AI | api.together.xyz/v1 | `meta-llama/Llama-4-Scout-17B-16E-Instruct` | 新用户免费额度 | $0.15/M / $0.60/M |
+| DeepInfra | api.deepinfra.com/v1/openai | `meta-llama/Llama-4-Scout-17B-16E-Instruct` | - | $0.08/M / $0.30/M（最低） |
+| Meta官方 | meta.ai | - | 无API | 仅网页版 |
+
+**重要说明**：
+- Meta官方（meta.ai）仅提供网页版访问，**无官方API**
+- 所有API访问需通过第三方提供商（GroqCloud、OpenRouter、Together AI等）
+- 不同提供商的模型ID格式可能略有差异
+- Llama 4 Scout支持10M tokens超长上下文，Maverick支持1M tokens
+
+---
+
 ## 九、协议对比总结
 
 | 平台 | 思考链支持 | 流式格式 | 特殊字段 | OpenAI 兼容 |
@@ -1201,6 +1362,7 @@ data: [DONE]
 | OpenAI | o1 系列（隐藏） | SSE | - | ✅ 原生 |
 | Claude | Extended Thinking | SSE | `thinking`, `thinking_delta` | ❌ 自定义 |
 | Gemini | Thinking Mode | SSE | `thought`, `thinking_budget`, `thinking_level` | ❌ 自定义 |
+| Meta Llama | ❌ | SSE | `image_url`（多模态） | ✅ 兼容 |
 | DeepSeek | R1 系列（可见） | SSE | `reasoning_content` | ✅ 兼容 |
 | 通义千问 | Qwen-Long | SSE | `incremental_output` | ⚠️ 部分兼容 |
 | GLM | Prompt 触发 | SSE | - | ✅ 兼容 |
