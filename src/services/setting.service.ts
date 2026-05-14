@@ -16,7 +16,6 @@ export class SettingService {
    * 获取设置值
    */
   async get<T = unknown>(key: string): Promise<T | null> {
-    // 检查缓存
     if (this.cache.has(key)) {
       return this.cache.get(key) as T
     }
@@ -29,7 +28,6 @@ export class SettingService {
       return null
     }
 
-    // 缓存结果
     this.cache.set(key, setting.value)
     return setting.value as T
   }
@@ -44,7 +42,6 @@ export class SettingService {
       create: { key, value, description },
     })
 
-    // 更新缓存
     this.cache.set(key, value)
     return setting as Setting
   }
@@ -92,7 +89,6 @@ export class SettingService {
 
     await Promise.all(updates)
 
-    // 清除缓存
     this.cache.clear()
 
     return this.getAppSettings()

@@ -7,6 +7,7 @@ import { KBService } from '@/src/services/kb.service'
 import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
 import { SettingService } from '@/src/services/setting.service'
+import { SessionService } from '@/src/services/session.service'
 
 /**
  * 依赖注入容器
@@ -15,25 +16,15 @@ export const container = createContainer({
   injectionMode: InjectionMode.PROXY,
 })
 
-// 注册服务
 container.register({
-  // 单例服务
   prisma: asValue(prisma as PrismaClient),
-  embeddingService: asClass(EmbeddingService).singleton(),
-  settingService: asClass(SettingService).singleton(),
-  
-  // 瞬态服务
-  chunkService: asClass(ChunkService).transient(),
-  kbService: asClass(KBService).transient(),
-  providerService: asClass(ProviderService).transient(),
-  modelService: asClass(ModelService).transient(),
+  embeddingService: asClass(EmbeddingService).scoped(),
+  settingService: asClass(SettingService).scoped(),
+  sessionService: asClass(SessionService).scoped(),
+  chunkService: asClass(ChunkService).scoped(),
+  kbService: asClass(KBService).scoped(),
+  providerService: asClass(ProviderService).scoped(),
+  modelService: asClass(ModelService).scoped(),
 })
-
-/**
- * 从容器解析服务
- */
-export function resolve<T>(name: string): T {
-  return container.resolve<T>(name)
-}
 
 export default container

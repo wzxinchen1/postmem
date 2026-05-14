@@ -139,7 +139,7 @@ export class KBService {
       throw Errors.badRequest('查询语句不能为空')
     }
 
-    const queryEmbedding = await this.embeddingService.generateEmbedding(query)
+    const queryEmbedding = await this.embeddingService.generateEmbedding(query, kbName.trim())
 
     const results = await this.prisma.$queryRaw<
       Array<{

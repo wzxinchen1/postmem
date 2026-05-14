@@ -1,22 +1,21 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { ModelService } from '@/src/services/model.service'
+import { SessionService } from '@/src/services/session.service'
 import { createApiHandler, apiHandler, successResponse } from '@/src/lib/api-utils'
 
 interface Deps {
-  modelService: ModelService
+  sessionService: SessionService
 }
 
 /**
- * 获取默认模型 API
+ * 会话统计 API
  */
 export default createApiHandler<Deps>({
-  dependencies: ['modelService'],
+  dependencies: ['sessionService'],
   handler: async (req, res, deps) => {
     await apiHandler(req, res, deps, {
       GET: async (deps) => {
-        const modelType = req.query.modelType as string | undefined
-        const model = await deps.modelService.getDefault(modelType)
-        return successResponse(res, { model })
+        const stats = await deps.sessionService.stats()
+        return successResponse(res, stats)
       },
     })
   }

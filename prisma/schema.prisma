@@ -87,6 +87,42 @@ model Setting {
   @@map("settings")
 }
 
+// 会话表 - 记录大模型调用会话
+model Session {
+  id          Int            @id @default(autoincrement())
+  kbName      String?        @map("kb_name") @db.VarChar(100)
+  modelType   String         @map("model_type") @db.VarChar(50) // embedding, chat
+  modelName   String         @map("model_name") @db.VarChar(100)
+  provider    String         @db.VarChar(100)
+  status      String         @default("completed") @db.VarChar(20) // pending, completed, failed
+  error       String?        @db.Text
+  metadata    Json           @default("{}")
+  createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz()
+  messages    SessionMessage[]
+
+  @@index([kbName])
+  @@index([modelType])
+  @@index([createdAt])
+  @@index([status])
+  @@map("sessions")
+}
+
+// 会话消息表 - 记录每次请求和响应
+model SessionMessage {
+  id        Int      @id @default(autoincrement())
+  sessionId Int      @map("session_id")
+  role      String   @db.VarChar(20) // system, user, assistant
+  content   String   @db.Text
+  tokens    Int?     @default(0)
+  metadata  Json     @default("{}")
+  createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz()
+  session   Session  @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId])
+  @@index([createdAt])
+  @@map("session_messages")
+}
+
 // HNSW 索引用于向量相似度搜索
 // 执行以下 SQL 创建索引：
 // CREATE INDEX ON memories USING hnsw (embedding vector_cosine_ops);

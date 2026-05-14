@@ -262,3 +262,64 @@ export interface KnowledgeBaseInfo {
   createdAt: Date
   updatedAt: Date
 }
+
+/**
+ * 会话状态
+ */
+export type SessionStatus = 'pending' | 'completed' | 'failed'
+
+/**
+ * 消息角色
+ */
+export type MessageRole = 'system' | 'user' | 'assistant'
+
+/**
+ * 会话消息
+ */
+export interface SessionMessage {
+  id: number
+  sessionId: number
+  role: MessageRole
+  content: string
+  tokens?: number
+  metadata: Record<string, unknown>
+  createdAt: Date
+}
+
+/**
+ * 会话
+ */
+export interface Session {
+  id: number
+  kbName?: string
+  modelType: ModelType
+  modelName: string
+  provider: string
+  status: SessionStatus
+  error?: string
+  metadata: Record<string, unknown>
+  createdAt: Date
+  messages?: SessionMessage[]
+}
+
+/**
+ * 创建会话请求
+ */
+export interface CreateSessionRequest {
+  kbName?: string
+  modelType: ModelType
+  modelName: string
+  provider: string
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * 添加消息请求
+ */
+export interface AddMessageRequest {
+  sessionId: number
+  role: MessageRole
+  content: string
+  tokens?: number
+  metadata?: Record<string, unknown>
+}

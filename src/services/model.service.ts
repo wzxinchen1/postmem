@@ -77,7 +77,6 @@ export class ModelService {
    * 创建模型
    */
   async create(data: CreateModelRequest): Promise<Model> {
-    // 如果设置为默认，先取消同类型其他默认模型
     if (data.isDefault) {
       await this.prisma.model.updateMany({
         where: {
@@ -105,7 +104,6 @@ export class ModelService {
    * 更新模型
    */
   async update(id: number, data: UpdateModelRequest): Promise<Model> {
-    // 如果设置为默认，先取消同类型其他默认模型
     if (data.isDefault) {
       const model = await this.prisma.model.findUnique({
         where: { id },

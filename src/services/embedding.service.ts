@@ -1,23 +1,25 @@
 import { Errors } from '@/src/lib/errors'
 import type { PrismaClient } from '@prisma/client'
 import type { Model, Provider } from '@/src/types'
+import { SessionService } from '@/src/services/session.service'
 
 /**
  * 嵌入服务 - 从数据库配置动态使用模型
  */
 export class EmbeddingService {
   private prisma: PrismaClient
+  private sessionService: SessionService
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map()
 
-  constructor({ prisma }: { prisma: PrismaClient }) {
+  constructor({ prisma, sessionService }: { prisma: PrismaClient; sessionService: SessionService }) {
     this.prisma = prisma
+    this.sessionService = sessionService
   }
 
   /**
    * 获取默认嵌入模型配置
    */
   private async getDefaultModel(): Promise<{ model: Model; provider: Provider }> {
-    // 检查缓存
     const cacheKey = 'default_embedding'
     if (this.modelCache.has(cacheKey)) {
       return this.modelCache.get(cacheKey)!
@@ -38,7 +40,6 @@ export class EmbeddingService {
       throw Errors.embeddingError('No default embedding model configured. Please configure one in /admin/models')
     }
 
-    // 缓存结果
     const result = { model, provider: model.provider }
     this.modelCache.set(cacheKey, result)
     return result
@@ -47,28 +48,53 @@ export class EmbeddingService {
   /**
    * 生成文本的嵌入向量
    */
-  async generateEmbedding(text: string): Promise<number[]> {
+  async generateEmbedding(text: string, kbName?: string): Promise<number[]> {
     const { model, provider } = await this.getDefaultModel()
 
-    // 根据提供商类型调用不同的 API
+    const session = await this.sessionService.create({
+      kbName,
+      modelType: 'embedding',
+      modelName: model.name,
+      provider: provider.name,
+      metadata: {
+        displayName: model.displayName,
+        providerType: provider.type,
+      },
+    })
+
+    let result: number[]
+    
     switch (provider.type) {
       case 'local':
-        return await this.generateWithOllama(text, model.name, provider.baseUrl || 'http://localhost:11434')
+        result = await this.generateWithOllama(text, model.name, provider.baseUrl || 'http://localhost:11434', session.id)
+        break
       case 'openai':
-        return await this.generateWithOpenAI(text, model.name, provider.apiKey!)
+        result = await this.generateWithOpenAI(text, model.name, provider.apiKey!, session.id)
+        break
       case 'anthropic':
         throw Errors.embeddingError('Anthropic does not support embedding models')
       case 'custom':
-        return await this.generateWithCustom(text, model.name, provider.baseUrl!, provider.apiKey)
+        result = await this.generateWithCustom(text, model.name, provider.baseUrl!, provider.apiKey, session.id)
+        break
       default:
         throw Errors.embeddingError(`Unknown provider type: ${provider.type}`)
     }
+
+    await this.sessionService.complete(session.id)
+    return result
   }
 
   /**
    * 使用 Ollama 生成嵌入
    */
-  private async generateWithOllama(text: string, modelName: string, baseUrl: string): Promise<number[]> {
+  private async generateWithOllama(text: string, modelName: string, baseUrl: string, sessionId: number): Promise<number[]> {
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'user',
+      content: text.substring(0, 500),
+      metadata: { textLength: text.length },
+    })
+
     const response = await fetch(`${baseUrl}/api/embeddings`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -89,13 +115,27 @@ export class EmbeddingService {
       throw Errors.embeddingError('Invalid embedding response from Ollama')
     }
 
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'assistant',
+      content: `[embedding vector: ${data.embedding.length} dimensions]`,
+      metadata: { model: modelName, dimensions: data.embedding.length },
+    })
+
     return data.embedding as number[]
   }
 
   /**
    * 使用 OpenAI 生成嵌入
    */
-  private async generateWithOpenAI(text: string, modelName: string, apiKey: string): Promise<number[]> {
+  private async generateWithOpenAI(text: string, modelName: string, apiKey: string, sessionId: number): Promise<number[]> {
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'user',
+      content: text.substring(0, 500),
+      metadata: { textLength: text.length },
+    })
+
     const response = await fetch('https://api.openai.com/v1/embeddings', {
       method: 'POST',
       headers: {
@@ -119,13 +159,28 @@ export class EmbeddingService {
       throw Errors.embeddingError('Invalid embedding response from OpenAI')
     }
 
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'assistant',
+      content: `[embedding vector: ${data.data[0].embedding.length} dimensions]`,
+      tokens: data.usage?.total_tokens,
+      metadata: { model: modelName, dimensions: data.data[0].embedding.length },
+    })
+
     return data.data[0].embedding as number[]
   }
 
   /**
    * 使用自定义端点生成嵌入
    */
-  private async generateWithCustom(text: string, modelName: string, baseUrl: string, apiKey?: string | null): Promise<number[]> {
+  private async generateWithCustom(text: string, modelName: string, baseUrl: string, apiKey: string | null | undefined, sessionId: number): Promise<number[]> {
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'user',
+      content: text.substring(0, 500),
+      metadata: { textLength: text.length },
+    })
+
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
     }
@@ -150,25 +205,34 @@ export class EmbeddingService {
 
     const data = await response.json()
     
-    // 尝试解析不同格式的响应
-    if (data.embedding && Array.isArray(data.embedding)) {
-      return data.embedding
-    }
+    let embedding: number[]
     
-    if (data.data && data.data[0]?.embedding) {
-      return data.data[0].embedding
+    if (data.embedding && Array.isArray(data.embedding)) {
+      embedding = data.embedding
+    } else if (data.data && data.data[0]?.embedding) {
+      embedding = data.data[0].embedding
+    } else {
+      throw Errors.embeddingError('Invalid embedding response from custom endpoint')
     }
 
-    throw Errors.embeddingError('Invalid embedding response from custom endpoint')
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'assistant',
+      content: `[embedding vector: ${embedding.length} dimensions]`,
+      tokens: data.usage?.total_tokens,
+      metadata: { model: modelName, dimensions: embedding.length },
+    })
+
+    return embedding
   }
 
   /**
    * 批量生成嵌入向量
    */
-  async generateEmbeddings(texts: string[]): Promise<number[][]> {
+  async generateEmbeddings(texts: string[], kbName?: string): Promise<number[][]> {
     const embeddings: number[][] = []
     for (const text of texts) {
-      const embedding = await this.generateEmbedding(text)
+      const embedding = await this.generateEmbedding(text, kbName)
       embeddings.push(embedding)
     }
     return embeddings
@@ -188,7 +252,7 @@ export class EmbeddingService {
         return response.ok
       }
       
-      return true // 其他类型假设可用
+      return true
     } catch {
       return false
     }

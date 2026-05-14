@@ -1,23 +1,25 @@
 import { Errors } from '@/src/lib/errors'
 import type { PrismaClient } from '@prisma/client'
 import type { Model, Provider, CutPoint } from '@/src/types'
+import { SessionService } from '@/src/services/session.service'
 
 /**
  * 切割模型服务 - 从数据库配置动态使用模型
  */
 export class CutModelService {
   private prisma: PrismaClient
+  private sessionService: SessionService
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map()
 
-  constructor({ prisma }: { prisma: PrismaClient }) {
+  constructor({ prisma, sessionService }: { prisma: PrismaClient; sessionService: SessionService }) {
     this.prisma = prisma
+    this.sessionService = sessionService
   }
 
   /**
    * 获取默认聊天模型配置
    */
   private async getDefaultModel(): Promise<{ model: Model; provider: Provider }> {
-    // 检查缓存
     const cacheKey = 'default_chat'
     if (this.modelCache.has(cacheKey)) {
       return this.modelCache.get(cacheKey)!
@@ -38,7 +40,6 @@ export class CutModelService {
       throw Errors.cutModelError('No default chat model configured. Please configure one in /admin/models')
     }
 
-    // 缓存结果
     const result = { model, provider: model.provider }
     this.modelCache.set(cacheKey, result)
     return result
@@ -47,30 +48,55 @@ export class CutModelService {
   /**
    * 分析文本并返回切割点
    */
-  async analyzeCutPoints(text: string): Promise<CutPoint[]> {
+  async analyzeCutPoints(text: string, kbName?: string): Promise<CutPoint[]> {
     const { model, provider } = await this.getDefaultModel()
 
-    // 根据提供商类型调用不同的 API
+    const session = await this.sessionService.create({
+      kbName,
+      modelType: 'chat',
+      modelName: model.name,
+      provider: provider.name,
+      metadata: {
+        displayName: model.displayName,
+        providerType: provider.type,
+      },
+    })
+
+    let result: CutPoint[]
+    
     switch (provider.type) {
       case 'local':
-        return await this.analyzeWithOllama(text, model.name, provider.baseUrl || 'http://localhost:11434')
+        result = await this.analyzeWithOllama(text, model.name, provider.baseUrl || 'http://localhost:11434', session.id)
+        break
       case 'openai':
-        return await this.analyzeWithOpenAI(text, model.name, provider.apiKey!)
+        result = await this.analyzeWithOpenAI(text, model.name, provider.apiKey!, session.id)
+        break
       case 'anthropic':
-        return await this.analyzeWithAnthropic(text, model.name, provider.apiKey!)
+        result = await this.analyzeWithAnthropic(text, model.name, provider.apiKey!, session.id)
+        break
       case 'custom':
-        return await this.analyzeWithCustom(text, model.name, provider.baseUrl!, provider.apiKey)
+        result = await this.analyzeWithCustom(text, model.name, provider.baseUrl!, provider.apiKey, session.id)
+        break
       default:
         throw Errors.cutModelError(`Unknown provider type: ${provider.type}`)
     }
+
+    await this.sessionService.complete(session.id)
+    return result
   }
 
   /**
    * 使用 Ollama 分析
    */
-  private async analyzeWithOllama(text: string, modelName: string, baseUrl: string): Promise<CutPoint[]> {
+  private async analyzeWithOllama(text: string, modelName: string, baseUrl: string, sessionId: number): Promise<CutPoint[]> {
     const prompt = this.buildPrompt(text)
     
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'user',
+      content: prompt,
+    })
+
     const response = await fetch(`${baseUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -88,14 +114,39 @@ export class CutModelService {
     }
 
     const data = await response.json()
+    
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'assistant',
+      content: data.response,
+      metadata: { model: modelName },
+    })
+
     return this.parseCutPoints(data.response)
   }
 
   /**
    * 使用 OpenAI 分析
    */
-  private async analyzeWithOpenAI(text: string, modelName: string, apiKey: string): Promise<CutPoint[]> {
+  private async analyzeWithOpenAI(text: string, modelName: string, apiKey: string, sessionId: number): Promise<CutPoint[]> {
     const prompt = this.buildPrompt(text)
+    const systemMessage = 'You are a text analysis expert. Always respond with valid JSON only.'
+    const messages = [
+      { role: 'system', content: systemMessage },
+      { role: 'user', content: prompt },
+    ]
+    
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'system',
+      content: systemMessage,
+    })
+    
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'user',
+      content: prompt,
+    })
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
@@ -105,16 +156,7 @@ export class CutModelService {
       },
       body: JSON.stringify({
         model: modelName,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a text analysis expert. Always respond with valid JSON only.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
+        messages,
         response_format: { type: 'json_object' },
       }),
     })
@@ -126,14 +168,29 @@ export class CutModelService {
 
     const data = await response.json()
     const content = data.choices[0]?.message?.content
+    
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'assistant',
+      content,
+      tokens: data.usage?.total_tokens,
+      metadata: { model: modelName },
+    })
+
     return this.parseCutPoints(content)
   }
 
   /**
    * 使用 Anthropic 分析
    */
-  private async analyzeWithAnthropic(text: string, modelName: string, apiKey: string): Promise<CutPoint[]> {
+  private async analyzeWithAnthropic(text: string, modelName: string, apiKey: string, sessionId: number): Promise<CutPoint[]> {
     const prompt = this.buildPrompt(text)
+    
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'user',
+      content: prompt,
+    })
     
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
@@ -161,14 +218,39 @@ export class CutModelService {
 
     const data = await response.json()
     const content = data.content[0]?.text
+    
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'assistant',
+      content,
+      metadata: { model: modelName },
+    })
+
     return this.parseCutPoints(content)
   }
 
   /**
    * 使用自定义端点分析
    */
-  private async analyzeWithCustom(text: string, modelName: string, baseUrl: string, apiKey?: string | null): Promise<CutPoint[]> {
+  private async analyzeWithCustom(text: string, modelName: string, baseUrl: string, apiKey: string | null | undefined, sessionId: number): Promise<CutPoint[]> {
     const prompt = this.buildPrompt(text)
+    const systemMessage = 'You are a text analysis expert. Always respond with valid JSON only.'
+    const messages = [
+      { role: 'system', content: systemMessage },
+      { role: 'user', content: prompt },
+    ]
+    
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'system',
+      content: systemMessage,
+    })
+    
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'user',
+      content: prompt,
+    })
     
     const headers: Record<string, string> = {
       'Content-Type': 'application/json',
@@ -183,16 +265,7 @@ export class CutModelService {
       headers,
       body: JSON.stringify({
         model: modelName,
-        messages: [
-          {
-            role: 'system',
-            content: 'You are a text analysis expert. Always respond with valid JSON only.',
-          },
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
+        messages,
       }),
     })
 
@@ -203,6 +276,15 @@ export class CutModelService {
 
     const data = await response.json()
     const content = data.choices[0]?.message?.content
+    
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'assistant',
+      content,
+      tokens: data.usage?.total_tokens,
+      metadata: { model: modelName },
+    })
+
     return this.parseCutPoints(content)
   }
 

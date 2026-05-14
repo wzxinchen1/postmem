@@ -1,16 +1,18 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { withMiddleware, successResponse } from '@/src/lib/api-utils'
-import { resolve } from '@/src/lib/container'
+import { createApiHandler, successResponse } from '@/src/lib/api-utils'
 import { KBService } from '@/src/services/kb.service'
 import type { StatsRequest } from '@/src/types'
 
-async function handler(req: NextApiRequest, res: NextApiResponse) {
-  const body = req.body as StatsRequest
-
-  const kbService = resolve<KBService>('kbService')
-  const result = await kbService.stats(body.kbName)
-
-  successResponse(res, result)
+interface Deps {
+  kbService: KBService
 }
 
-export default withMiddleware(handler, { methods: ['POST'] })
+export default createApiHandler<Deps>({
+  methods: ['POST'],
+  dependencies: ['kbService'],
+  handler: async (req, res, deps) => {
+    const body = req.body as StatsRequest
+    const result = await deps.kbService.stats(body.kbName)
+    successResponse(res, result)
+  }
+})

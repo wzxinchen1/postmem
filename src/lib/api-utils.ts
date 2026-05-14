@@ -1,6 +1,16 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { AppError, Errors } from '@/src/lib/errors'
 import type { ApiResponse } from '@/src/types'
+import container from '@/src/lib/container'
+
+/**
+ * 扩展 NextApiRequest 以包含 scope
+ */
+declare module 'next' {
+  interface NextApiRequest {
+    scope?: ReturnType<typeof container.createScope>
+  }
+}
 
 /**
  * 格式化错误信息为 .NET 风格的异常详情
@@ -112,6 +122,11 @@ export function withMiddleware(
 ) {
   let wrappedHandler = handler
 
+  wrappedHandler = async (req: NextApiRequest, res: NextApiResponse) => {
+    req.scope = container.createScope()
+    await handler(req, res)
+  }
+
   if (options.methods) {
     wrappedHandler = withMethod(options.methods, wrappedHandler)
   }
@@ -120,8 +135,54 @@ export function withMiddleware(
 }
 
 /**
- * 成功响应
+ * 从请求 scope 解析服务
  */
+export function resolveFromScope<T>(req: NextApiRequest, name: string): T {
+  if (!req.scope) {
+    throw new Error('Request scope not initialized. Ensure withMiddleware is used.')
+  }
+  return req.scope.resolve<T>(name)
+}
+
+/**
+ * 创建带依赖注入的 API 处理器
+ * 
+ * @example
+ * ```typescript
+ * interface KBDeps {
+ *   kbService: KBService
+ *   settingService: SettingService
+ * }
+ * 
+ * export default createApiHandler<KBDeps>({
+ *   methods: ['POST'],
+ *   dependencies: ['kbService', 'settingService'],
+ *   handler: async (req, res, deps) => {
+ *     const result = await deps.kbService.createKnowledgeBase(...)
+ *     successResponse(res, result)
+ *   }
+ * })
+ * ```
+ */
+export function createApiHandler<TDeps extends Record<string, any>>(options: {
+  methods?: string[]
+  dependencies: (keyof TDeps)[]
+  handler: (req: NextApiRequest, res: NextApiResponse, deps: TDeps) => Promise<void>
+}) {
+  return withMiddleware(async (req, res) => {
+    if (!req.scope) {
+      throw new Error('Request scope not initialized')
+    }
+
+    const deps = {} as TDeps
+    for (const key of options.dependencies) {
+      deps[key] = req.scope.resolve(key as string)
+    }
+
+    await options.handler(req, res, deps)
+  }, { methods: options.methods })
+}
+
 export function successResponse<T>(res: NextApiResponse, data: T, statusCode = 200) {
   const response: ApiResponse<T> = {
     success: true,
@@ -152,17 +213,18 @@ export function errorResponse(
 }
 
 /**
- * API 处理器
+ * API 处理器（支持依赖注入）
  */
-export function apiHandler(
+export function apiHandler<TDeps extends Record<string, any>>(
   req: NextApiRequest,
   res: NextApiResponse,
+  deps: TDeps,
   handlers: {
-    GET?: () => Promise<void>
-    POST?: () => Promise<void>
-    PUT?: () => Promise<void>
-    DELETE?: () => Promise<void>
-    PATCH?: () => Promise<void>
+    GET?: (deps: TDeps) => Promise<void>
+    POST?: (deps: TDeps) => Promise<void>
+    PUT?: (deps: TDeps) => Promise<void>
+    DELETE?: (deps: TDeps) => Promise<void>
+    PATCH?: (deps: TDeps) => Promise<void>
   }
 ) {
   const method = req.method as keyof typeof handlers
@@ -180,5 +242,5 @@ export function apiHandler(
     })
   }
 
-  return handler()
+  return handler(deps)
 }
