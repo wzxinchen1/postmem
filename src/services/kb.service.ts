@@ -7,6 +7,7 @@ import type {
 } from '@/src/types'
 import { EmbeddingService } from '@/src/services/embedding.service'
 import { ChunkService } from '@/src/services/chunk.service'
+import { SettingService } from '@/src/services/setting.service'
 
 /**
  * 知识库核心服务
@@ -15,27 +16,32 @@ export class KBService {
   private prisma: PrismaClient
   private embeddingService: EmbeddingService
   private chunkService: ChunkService
+  private settingService: SettingService
 
   constructor({
     prisma,
     embeddingService,
     chunkService,
+    settingService,
   }: {
     prisma: PrismaClient
     embeddingService: EmbeddingService
     chunkService: ChunkService
+    settingService: SettingService
   }) {
     this.prisma = prisma
     this.embeddingService = embeddingService
     this.chunkService = chunkService
+    this.settingService = settingService
   }
 
   /**
    * 知识入库
    */
   async ingest(kbName: string, content: string): Promise<{ count: number; ids: number[] }> {
-    // 验证输入
-    const maxLength = parseInt(process.env.MAX_CONTENT_LENGTH || '20000')
+    const settings = await this.settingService.getAppSettings()
+    const maxLength = settings.maxContentLength
+    
     if (content.length > maxLength) {
       throw Errors.badRequest(`内容长度超过限制 (${maxLength} 字符)`)
     }
@@ -44,27 +50,17 @@ export class KBService {
       throw Errors.badRequest('知识库名不能为空')
     }
 
-    // 切割文本
     const chunks = await this.chunkService.chunkText(content)
-    
-    // 生成嵌入向量
-    const embeddings = await this.embeddingService.generateEmbeddings(
-      chunks.map(c => c.content)
-    )
 
-    // 存入数据库
     const ids: number[] = []
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i]
-      const embedding = embeddings[i]
 
-      // 使用原生 SQL 插入，因为 Prisma 不支持 Unsupported 类型
       await this.prisma.$executeRaw`
-        INSERT INTO memories (kb_name, content, embedding, chunk_index, metadata, created_at)
+        INSERT INTO memories (kb_name, content, chunk_index, metadata, created_at)
         VALUES (
           ${kbName.trim()},
           ${chunk.content},
-          ${`[${embedding.join(',')}]`}::vector,
           ${chunk.index},
           ${JSON.stringify(chunk.metadata)}::json,
           NOW()
@@ -72,7 +68,6 @@ export class KBService {
         RETURNING id
       `
       
-      // 获取插入的 ID
       const memory = await this.prisma.memory.findFirst({
         where: {
           kbName: kbName.trim(),
@@ -99,7 +94,6 @@ export class KBService {
     topK: number = 5,
     contextWindow: number = 1
   ): Promise<SearchResult[]> {
-    // 验证输入
     if (!kbName || kbName.trim().length === 0) {
       throw Errors.badRequest('知识库名不能为空')
     }
@@ -108,10 +102,8 @@ export class KBService {
       throw Errors.badRequest('查询语句不能为空')
     }
 
-    // 生成查询向量
     const queryEmbedding = await this.embeddingService.generateEmbedding(query)
 
-    // 执行向量检索
     const results = await this.prisma.$queryRaw<
       Array<{
         id: number
@@ -133,7 +125,6 @@ export class KBService {
       LIMIT ${topK}
     `
 
-    // 获取上下文
     const searchResults: SearchResult[] = []
     for (const result of results) {
       const context = contextWindow > 0 
@@ -153,9 +144,6 @@ export class KBService {
     return searchResults
   }
 
-  /**
-   * 获取上下文片段
-   */
   private async getContext(
     memoryId: number,
     kbName: string,
@@ -163,7 +151,6 @@ export class KBService {
   ): Promise<{ prev?: string; next?: string }> {
     const context: { prev?: string; next?: string } = {}
 
-    // 获取当前片段的 chunkIndex
     const current = await this.prisma.memory.findUnique({
       where: { id: memoryId },
       select: { chunkIndex: true },
@@ -171,7 +158,6 @@ export class KBService {
 
     if (!current) return context
 
-    // 获取前一个片段
     if (current.chunkIndex > 0) {
       const prev = await this.prisma.memory.findFirst({
         where: {
@@ -183,7 +169,6 @@ export class KBService {
       if (prev) context.prev = prev.content
     }
 
-    // 获取后一个片段
     const next = await this.prisma.memory.findFirst({
       where: {
         kbName,
@@ -204,7 +189,6 @@ export class KBService {
     page: number = 1,
     limit: number = 20
   ): Promise<{ items: ListItem[]; total: number; page: number; limit: number }> {
-    // 验证输入
     if (!kbName || kbName.trim().length === 0) {
       throw Errors.badRequest('知识库名不能为空')
     }
@@ -268,7 +252,6 @@ export class KBService {
    */
   async stats(kbName?: string): Promise<Stats | { kbNames: Stats[] }> {
     if (kbName) {
-      // 单个知识库统计
       const result = await this.prisma.memory.aggregate({
         where: { kbName: kbName.trim() },
         _count: { id: true },
@@ -285,7 +268,6 @@ export class KBService {
         lastUpdated: result._max.createdAt || undefined,
       }
     } else {
-      // 所有知识库统计
       const kbNames = await this.prisma.memory.groupBy({
         by: ['kbName'],
         _count: { id: true },

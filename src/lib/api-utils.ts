@@ -3,6 +3,50 @@ import { AppError, Errors } from '@/src/lib/errors'
 import type { ApiResponse } from '@/src/types'
 
 /**
+ * 格式化错误信息为 .NET 风格的异常详情
+ */
+function formatErrorDetails(error: unknown, req: NextApiRequest): string {
+  const lines: string[] = []
+  
+  const formatException = (err: Error, indent: string = ''): void => {
+    lines.push(`${indent}Exception Type: ${err.constructor.name}`)
+    lines.push(`${indent}Message: ${err.message}`)
+    
+    if (err.stack) {
+      const stackLines = err.stack.split('\n')
+      lines.push(`${indent}StackTrace:`)
+      stackLines.forEach(line => {
+        lines.push(`${indent}  ${line}`)
+      })
+    }
+    
+    if (err.cause instanceof Error) {
+      lines.push(`${indent}---> Inner Exception`)
+      formatException(err.cause, indent + '   ')
+      lines.push(`${indent}--- End of inner exception stack trace ---`)
+    }
+  }
+  
+  lines.push('=== Request Information ===')
+  lines.push(`Request Path: ${req.url}`)
+  lines.push(`Request Method: ${req.method}`)
+  lines.push(`Timestamp: ${new Date().toISOString()}`)
+  if (req.body && typeof req.body === 'object' && Object.keys(req.body).length > 0) {
+    lines.push(`Request Body: ${JSON.stringify(req.body, null, 2)}`)
+  }
+  lines.push('')
+  lines.push('=== Exception Details ===')
+  
+  if (error instanceof Error) {
+    formatException(error)
+  } else {
+    lines.push(`Unknown error: ${String(error)}`)
+  }
+  
+  return lines.join('\n')
+}
+
+/**
  * 错误处理中间件
  */
 export function withErrorHandler(
@@ -12,36 +56,18 @@ export function withErrorHandler(
     try {
       await handler(req, res)
     } catch (error) {
-      // 记录完整的错误信息
-      console.error('API Error:', {
-        path: req.url,
-        method: req.method,
-        error: error instanceof Error ? error.message : 'Unknown error',
-        stack: error instanceof Error ? error.stack : undefined,
-      })
+      const errorDetails = formatErrorDetails(error, req)
+      
+      console.error('API Error occurred:')
+      console.error(errorDetails)
+      console.error('\n')
 
-      let appError: AppError
-
+      let statusCode = 500
       if (error instanceof AppError) {
-        appError = error
-        // 如果 AppError 没有 details，添加堆栈信息
-        if (!appError.details && error instanceof Error && error.stack) {
-          appError = new AppError(
-            error.code,
-            error.message,
-            error.stack
-          )
-        }
-      } else {
-        // 对于非 AppError，包含完整的错误信息和堆栈
-        const errorDetails = error instanceof Error 
-          ? `${error.message}\n\nStack trace:\n${error.stack}`
-          : 'Unknown error'
-        appError = Errors.internalError(errorDetails)
+        statusCode = error.statusCode
       }
 
-      const response: ApiResponse = appError.toJSON()
-      res.status(appError.statusCode).json(response)
+      res.status(statusCode).setHeader('Content-Type', 'text/plain; charset=utf-8').send(errorDetails)
     }
   }
 }

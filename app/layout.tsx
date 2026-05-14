@@ -1,4 +1,5 @@
 import './globals.css'
+import { AntdRegistry } from '@ant-design/nextjs-registry'
 
 export const metadata = {
   title: 'PostMem',
@@ -12,7 +13,9 @@ export default function RootLayout({
 }) {
   return (
     <html lang="zh-CN">
-      <body>{children}</body>
+      <body>
+        <AntdRegistry>{children}</AntdRegistry>
+      </body>
     </html>
   )
 }

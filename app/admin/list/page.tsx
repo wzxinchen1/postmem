@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { COLORS } from '@/app/admin/constants'
 import { ListResponse } from '@/app/admin/types'
 import { useMessage } from '@/app/admin/hooks/useMessage'
-import { Message } from '@/app/admin/components/Message'
 import { KBSelector } from '@/app/admin/components/KBSelector'
 
 export default function ListPage() {
@@ -14,7 +13,7 @@ export default function ListPage() {
   const [listLimit, setListLimit] = useState(10)
   const [listResults, setListResults] = useState<ListResponse | null>(null)
   
-  const { message, showMessage } = useMessage()
+  const { contextHolder, showMessage } = useMessage()
 
   const handleList = async () => {
     if (!kbName) {
@@ -69,7 +68,7 @@ export default function ListPage() {
 
   return (
     <>
-      <Message message={message} />
+      {contextHolder}
       
       <KBSelector kbName={kbName} setKbName={setKbName} />
 

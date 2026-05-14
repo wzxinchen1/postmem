@@ -4,7 +4,6 @@ import { useState, useEffect } from 'react'
 import { COLORS } from '@/app/admin/constants'
 import { StatsResponse, IngestResponse } from '@/app/admin/types'
 import { useMessage } from '@/app/admin/hooks/useMessage'
-import { Message } from '@/app/admin/components/Message'
 import { CreateKBModal } from '@/app/admin/components/modals/CreateKBModal'
 import { IngestModal } from '@/app/admin/components/modals/IngestModal'
 
@@ -18,7 +17,7 @@ export default function KBManagePage() {
   const [ingestContent, setIngestContent] = useState('')
   const [ingestResult, setIngestResult] = useState<IngestResponse | null>(null)
   
-  const { message, showMessage } = useMessage()
+  const { contextHolder, showMessage } = useMessage()
 
   useEffect(() => {
     handleStats()
@@ -107,7 +106,7 @@ export default function KBManagePage() {
 
   return (
     <>
-      <Message message={message} />
+      {contextHolder}
 
       {/* 操作栏 */}
       <div style={{
@@ -291,7 +290,6 @@ export default function KBManagePage() {
         newKbName={newKbName}
         setNewKbName={setNewKbName}
         loading={loading}
-        showMessage={showMessage}
         onCreated={() => {
           setShowCreateModal(false)
           setNewKbName('')

@@ -4,13 +4,12 @@ import { useState, useEffect } from 'react'
 import { COLORS } from './constants'
 import { StatsResponse } from './types'
 import { useMessage } from './hooks/useMessage'
-import { Message } from './components/Message'
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [statsResults, setStatsResults] = useState<StatsResponse | null>(null)
   
-  const { message, showMessage } = useMessage()
+  const { contextHolder, showMessage } = useMessage()
 
   useEffect(() => {
     handleStats()
@@ -35,7 +34,7 @@ export default function Dashboard() {
 
   return (
     <>
-      <Message message={message} />
+      {contextHolder}
 
       {/* 统计卡片 */}
       <div style={{

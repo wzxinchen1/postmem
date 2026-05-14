@@ -25,13 +25,13 @@ docker run -d \
   pgvector/pgvector:pg18
 ```
 
-创建数据库和扩展：
+创建数据库：
 
 ```sql
 CREATE DATABASE postmem;
-\c postmem
-CREATE EXTENSION IF NOT EXISTS vector;
 ```
+
+**注意**: pgvector 扩展会在 Prisma 迁移时自动创建，无需手动执行。
 
 ### 2. Ollama
 
@@ -105,11 +105,13 @@ CHUNK_MODEL_NAME="mistral:7b"      # 本地模型名称
 #### 4. 初始化数据库
 
 ```bash
-# 生成 Prisma 客户端
-pnpm db:generate
+# 一键设置数据库（生成客户端 + 运行迁移 + 插入种子数据）
+pnpm db:setup
 
-# 运行数据库迁移
-pnpm db:migrate
+# 或者分步执行：
+# pnpm db:generate    # 生成 Prisma 客户端
+# pnpm db:migrate     # 运行数据库迁移
+# pnpm db:seed        # 插入种子数据
 
 # (可选) 查看数据库状态
 pnpm db:studio
@@ -257,15 +259,6 @@ curl http://localhost:11434/api/tags
 ```
 
 ### 2. 测试 API
-
-使用提供的测试脚本：
-
-```bash
-chmod +x scripts/test-api.sh
-./scripts/test-api.sh http://localhost:3000
-```
-
-或手动测试：
 
 ```bash
 # 入库测试
@@ -485,8 +478,8 @@ git pull
 # 更新依赖
 pnpm install
 
-# 运行新迁移
-pnpm db:migrate
+# 运行数据库设置（迁移 + 种子数据）
+pnpm db:setup
 
 # 重启服务
 pnpm build && pnpm start

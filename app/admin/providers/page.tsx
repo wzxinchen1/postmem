@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { message } from 'antd'
 
 interface Provider {
   id: number
@@ -54,7 +55,6 @@ const PROVIDER_TYPES = [
 export default function ProvidersPage() {
   const [providers, setProviders] = useState<Provider[]>([])
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null)
   const [formData, setFormData] = useState({
@@ -65,14 +65,11 @@ export default function ProvidersPage() {
     isActive: true,
   })
 
+  const [msg, contextHolder] = message.useMessage()
+
   useEffect(() => {
     loadProviders()
   }, [])
-
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text })
-    setTimeout(() => setMessage(null), 5000)
-  }
 
   const loadProviders = async () => {
     setLoading(true)
@@ -83,7 +80,7 @@ export default function ProvidersPage() {
         setProviders(data.data.providers)
       }
     } catch (err) {
-      showMessage('error', '加载提供商失败')
+      msg.error('加载提供商失败')
     } finally {
       setLoading(false)
     }
@@ -113,15 +110,15 @@ export default function ProvidersPage() {
 
       const data = await res.json()
       if (data.success) {
-        showMessage('success', editingProvider ? '更新成功' : '创建成功')
+        msg.success(editingProvider ? '更新成功' : '创建成功')
         setShowModal(false)
         resetForm()
         loadProviders()
       } else {
-        showMessage('error', data.error?.message || '操作失败')
+        msg.error(data.error?.message || '操作失败')
       }
     } catch (err) {
-      showMessage('error', '网络请求失败')
+      msg.error('网络请求失败')
     } finally {
       setLoading(false)
     }
@@ -135,13 +132,13 @@ export default function ProvidersPage() {
       const res = await fetch(`/api/providers/${id}`, { method: 'DELETE' })
       const data = await res.json()
       if (data.success) {
-        showMessage('success', '删除成功')
+        msg.success('删除成功')
         loadProviders()
       } else {
-        showMessage('error', data.error?.message || '删除失败')
+        msg.error(data.error?.message || '删除失败')
       }
     } catch (err) {
-      showMessage('error', '网络请求失败')
+      msg.error('网络请求失败')
     } finally {
       setLoading(false)
     }
@@ -176,14 +173,7 @@ export default function ProvidersPage() {
 
   return (
     <>
-      {/* 消息提示 */}
-      {message && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <div style={{ padding: '0.875rem 1rem', borderRadius: '8px', background: message.type === 'success' ? COLORS.successLight : COLORS.errorLight, color: message.type === 'success' ? '#065f46' : '#991b1b', border: `1px solid ${message.type === 'success' ? '#6ee7b7' : '#fca5a5'}`, fontSize: '0.875rem' }}>
-            {message.type === 'success' ? '✓' : '✕'} {message.text}
-          </div>
-        </div>
-      )}
+      {contextHolder}
 
       {/* 操作栏 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>

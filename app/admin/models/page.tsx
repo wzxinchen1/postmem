@@ -1,6 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { message } from 'antd'
 
 interface Provider {
   id: number
@@ -48,7 +49,6 @@ export default function ModelsPage() {
   const [models, setModels] = useState<Model[]>([])
   const [providers, setProviders] = useState<Provider[]>([])
   const [loading, setLoading] = useState(false)
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
   const [showModal, setShowModal] = useState(false)
   const [editingModel, setEditingModel] = useState<Model | null>(null)
   const [formData, setFormData] = useState({
@@ -60,15 +60,12 @@ export default function ModelsPage() {
     isDefault: false,
   })
 
+  const [msg, contextHolder] = message.useMessage()
+
   useEffect(() => {
     loadProviders()
     loadModels()
   }, [])
-
-  const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text })
-    setTimeout(() => setMessage(null), 5000)
-  }
 
   const loadProviders = async () => {
     try {
@@ -76,9 +73,12 @@ export default function ModelsPage() {
       const data = await res.json()
       if (data.success) {
         setProviders(data.data.providers)
+        if (data.data.providers.length === 0) {
+          msg.warning('请先创建提供商后再添加模型')
+        }
       }
     } catch (err) {
-      showMessage('error', '加载提供商失败')
+      msg.error('加载提供商失败')
     }
   }
 
@@ -91,7 +91,7 @@ export default function ModelsPage() {
         setModels(data.data.models)
       }
     } catch (err) {
-      showMessage('error', '加载模型失败')
+      msg.error('加载模型失败')
     } finally {
       setLoading(false)
     }
@@ -120,15 +120,15 @@ export default function ModelsPage() {
 
       const data = await res.json()
       if (data.success) {
-        showMessage('success', editingModel ? '更新成功' : '创建成功')
+        msg.success(editingModel ? '更新成功' : '创建成功')
         setShowModal(false)
         resetForm()
         loadModels()
       } else {
-        showMessage('error', data.error?.message || '操作失败')
+        msg.error(data.error?.message || '操作失败')
       }
     } catch (err) {
-      showMessage('error', '网络请求失败')
+      msg.error('网络请求失败')
     } finally {
       setLoading(false)
     }
@@ -142,13 +142,13 @@ export default function ModelsPage() {
       const res = await fetch(`/api/models/${id}`, { method: 'DELETE' })
       const data = await res.json()
       if (data.success) {
-        showMessage('success', '删除成功')
+        msg.success('删除成功')
         loadModels()
       } else {
-        showMessage('error', data.error?.message || '删除失败')
+        msg.error(data.error?.message || '删除失败')
       }
     } catch (err) {
-      showMessage('error', '网络请求失败')
+      msg.error('网络请求失败')
     } finally {
       setLoading(false)
     }
@@ -177,13 +177,13 @@ export default function ModelsPage() {
       })
       const data = await res.json()
       if (data.success) {
-        showMessage('success', '已设为默认模型')
+        msg.success('已设为默认模型')
         loadModels()
       } else {
-        showMessage('error', data.error?.message || '操作失败')
+        msg.error(data.error?.message || '操作失败')
       }
     } catch (err) {
-      showMessage('error', '网络请求失败')
+      msg.error('网络请求失败')
     } finally {
       setLoading(false)
     }
@@ -211,14 +211,7 @@ export default function ModelsPage() {
 
   return (
     <>
-      {/* 消息提示 */}
-      {message && (
-        <div style={{ marginBottom: '1.5rem' }}>
-          <div style={{ padding: '0.875rem 1rem', borderRadius: '8px', background: message.type === 'success' ? COLORS.successLight : COLORS.errorLight, color: message.type === 'success' ? '#065f46' : '#991b1b', border: `1px solid ${message.type === 'success' ? '#6ee7b7' : '#fca5a5'}`, fontSize: '0.875rem' }}>
-            {message.type === 'success' ? '✓' : '✕'} {message.text}
-          </div>
-        </div>
-      )}
+      {contextHolder}
 
       {/* 操作栏 */}
       <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '1.5rem' }}>
@@ -233,12 +226,6 @@ export default function ModelsPage() {
           + 新增模型
         </button>
       </div>
-
-      {providers.length === 0 && (
-        <div style={{ marginBottom: '1.5rem', padding: '1rem', background: COLORS.warning + '20', border: `1px solid ${COLORS.warning}`, borderRadius: '8px', fontSize: '0.875rem', color: COLORS.text }}>
-          请先创建提供商后再添加模型。前往提供商管理页面创建。
-        </div>
-      )}
 
       {/* 模型列表 */}
       <div style={{ display: 'grid', gap: '1rem' }}>

@@ -2,6 +2,7 @@ import type { NextApiRequest, NextApiResponse } from 'next'
 import { withMiddleware, successResponse } from '@/src/lib/api-utils'
 import { resolve } from '@/src/lib/container'
 import { KBService } from '@/src/services/kb.service'
+import { SettingService } from '@/src/services/setting.service'
 import { Errors } from '@/src/lib/errors'
 import type { ListRequest } from '@/src/types'
 
@@ -14,7 +15,11 @@ async function handler(req: NextApiRequest, res: NextApiResponse) {
   }
 
   const page = body.page ?? 1
-  const limit = body.limit ?? parseInt(process.env.DEFAULT_PAGE_SIZE || '20')
+  
+  // 从数据库获取默认设置
+  const settingService = resolve<SettingService>('settingService')
+  const settings = await settingService.getAppSettings()
+  const limit = body.limit ?? settings.defaultPageSize
 
   if (typeof page !== 'number' || page < 1) {
     throw Errors.badRequest('page 必须是大于 0 的数字')

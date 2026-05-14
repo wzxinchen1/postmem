@@ -4,7 +4,6 @@ import { useState } from 'react'
 import { COLORS } from '@/app/admin/constants'
 import { SearchResponse } from '@/app/admin/types'
 import { useMessage } from '@/app/admin/hooks/useMessage'
-import { Message } from '@/app/admin/components/Message'
 import { KBSelector } from '@/app/admin/components/KBSelector'
 
 export default function SearchPage() {
@@ -15,7 +14,7 @@ export default function SearchPage() {
   const [searchContextWindow, setSearchContextWindow] = useState(1)
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null)
   
-  const { message, showMessage } = useMessage()
+  const { contextHolder, showMessage } = useMessage()
 
   const handleSearch = async () => {
     if (!kbName || !searchQuery) {
@@ -51,7 +50,7 @@ export default function SearchPage() {
 
   return (
     <>
-      <Message message={message} />
+      {contextHolder}
       
       <KBSelector kbName={kbName} setKbName={setKbName} />
 

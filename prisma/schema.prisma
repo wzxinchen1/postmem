@@ -63,6 +63,18 @@ model Model {
   @@map("models")
 }
 
+// 应用设置表
+model Setting {
+  id          Int       @id @default(autoincrement())
+  key         String    @unique @db.VarChar(100)
+  value       Json
+  description String?   @db.VarChar(255)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@map("settings")
+}
+
 // HNSW 索引用于向量相似度搜索
 // 执行以下 SQL 创建索引：
 // CREATE INDEX ON memories USING hnsw (embedding vector_cosine_ops);

@@ -1,5 +1,6 @@
 'use client'
 
+import { message } from 'antd'
 import { COLORS } from '@/app/admin/constants'
 
 interface CreateKBModalProps {
@@ -8,7 +9,6 @@ interface CreateKBModalProps {
   newKbName: string
   setNewKbName: (name: string) => void
   loading: boolean
-  showMessage: (type: 'success' | 'error', text: string) => void
   onCreated: () => void
 }
 
@@ -18,18 +18,18 @@ export function CreateKBModal({
   newKbName,
   setNewKbName,
   loading,
-  showMessage,
   onCreated
 }: CreateKBModalProps) {
+  const [msg, contextHolder] = message.useMessage()
   if (!show) return null
 
   const handleCreate = async () => {
     if (!newKbName.trim()) {
-      showMessage('error', '请输入知识库名称')
+      msg.error('请输入知识库名称')
       return
     }
     if (!/^[a-zA-Z0-9_-]+$/.test(newKbName)) {
-      showMessage('error', '名称只能包含字母、数字、中划线和下划线')
+      msg.error('名称只能包含字母、数字、中划线和下划线')
       return
     }
     
@@ -45,17 +45,19 @@ export function CreateKBModal({
       const data = await res.json()
       
       if (data.success) {
-        showMessage('success', `知识库 "${newKbName}" 创建成功`)
+        msg.success(`知识库 "${newKbName}" 创建成功`)
         onCreated()
       } else {
-        showMessage('error', data.error?.message || '创建失败')
+        msg.error(data.error?.message || '创建失败')
       }
     } catch (err) {
-      showMessage('error', '网络请求失败')
+      msg.error('网络请求失败')
     }
   }
 
   return (
+    <>
+    {contextHolder}
     <div style={{
       position: 'fixed',
       top: 0,
@@ -183,5 +185,6 @@ export function CreateKBModal({
         </div>
       </div>
     </div>
+    </>
   )
 }

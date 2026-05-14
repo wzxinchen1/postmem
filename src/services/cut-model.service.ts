@@ -1,55 +1,81 @@
 import { Errors } from '@/src/lib/errors'
-import type { ChunkModelType, CutPoint } from '@/src/types'
+import type { PrismaClient } from '@prisma/client'
+import type { Model, Provider, CutPoint } from '@/src/types'
 
 /**
- * 切割模型服务 - 支持本地和云端模型
+ * 切割模型服务 - 从数据库配置动态使用模型
  */
 export class CutModelService {
-  private type: ChunkModelType
-  private localModel: string
-  private ollamaBaseUrl: string
-  private openaiApiKey?: string
-  private openaiModel: string
-  private anthropicApiKey?: string
-  private anthropicModel: string
+  private prisma: PrismaClient
+  private modelCache: Map<string, { model: Model; provider: Provider }> = new Map()
 
-  constructor() {
-    this.type = (process.env.CHUNK_MODEL_TYPE as ChunkModelType) || 'local'
-    this.localModel = process.env.CHUNK_MODEL_NAME || 'mistral:7b'
-    this.ollamaBaseUrl = process.env.OLLAMA_BASE_URL || 'http://localhost:11434'
-    this.openaiApiKey = process.env.OPENAI_API_KEY
-    this.openaiModel = process.env.OPENAI_MODEL || 'gpt-4o-mini'
-    this.anthropicApiKey = process.env.ANTHROPIC_API_KEY
-    this.anthropicModel = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022'
+  constructor({ prisma }: { prisma: PrismaClient }) {
+    this.prisma = prisma
+  }
+
+  /**
+   * 获取默认聊天模型配置
+   */
+  private async getDefaultModel(): Promise<{ model: Model; provider: Provider }> {
+    // 检查缓存
+    const cacheKey = 'default_chat'
+    if (this.modelCache.has(cacheKey)) {
+      return this.modelCache.get(cacheKey)!
+    }
+
+    const model = await this.prisma.model.findFirst({
+      where: {
+        modelType: 'chat',
+        isDefault: true,
+        isActive: true,
+      },
+      include: {
+        provider: true,
+      },
+    })
+
+    if (!model || !model.provider) {
+      throw Errors.cutModelError('No default chat model configured. Please configure one in /admin/models')
+    }
+
+    // 缓存结果
+    const result = { model, provider: model.provider }
+    this.modelCache.set(cacheKey, result)
+    return result
   }
 
   /**
    * 分析文本并返回切割点
    */
   async analyzeCutPoints(text: string): Promise<CutPoint[]> {
-    switch (this.type) {
+    const { model, provider } = await this.getDefaultModel()
+
+    // 根据提供商类型调用不同的 API
+    switch (provider.type) {
       case 'local':
-        return await this.analyzeWithOllama(text)
+        return await this.analyzeWithOllama(text, model.name, provider.baseUrl || 'http://localhost:11434')
       case 'openai':
-        return await this.analyzeWithOpenAI(text)
+        return await this.analyzeWithOpenAI(text, model.name, provider.apiKey!)
       case 'anthropic':
-        return await this.analyzeWithAnthropic(text)
+        return await this.analyzeWithAnthropic(text, model.name, provider.apiKey!)
+      case 'custom':
+        return await this.analyzeWithCustom(text, model.name, provider.baseUrl!, provider.apiKey)
       default:
-        throw Errors.cutModelError(`Unknown chunk model type: ${this.type}`)
+        throw Errors.cutModelError(`Unknown provider type: ${provider.type}`)
     }
   }
 
   /**
-   * 使用 Ollama 本地模型分析
+   * 使用 Ollama 分析
    */
-  private async analyzeWithOllama(text: string): Promise<CutPoint[]> {
+  private async analyzeWithOllama(text: string, modelName: string, baseUrl: string): Promise<CutPoint[]> {
     const prompt = this.buildPrompt(text)
     
-    const response = await fetch(`${this.ollamaBaseUrl}/api/generate`, {
+    const response = await fetch(`${baseUrl}/api/generate`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({
-        model: this.localModel,
+        model: modelName,
         prompt,
         stream: false,
         format: 'json',
@@ -66,23 +92,19 @@ export class CutModelService {
   }
 
   /**
-   * 使用 OpenAI API 分析
+   * 使用 OpenAI 分析
    */
-  private async analyzeWithOpenAI(text: string): Promise<CutPoint[]> {
-    if (!this.openaiApiKey) {
-      throw Errors.cutModelError('OpenAI API key not configured')
-    }
-
+  private async analyzeWithOpenAI(text: string, modelName: string, apiKey: string): Promise<CutPoint[]> {
     const prompt = this.buildPrompt(text)
     
     const response = await fetch('https://api.openai.com/v1/chat/completions', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'Authorization': `Bearer ${this.openaiApiKey}`,
+        'Authorization': `Bearer ${apiKey}`,
       },
       body: JSON.stringify({
-        model: this.openaiModel,
+        model: modelName,
         messages: [
           {
             role: 'system',
@@ -108,24 +130,20 @@ export class CutModelService {
   }
 
   /**
-   * 使用 Anthropic API 分析
+   * 使用 Anthropic 分析
    */
-  private async analyzeWithAnthropic(text: string): Promise<CutPoint[]> {
-    if (!this.anthropicApiKey) {
-      throw Errors.cutModelError('Anthropic API key not configured')
-    }
-
+  private async analyzeWithAnthropic(text: string, modelName: string, apiKey: string): Promise<CutPoint[]> {
     const prompt = this.buildPrompt(text)
     
     const response = await fetch('https://api.anthropic.com/v1/messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': this.anthropicApiKey,
+        'x-api-key': apiKey,
         'anthropic-version': '2023-06-01',
       },
       body: JSON.stringify({
-        model: this.anthropicModel,
+        model: modelName,
         max_tokens: 1024,
         messages: [
           {
@@ -147,7 +165,49 @@ export class CutModelService {
   }
 
   /**
-   * 构建分析提示词
+   * 使用自定义端点分析
+   */
+  private async analyzeWithCustom(text: string, modelName: string, baseUrl: string, apiKey?: string | null): Promise<CutPoint[]> {
+    const prompt = this.buildPrompt(text)
+    
+    const headers: Record<string, string> = {
+      'Content-Type': 'application/json',
+    }
+    
+    if (apiKey) {
+      headers['Authorization'] = `Bearer ${apiKey}`
+    }
+
+    const response = await fetch(`${baseUrl}/chat/completions`, {
+      method: 'POST',
+      headers,
+      body: JSON.stringify({
+        model: modelName,
+        messages: [
+          {
+            role: 'system',
+            content: 'You are a text analysis expert. Always respond with valid JSON only.',
+          },
+          {
+            role: 'user',
+            content: prompt,
+          },
+        ],
+      }),
+    })
+
+    if (!response.ok) {
+      const errorText = await response.text()
+      throw Errors.cutModelError(`Custom API error: ${response.status} - ${errorText}`)
+    }
+
+    const data = await response.json()
+    const content = data.choices[0]?.message?.content
+    return this.parseCutPoints(content)
+  }
+
+  /**
+   * 构建提示词
    */
   private buildPrompt(text: string): string {
     return `分析以下文本的逻辑结构，找出最佳的切割点。切割点应该选择在语义完整的位置，如段落结束、章节结束或主题转换处。
@@ -171,26 +231,16 @@ ${text}
   }
 
   /**
-   * 解析切割点响应
+   * 解析切割点
    */
   private parseCutPoints(response: string): CutPoint[] {
-    // 尝试提取 JSON
     let jsonStr = response.trim()
-    
-    // 如果响应包含 markdown 代码块，提取其中的 JSON
     const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
     if (jsonMatch) {
       jsonStr = jsonMatch[1].trim()
     }
 
-    let parsed: any
-    try {
-      parsed = JSON.parse(jsonStr)
-    } catch (error) {
-      throw Errors.cutModelError(
-        `Failed to parse JSON response: ${error instanceof Error ? error.message : 'Unknown error'}`
-      )
-    }
+    const parsed = JSON.parse(jsonStr)
     
     if (!parsed.cutPoints || !Array.isArray(parsed.cutPoints)) {
       throw Errors.cutModelError('Invalid response format: missing cutPoints array')
@@ -205,14 +255,18 @@ ${text}
   /**
    * 获取当前模型信息
    */
-  getModelInfo(): { type: ChunkModelType; model: string } {
+  async getModelInfo(): Promise<{ provider: string; model: string }> {
+    const { model, provider } = await this.getDefaultModel()
     return {
-      type: this.type,
-      model: this.type === 'local' 
-        ? this.localModel 
-        : this.type === 'openai' 
-          ? this.openaiModel 
-          : this.anthropicModel,
+      provider: provider.name,
+      model: model.displayName || model.name,
     }
+  }
+
+  /**
+   * 清除模型缓存
+   */
+  clearCache(): void {
+    this.modelCache.clear()
   }
 }

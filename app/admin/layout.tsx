@@ -29,6 +29,7 @@ const menuItems = [
   { id: 'list', label: '列表管理', icon: '📋', href: '/admin/list' },
   { id: 'providers', label: '提供商管理', icon: '🔌', href: '/admin/providers' },
   { id: 'models', label: '模型管理', icon: '🤖', href: '/admin/models' },
+  { id: 'settings', label: '应用设置', icon: '⚙️', href: '/admin/settings' },
 ]
 
 export default function AdminLayout({ children }: { children: ReactNode }) {

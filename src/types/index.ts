@@ -221,3 +221,25 @@ export interface UpdateModelRequest {
   isActive?: boolean
   isDefault?: boolean
 }
+
+/**
+ * 应用设置
+ */
+export interface Setting {
+  id: number
+  key: string
+  value: Record<string, unknown>
+  description?: string
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
+ * 默认应用设置
+ */
+export interface AppSettings {
+  maxContentLength: number
+  defaultTopK: number
+  defaultContextWindow: number
+  defaultPageSize: number
+}

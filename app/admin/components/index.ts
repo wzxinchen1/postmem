@@ -1,5 +1,4 @@
 // Components exports
-export { Message } from './Message'
 export { TabSelector } from './TabSelector'
 export { KBSelector } from './KBSelector'
 export { CreateKBModal } from './modals/CreateKBModal'

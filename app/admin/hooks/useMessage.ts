@@ -1,12 +1,11 @@
-import { useState } from 'react'
+import { message } from 'antd'
 
 export function useMessage() {
-  const [message, setMessage] = useState<{ type: 'success' | 'error'; text: string } | null>(null)
+  const [msg, contextHolder] = message.useMessage()
 
   const showMessage = (type: 'success' | 'error', text: string) => {
-    setMessage({ type, text })
-    setTimeout(() => setMessage(null), 5000)
+    msg[type](text)
   }
 
-  return { message, showMessage }
+  return { contextHolder, showMessage }
 }
