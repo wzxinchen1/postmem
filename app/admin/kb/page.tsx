@@ -1,25 +1,45 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { COLORS } from '@/app/admin/constants'
 import { StatsResponse, IngestResponse } from '@/app/admin/types'
+import { useMessage } from '@/app/admin/hooks/useMessage'
+import { Message } from '@/app/admin/components/Message'
 import { CreateKBModal } from '@/app/admin/components/modals/CreateKBModal'
 import { IngestModal } from '@/app/admin/components/modals/IngestModal'
 
-interface IngestTabProps {
-  statsResults: StatsResponse | null
-  loading: boolean
-  showMessage: (type: 'success' | 'error', text: string) => void
-  onRefresh: () => void
-}
-
-export function IngestTab({ statsResults, loading, showMessage, onRefresh }: IngestTabProps) {
+export default function KBManagePage() {
+  const [statsResults, setStatsResults] = useState<StatsResponse | null>(null)
+  const [loading, setLoading] = useState(false)
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newKbName, setNewKbName] = useState('')
   const [showIngestModal, setShowIngestModal] = useState(false)
   const [selectedKbForIngest, setSelectedKbForIngest] = useState<string>('')
   const [ingestContent, setIngestContent] = useState('')
   const [ingestResult, setIngestResult] = useState<IngestResponse | null>(null)
+  
+  const { message, showMessage } = useMessage()
+
+  useEffect(() => {
+    handleStats()
+  }, [])
+
+  const handleStats = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/kb/stats', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({})
+      })
+      const data: StatsResponse = await res.json()
+      setStatsResults(data)
+    } catch (err) {
+      showMessage('error', '获取知识库列表失败')
+    } finally {
+      setLoading(false)
+    }
+  }
 
   const handleIngest = async () => {
     if (!selectedKbForIngest || !ingestContent) {
@@ -38,7 +58,7 @@ export function IngestTab({ statsResults, loading, showMessage, onRefresh }: Ing
       if (data.success) {
         showMessage('success', `入库成功！创建了 ${data.data?.count} 个片段`)
         setIngestContent('')
-        onRefresh()
+        handleStats()
         setTimeout(() => {
           setShowIngestModal(false)
           setIngestResult(null)
@@ -76,7 +96,7 @@ export function IngestTab({ statsResults, loading, showMessage, onRefresh }: Ing
         showMessage('success', `知识库 "${newKbName}" 创建成功`)
         setShowCreateModal(false)
         setNewKbName('')
-        onRefresh()
+        handleStats()
       } else {
         showMessage('error', data.error?.message || '创建失败')
       }
@@ -86,7 +106,9 @@ export function IngestTab({ statsResults, loading, showMessage, onRefresh }: Ing
   }
 
   return (
-    <div>
+    <>
+      <Message message={message} />
+
       {/* 操作栏 */}
       <div style={{
         background: COLORS.cardBg,
@@ -128,7 +150,7 @@ export function IngestTab({ statsResults, loading, showMessage, onRefresh }: Ing
             <span>+</span> 新增知识库
           </button>
           <button
-            onClick={onRefresh}
+            onClick={handleStats}
             disabled={loading}
             style={{
               padding: '0.5rem 1rem',
@@ -253,7 +275,7 @@ export function IngestTab({ statsResults, loading, showMessage, onRefresh }: Ing
               fontSize: '0.875rem',
               color: COLORS.textSecondary
             }}>
-              点击上方"刷新列表"按钮获取知识库信息
+              点击上方"新增知识库"按钮创建第一个知识库
             </div>
           </div>
         )}
@@ -273,7 +295,7 @@ export function IngestTab({ statsResults, loading, showMessage, onRefresh }: Ing
         onCreated={() => {
           setShowCreateModal(false)
           setNewKbName('')
-          onRefresh()
+          handleStats()
         }}
       />
 
@@ -284,7 +306,7 @@ export function IngestTab({ statsResults, loading, showMessage, onRefresh }: Ing
           setShowIngestModal(false)
           setIngestContent('')
           setIngestResult(null)
-          onRefresh()
+          handleStats()
         }}
         selectedKb={selectedKbForIngest}
         content={ingestContent}
@@ -293,7 +315,6 @@ export function IngestTab({ statsResults, loading, showMessage, onRefresh }: Ing
         result={ingestResult}
         onIngest={handleIngest}
       />
-    </div>
+    </>
   )
 }
-

@@ -17,10 +17,4 @@ export const COLORS = {
   textMuted: '#94a3b8',
 }
 
-// 菜单项配置
-export const MENU_ITEMS = [
-  { id: 'ingest', label: '知识库管理', icon: '📚' },
-  { id: 'search', label: '语义检索', icon: '🔍' },
-  { id: 'list', label: '列表管理', icon: '📋' },
-  { id: 'stats', label: '统计概览', icon: '📊' },
-] as const
+// 菜单项配置已移至 layout.tsx
