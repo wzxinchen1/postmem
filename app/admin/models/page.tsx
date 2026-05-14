@@ -42,7 +42,6 @@ const COLORS = {
 const MODEL_TYPES = [
   { value: 'embedding', label: 'Embedding' },
   { value: 'chat', label: 'Chat' },
-  { value: 'completion', label: 'Completion' },
 ]
 
 export default function ModelsPage() {

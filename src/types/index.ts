@@ -140,7 +140,7 @@ export type ProviderType = 'openai' | 'anthropic' | 'local' | 'custom'
 /**
  * 模型类型
  */
-export type ModelType = 'embedding' | 'chat' | 'completion'
+export type ModelType = 'embedding' | 'chat'
 
 /**
  * 提供商
