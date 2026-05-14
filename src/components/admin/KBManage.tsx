@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { message, Card, Row, Col, Button, Empty, Space, Typography, Tag } from 'antd'
 import { PlusOutlined, ReloadOutlined, BookOutlined } from '@ant-design/icons'
 import { StatsResponse, IngestResponse } from '@/app/admin/types'
-import { post } from '@/app/admin/lib/request'
+import { post, RequestError } from '@/app/admin/lib/request'
 import { CreateKBModal } from '@/src/components/admin/modals/CreateKBModal'
 import { IngestModal } from '@/src/components/admin/modals/IngestModal'
 
@@ -16,7 +16,8 @@ export default function KBManagePage() {
   const [showCreateModal, setShowCreateModal] = useState(false)
   const [newKbName, setNewKbName] = useState('')
   const [showIngestModal, setShowIngestModal] = useState(false)
-  const [selectedKbForIngest, setSelectedKbForIngest] = useState<string>('')
+  const [selectedKbId, setSelectedKbId] = useState<number | null>(null)
+  const [selectedKbName, setSelectedKbName] = useState('')
   const [ingestContent, setIngestContent] = useState('')
   const [ingestResult, setIngestResult] = useState<IngestResponse | null>(null)
   
@@ -39,13 +40,13 @@ export default function KBManagePage() {
   }
 
   const handleIngest = async () => {
-    if (!selectedKbForIngest || !ingestContent) {
-      msg.info('请填写知识库名和内容')
+    if (!selectedKbId || !ingestContent) {
+      msg.info('请填写内容')
       return
     }
 
     try {
-      const data = await post<IngestResponse>('/api/kb/ingest', { kbName: selectedKbForIngest, content: ingestContent })
+      const data = await post<IngestResponse>('/api/kb/ingest', { kbId: selectedKbId, content: ingestContent })
       setIngestResult(data)
       if (data.success) {
         setIngestContent('')
@@ -56,7 +57,11 @@ export default function KBManagePage() {
         }, 2000)
       }
     } catch (err) {
-      msg.error('入库失败')
+      if (err instanceof RequestError) {
+        msg.error(err.message)
+      } else {
+        msg.error('入库失败')
+      }
     }
   }
 
@@ -118,11 +123,12 @@ export default function KBManagePage() {
       {statsResults?.data?.kbNames && statsResults.data.kbNames.length > 0 ? (
         <Row gutter={[16, 16]}>
           {statsResults.data.kbNames.map((kb) => (
-            <Col xs={24} sm={12} md={8} lg={6} key={kb.kbName}>
+            <Col xs={24} sm={12} md={8} lg={6} key={kb.kbId}>
               <Card
                 hoverable
                 onClick={() => {
-                  setSelectedKbForIngest(kb.kbName)
+                  setSelectedKbId(kb.kbId)
+                  setSelectedKbName(kb.kbName)
                   setShowIngestModal(true)
                 }}
               >
@@ -176,7 +182,7 @@ export default function KBManagePage() {
           setIngestResult(null)
           handleStats()
         }}
-        selectedKb={selectedKbForIngest}
+        selectedKb={selectedKbName}
         content={ingestContent}
         setContent={setIngestContent}
         loading={loading}

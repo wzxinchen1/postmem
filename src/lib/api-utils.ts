@@ -82,7 +82,13 @@ export function withErrorHandler(
         errorMessage = error.message
       }
 
-      res.status(statusCode).setHeader('Content-Type', 'text/plain; charset=utf-8').send(errorMessage)
+      res.status(statusCode).json({
+        success: false,
+        error: {
+          code: error instanceof AppError ? error.code : 'INTERNAL_ERROR',
+          message: errorMessage,
+        },
+      })
     }
   }
 }

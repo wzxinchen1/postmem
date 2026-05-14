@@ -12,14 +12,15 @@ datasource db {
 
 model Memory {
   id             Int                    @id @default(autoincrement())
-  kbName         String                 @map("kb_name") @db.VarChar(100)
+  kbId           Int                    @map("kb_id")
   content        String                 @db.Text
   embedding      Unsupported("vector(1024)")?
   chunkIndex     Int                    @map("chunk_index")
   metadata       Json                   @default("{}")
   createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz()
+  knowledgeBase  KnowledgeBase          @relation(fields: [kbId], references: [id], onDelete: Cascade)
 
-  @@index([kbName])
+  @@index([kbId])
   @@index([createdAt])
   @@map("memories")
 }
@@ -70,6 +71,8 @@ model KnowledgeBase {
   description String?   @db.VarChar(500)
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+  memories    Memory[]
+  sessions    Session[]
 
   @@index([name])
   @@map("knowledge_bases")
@@ -90,7 +93,7 @@ model Setting {
 // 会话表 - 记录大模型调用会话
 model Session {
   id          Int            @id @default(autoincrement())
-  kbName      String?        @map("kb_name") @db.VarChar(100)
+  kbId        Int?           @map("kb_id")
   modelType   String         @map("model_type") @db.VarChar(50) // embedding, chat
   modelName   String         @map("model_name") @db.VarChar(100)
   provider    String         @db.VarChar(100)
@@ -99,8 +102,9 @@ model Session {
   metadata    Json           @default("{}")
   createdAt   DateTime       @default(now()) @map("created_at") @db.Timestamptz()
   messages    SessionMessage[]
+  knowledgeBase KnowledgeBase? @relation(fields: [kbId], references: [id], onDelete: SetNull)
 
-  @@index([kbName])
+  @@index([kbId])
   @@index([modelType])
   @@index([createdAt])
   @@index([status])

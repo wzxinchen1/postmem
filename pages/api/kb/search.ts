@@ -16,8 +16,8 @@ export default createApiHandler<Deps>({
   handler: async (req, res, deps) => {
     const body = req.body as SearchRequest
 
-    if (!body.kbName || typeof body.kbName !== 'string') {
-      throw Errors.badRequest('缺少必需字段: kbName')
+    if (!body.kbId || typeof body.kbId !== 'number') {
+      throw Errors.badRequest('缺少必需字段: kbId')
     }
 
     if (!body.query || typeof body.query !== 'string') {
@@ -36,7 +36,7 @@ export default createApiHandler<Deps>({
       throw Errors.badRequest('context_window 必须是 0-5 之间的数字')
     }
 
-    const results = await deps.kbService.search(body.kbName, body.query, topK, contextWindow)
+    const results = await deps.kbService.search(body.kbId, body.query, topK, contextWindow)
     successResponse(res, { results })
   }
 })

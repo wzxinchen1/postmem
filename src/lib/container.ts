@@ -2,7 +2,7 @@ import { createContainer, asClass, asValue, InjectionMode } from 'awilix'
 import type { PrismaClient } from '@prisma/client'
 import prisma from '@/src/lib/prisma'
 import { EmbeddingService } from '@/src/services/embedding.service'
-import { ChunkService } from '@/src/services/chunk.service'
+import { CutModelService } from '@/src/services/cut-model.service'
 import { KBService } from '@/src/services/kb.service'
 import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
@@ -21,7 +21,7 @@ container.register({
   embeddingService: asClass(EmbeddingService).scoped(),
   settingService: asClass(SettingService).scoped(),
   sessionService: asClass(SessionService).scoped(),
-  chunkService: asClass(ChunkService).scoped(),
+  cutModelService: asClass(CutModelService).scoped(),
   kbService: asClass(KBService).scoped(),
   providerService: asClass(ProviderService).scoped(),
   modelService: asClass(ModelService).scoped(),

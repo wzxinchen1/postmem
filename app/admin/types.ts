@@ -3,7 +3,8 @@ export interface IngestResponse {
   success: boolean
   data?: {
     count: number
-    ids: number[]
+    memoryIds: number[]
+    memorizedMessageIds?: string[]
   }
   error?: {
     code: string
@@ -73,10 +74,12 @@ export interface DeleteResponse {
 }
 
 export interface StatsData {
+  kbId?: number
   kbName?: string
   total?: number
   lastUpdated?: string
   kbNames?: Array<{
+    kbId: number
     kbName: string
     total: number
     lastUpdated: string
@@ -90,4 +93,12 @@ export interface StatsResponse {
     code: string
     message: string
   }
+}
+
+export interface KnowledgeBaseInfo {
+  id: number
+  name: string
+  description?: string
+  total: number
+  lastUpdated?: string
 }

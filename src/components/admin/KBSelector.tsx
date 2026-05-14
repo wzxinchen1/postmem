@@ -7,17 +7,18 @@ import { post } from '@/app/admin/lib/request'
 const { Text } = Typography
 
 interface KBSelectorProps {
-  kbName: string
-  setKbName: (name: string) => void
+  kbId: number | null
+  setKbId: (id: number) => void
 }
 
 interface KBInfo {
+  kbId: number
   kbName: string
   total: number
   lastUpdated?: string
 }
 
-export function KBSelector({ kbName, setKbName }: KBSelectorProps) {
+export function KBSelector({ kbId, setKbId }: KBSelectorProps) {
   const [kbList, setKbList] = useState<KBInfo[]>([])
   const [loading, setLoading] = useState(true)
 
@@ -38,15 +39,15 @@ export function KBSelector({ kbName, setKbName }: KBSelectorProps) {
 
   return (
     <Card style={{ marginBottom: 24 }}>
-      <Text strong style={{ display: 'block', marginBottom: 8 }}>知识库名称</Text>
+      <Text strong style={{ display: 'block', marginBottom: 8 }}>知识库</Text>
       <Select
-        value={kbName || undefined}
-        onChange={setKbName}
+        value={kbId || undefined}
+        onChange={setKbId}
         loading={loading}
         placeholder={loading ? '加载中...' : '请选择知识库'}
         style={{ width: '100%' }}
         options={kbList.map(kb => ({
-          value: kb.kbName,
+          value: kb.kbId,
           label: `${kb.kbName} (${kb.total} 条记录)`
         }))}
       />

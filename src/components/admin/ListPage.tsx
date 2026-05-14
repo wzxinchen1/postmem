@@ -10,7 +10,7 @@ import { KBSelector } from '@/src/components/admin/KBSelector'
 const { Title, Text } = Typography
 
 export default function ListPage() {
-  const [kbName, setKbName] = useState('')
+  const [kbId, setKbId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [listPage, setListPage] = useState(1)
   const [listLimit, setListLimit] = useState(10)
@@ -19,15 +19,16 @@ export default function ListPage() {
   const [msg, contextHolder] = message.useMessage()
 
   useEffect(() => {
-    if (kbName) {
+    if (kbId) {
       fetchList()
     }
-  }, [kbName, listPage, listLimit])
+  }, [kbId, listPage, listLimit])
 
   const fetchList = async () => {
+    if (!kbId) return
     setLoading(true)
     try {
-      const data = await post<ListResponse>('/api/kb/list', { kbName, page: listPage, limit: listLimit })
+      const data = await post<ListResponse>('/api/kb/list', { kbId, page: listPage, limit: listLimit })
       setListResults(data)
     } catch (err) {
       msg.error('加载片段列表失败')
@@ -106,10 +107,10 @@ export default function ListPage() {
     <>
       {contextHolder}
       
-      <KBSelector kbName={kbName} setKbName={setKbName} />
+      <KBSelector kbId={kbId} setKbId={setKbId} />
 
       <Card title={<Title level={4} style={{ margin: 0 }}>片段列表</Title>}>
-        {!kbName ? (
+        {!kbId ? (
           <Empty description={<Text type="secondary">请先选择知识库</Text>} />
         ) : (
           <>

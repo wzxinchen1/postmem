@@ -16,8 +16,8 @@ export default createApiHandler<Deps>({
   handler: async (req, res, deps) => {
     const body = req.body as ListRequest
 
-    if (!body.kbName || typeof body.kbName !== 'string') {
-      throw Errors.badRequest('缺少必需字段: kbName')
+    if (!body.kbId || typeof body.kbId !== 'number') {
+      throw Errors.badRequest('缺少必需字段: kbId')
     }
 
     const page = body.page ?? 1
@@ -32,7 +32,7 @@ export default createApiHandler<Deps>({
       throw Errors.badRequest('limit 必须是 1-100 之间的数字')
     }
 
-    const result = await deps.kbService.list(body.kbName, page, limit)
+    const result = await deps.kbService.list(body.kbId, page, limit)
     successResponse(res, result)
   }
 })

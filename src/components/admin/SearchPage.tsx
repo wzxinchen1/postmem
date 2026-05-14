@@ -10,7 +10,7 @@ const { Title, Text } = Typography
 const { TextArea } = Input
 
 export default function SearchPage() {
-  const [kbName, setKbName] = useState('')
+  const [kbId, setKbId] = useState<number | null>(null)
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchTopK, setSearchTopK] = useState(5)
@@ -20,8 +20,8 @@ export default function SearchPage() {
   const [msg, contextHolder] = message.useMessage()
 
   const handleSearch = async () => {
-    if (!kbName || !searchQuery) {
-      msg.info('请填写知识库名和查询内容')
+    if (!kbId || !searchQuery) {
+      msg.info('请选择知识库并填写查询内容')
       return
     }
 
@@ -31,7 +31,7 @@ export default function SearchPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          kbName,
+          kbId,
           query: searchQuery,
           top_k: searchTopK,
           context_window: searchContextWindow
@@ -64,7 +64,7 @@ export default function SearchPage() {
     <>
       {contextHolder}
       
-      <KBSelector kbName={kbName} setKbName={setKbName} />
+      <KBSelector kbId={kbId} setKbId={setKbId} />
 
       <Card title={<Title level={4} style={{ margin: 0 }}>语义检索</Title>}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>

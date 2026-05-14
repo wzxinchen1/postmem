@@ -28,7 +28,7 @@
                 "$ref": "#/components/schemas/IngestRequest"
               },
               "example": {
-                "kbName": "my-project",
+                "kbId": 1,
                 "content": "这是一段需要入库的文本内容..."
               }
             }
@@ -81,7 +81,7 @@
                 "$ref": "#/components/schemas/SearchRequest"
               },
               "example": {
-                "kbName": "my-project",
+                "kbId": 1,
                 "query": "如何使用向量检索",
                 "top_k": 5,
                 "context_window": 1
@@ -126,7 +126,7 @@
                 "$ref": "#/components/schemas/ListRequest"
               },
               "example": {
-                "kbName": "my-project",
+                "kbId": 1,
                 "page": 1,
                 "limit": 20
               }
@@ -212,12 +212,12 @@
                 "$ref": "#/components/schemas/StatsRequest"
               },
               "examples": {
-                "single_project": {
+                "single_kb": {
                   "value": {
-                    "kbName": "my-project"
+                    "kbId": 1
                   }
                 },
-                "all_projects": {
+                "all_kb": {
                   "value": {}
                 }
               }
@@ -260,12 +260,11 @@
     "schemas": {
       "IngestRequest": {
         "type": "object",
-        "required": ["kbName", "content"],
+        "required": ["kbId", "content"],
         "properties": {
-          "kbName": {
-            "type": "string",
-            "description": "知识库名",
-            "maxLength": 100
+          "kbId": {
+            "type": "integer",
+            "description": "知识库ID"
           },
           "content": {
             "type": "string",
@@ -301,11 +300,11 @@
       },
       "SearchRequest": {
         "type": "object",
-        "required": ["kbName", "query"],
+        "required": ["kbId", "query"],
         "properties": {
-          "kbName": {
-            "type": "string",
-            "description": "知识库名"
+          "kbId": {
+            "type": "integer",
+            "description": "知识库ID"
           },
           "query": {
             "type": "string",
@@ -395,11 +394,11 @@
       },
       "ListRequest": {
         "type": "object",
-        "required": ["kbName"],
+        "required": ["kbId"],
         "properties": {
-          "kbName": {
-            "type": "string",
-            "description": "知识库名"
+          "kbId": {
+            "type": "integer",
+            "description": "知识库ID"
           },
           "page": {
             "type": "integer",
@@ -500,9 +499,9 @@
       "StatsRequest": {
         "type": "object",
         "properties": {
-          "kbName": {
-            "type": "string",
-            "description": "知识库名（可选，不提供则返回所有知识库统计）"
+          "kbId": {
+            "type": "integer",
+            "description": "知识库ID（可选，不提供则返回所有知识库统计）"
           }
         }
       },
@@ -516,6 +515,9 @@
           "data": {
             "type": "object",
             "properties": {
+              "kbId": {
+                "type": "integer"
+              },
               "kbName": {
                 "type": "string"
               },
@@ -540,11 +542,14 @@
           "data": {
             "type": "object",
             "properties": {
-              "projects": {
+              "kbNames": {
                 "type": "array",
                 "items": {
                   "type": "object",
                   "properties": {
+                    "kbId": {
+                      "type": "integer"
+                    },
                     "kbName": {
                       "type": "string"
                     },
@@ -576,7 +581,7 @@
                 "type": "string",
                 "enum": [
                   "BAD_REQUEST",
-                  "PROJECT_NOT_FOUND",
+                  "KB_NOT_FOUND",
                   "MEMORY_NOT_FOUND",
                   "EMBEDDING_ERROR",
                   "CUT_MODEL_ERROR",

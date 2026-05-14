@@ -37,7 +37,7 @@ export class EmbeddingService {
     })
 
     if (!model || !model.provider) {
-      throw Errors.embeddingError('No default embedding model configured. Please configure one in /admin/models')
+      throw Errors.embeddingError('未配置默认嵌入模型，请在 /admin/models 页面配置')
     }
 
     const result = { model, provider: model.provider }
@@ -48,11 +48,11 @@ export class EmbeddingService {
   /**
    * 生成文本的嵌入向量
    */
-  async generateEmbedding(text: string, kbName?: string): Promise<number[]> {
+  async generateEmbedding(text: string, kbId?: number): Promise<number[]> {
     const { model, provider } = await this.getDefaultModel()
 
     const session = await this.sessionService.create({
-      kbName,
+      kbId,
       modelType: 'embedding',
       modelName: model.name,
       provider: provider.name,
@@ -72,12 +72,12 @@ export class EmbeddingService {
         result = await this.generateWithOpenAI(text, model.name, provider.apiKey!, session.id)
         break
       case 'anthropic':
-        throw Errors.embeddingError('Anthropic does not support embedding models')
+        throw Errors.embeddingError('Anthropic 不支持嵌入模型')
       case 'custom':
         result = await this.generateWithCustom(text, model.name, provider.baseUrl!, provider.apiKey, session.id)
         break
       default:
-        throw Errors.embeddingError(`Unknown provider type: ${provider.type}`)
+        throw Errors.embeddingError(`未知的提供商类型: ${provider.type}`)
     }
 
     await this.sessionService.complete(session.id)
@@ -106,13 +106,13 @@ export class EmbeddingService {
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw Errors.embeddingError(`Ollama API error: ${response.status} - ${errorText}`)
+      throw Errors.embeddingError(`Ollama API 错误: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
     
     if (!data.embedding || !Array.isArray(data.embedding)) {
-      throw Errors.embeddingError('Invalid embedding response from Ollama')
+      throw Errors.embeddingError('Ollama 返回的嵌入响应无效')
     }
 
     await this.sessionService.addMessage({
@@ -150,13 +150,13 @@ export class EmbeddingService {
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw Errors.embeddingError(`OpenAI API error: ${response.status} - ${errorText}`)
+      throw Errors.embeddingError(`OpenAI API 错误: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
     
     if (!data.data || !data.data[0]?.embedding) {
-      throw Errors.embeddingError('Invalid embedding response from OpenAI')
+      throw Errors.embeddingError('OpenAI 返回的嵌入响应无效')
     }
 
     await this.sessionService.addMessage({
@@ -200,7 +200,7 @@ export class EmbeddingService {
 
     if (!response.ok) {
       const errorText = await response.text()
-      throw Errors.embeddingError(`Custom API error: ${response.status} - ${errorText}`)
+      throw Errors.embeddingError(`自定义 API 错误: ${response.status} - ${errorText}`)
     }
 
     const data = await response.json()
@@ -212,7 +212,7 @@ export class EmbeddingService {
     } else if (data.data && data.data[0]?.embedding) {
       embedding = data.data[0].embedding
     } else {
-      throw Errors.embeddingError('Invalid embedding response from custom endpoint')
+      throw Errors.embeddingError('自定义端点返回的嵌入响应无效')
     }
 
     await this.sessionService.addMessage({
@@ -229,10 +229,10 @@ export class EmbeddingService {
   /**
    * 批量生成嵌入向量
    */
-  async generateEmbeddings(texts: string[], kbName?: string): Promise<number[][]> {
+  async generateEmbeddings(texts: string[], kbId?: number): Promise<number[][]> {
     const embeddings: number[][] = []
     for (const text of texts) {
-      const embedding = await this.generateEmbedding(text, kbName)
+      const embedding = await this.generateEmbedding(text, kbId)
       embeddings.push(embedding)
     }
     return embeddings

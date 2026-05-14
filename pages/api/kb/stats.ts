@@ -12,7 +12,7 @@ export default createApiHandler<Deps>({
   dependencies: ['kbService'],
   handler: async (req, res, deps) => {
     const body = req.body as StatsRequest
-    const result = await deps.kbService.stats(body.kbName)
+    const result = await deps.kbService.stats(body.kbId)
     successResponse(res, result)
   }
 })

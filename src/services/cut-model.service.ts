@@ -1,11 +1,11 @@
+import { ChatOpenAI } from '@langchain/openai'
+import { ChatOllama } from '@langchain/ollama'
+import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import { Errors } from '@/src/lib/errors'
 import type { PrismaClient } from '@prisma/client'
-import type { Model, Provider, CutPoint } from '@/src/types'
+import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelType, ProviderType } from '@/src/types'
 import { SessionService } from '@/src/services/session.service'
 
-/**
- * 切割模型服务 - 从数据库配置动态使用模型
- */
 export class CutModelService {
   private prisma: PrismaClient
   private sessionService: SessionService
@@ -16,9 +16,6 @@ export class CutModelService {
     this.sessionService = sessionService
   }
 
-  /**
-   * 获取默认聊天模型配置
-   */
   private async getDefaultModel(): Promise<{ model: Model; provider: Provider }> {
     const cacheKey = 'default_chat'
     if (this.modelCache.has(cacheKey)) {
@@ -37,22 +34,119 @@ export class CutModelService {
     })
 
     if (!model || !model.provider) {
-      throw Errors.cutModelError('No default chat model configured. Please configure one in /admin/models')
+      throw Errors.cutModelError('未配置默认对话模型，请在 /admin/models 页面配置')
     }
 
-    const result = { model, provider: model.provider }
+    const result = {
+      model: {
+        id: model.id,
+        providerId: model.providerId,
+        name: model.name,
+        displayName: model.displayName || undefined,
+        modelType: model.modelType as ModelType,
+        config: model.config as Record<string, unknown>,
+        isActive: model.isActive,
+        isDefault: model.isDefault,
+        createdAt: model.createdAt,
+        updatedAt: model.updatedAt,
+      },
+      provider: {
+        id: model.provider.id,
+        name: model.provider.name,
+        type: model.provider.type as ProviderType,
+        apiKey: model.provider.apiKey || undefined,
+        baseUrl: model.provider.baseUrl || undefined,
+        config: model.provider.config as Record<string, unknown>,
+        isActive: model.provider.isActive,
+        createdAt: model.provider.createdAt,
+        updatedAt: model.provider.updatedAt,
+      },
+    }
     this.modelCache.set(cacheKey, result)
     return result
   }
 
-  /**
-   * 分析文本并返回切割点
-   */
-  async analyzeCutPoints(text: string, kbName?: string): Promise<CutPoint[]> {
+  private createChatModel(model: Model, provider: Provider) {
+    switch (provider.type) {
+      case 'local':
+        return new ChatOllama({
+          model: model.name,
+          baseUrl: provider.baseUrl || 'http://localhost:11434',
+          format: 'json',
+        })
+      case 'openai':
+        return new ChatOpenAI({
+          model: model.name,
+          apiKey: provider.apiKey!,
+          configuration: {
+            baseURL: 'https://api.openai.com/v1',
+          },
+        })
+      case 'custom':
+        return new ChatOpenAI({
+          model: model.name,
+          apiKey: provider.apiKey || undefined,
+          configuration: {
+            baseURL: provider.baseUrl,
+          },
+        })
+      default:
+        throw Errors.cutModelError(`不支持的提供商类型: ${provider.type}`)
+    }
+  }
+
+  private async callLLM(
+    prompt: string,
+    systemPrompt: string,
+    model: Model,
+    provider: Provider,
+    sessionId: number
+  ): Promise<string> {
+    const chatModel = this.createChatModel(model, provider)
+
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'system',
+      content: systemPrompt,
+    })
+
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'user',
+      content: prompt,
+    })
+
+    const response = await chatModel.invoke([
+      new SystemMessage(systemPrompt),
+      new HumanMessage(prompt),
+    ])
+
+    const content = response.content.toString()
+
+    await this.sessionService.addMessage({
+      sessionId,
+      role: 'assistant',
+      content,
+      metadata: { model: model.name },
+    })
+
+    return content
+  }
+
+  private parseJSON<T>(response: string): T {
+    let jsonStr = response.trim()
+    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (jsonMatch) {
+      jsonStr = jsonMatch[1].trim()
+    }
+    return JSON.parse(jsonStr)
+  }
+
+  async analyzeCutPoints(text: string, kbId?: number): Promise<CutPoint[]> {
     const { model, provider } = await this.getDefaultModel()
 
     const session = await this.sessionService.create({
-      kbName,
+      kbId,
       modelType: 'chat',
       modelName: model.name,
       provider: provider.name,
@@ -62,236 +156,91 @@ export class CutModelService {
       },
     })
 
-    let result: CutPoint[]
-    
-    switch (provider.type) {
-      case 'local':
-        result = await this.analyzeWithOllama(text, model.name, provider.baseUrl || 'http://localhost:11434', session.id)
-        break
-      case 'openai':
-        result = await this.analyzeWithOpenAI(text, model.name, provider.apiKey!, session.id)
-        break
-      case 'anthropic':
-        result = await this.analyzeWithAnthropic(text, model.name, provider.apiKey!, session.id)
-        break
-      case 'custom':
-        result = await this.analyzeWithCustom(text, model.name, provider.baseUrl!, provider.apiKey, session.id)
-        break
-      default:
-        throw Errors.cutModelError(`Unknown provider type: ${provider.type}`)
-    }
+    const systemPrompt = 'You are a text analysis expert. Always respond with valid JSON only.'
+    const prompt = this.buildCutPointsPrompt(text)
+
+    const content = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
 
     await this.sessionService.complete(session.id)
-    return result
-  }
 
-  /**
-   * 使用 Ollama 分析
-   */
-  private async analyzeWithOllama(text: string, modelName: string, baseUrl: string, sessionId: number): Promise<CutPoint[]> {
-    const prompt = this.buildPrompt(text)
-    
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'user',
-      content: prompt,
-    })
-
-    const response = await fetch(`${baseUrl}/api/generate`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        model: modelName,
-        prompt,
-        stream: false,
-        format: 'json',
-      }),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw Errors.cutModelError(`Ollama API error: ${response.status} - ${errorText}`)
+    const parsed = this.parseJSON<{ cutPoints?: any[] }>(content)
+    if (!parsed.cutPoints || !Array.isArray(parsed.cutPoints)) {
+      throw Errors.cutModelError('响应格式无效: 缺少 cutPoints 数组')
     }
 
-    const data = await response.json()
-    
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'assistant',
-      content: data.response,
-      metadata: { model: modelName },
-    })
-
-    return this.parseCutPoints(data.response)
+    return parsed.cutPoints.map((point: any) => ({
+      index: Number(point.index),
+      reason: point.reason,
+    }))
   }
 
-  /**
-   * 使用 OpenAI 分析
-   */
-  private async analyzeWithOpenAI(text: string, modelName: string, apiKey: string, sessionId: number): Promise<CutPoint[]> {
-    const prompt = this.buildPrompt(text)
-    const systemMessage = 'You are a text analysis expert. Always respond with valid JSON only.'
-    const messages = [
-      { role: 'system', content: systemMessage },
-      { role: 'user', content: prompt },
-    ]
-    
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'system',
-      content: systemMessage,
-    })
-    
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'user',
-      content: prompt,
-    })
-    
-    const response = await fetch('https://api.openai.com/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Authorization': `Bearer ${apiKey}`,
+  async analyzeMessageGroups(messages: IngestMessage[], kbId?: number): Promise<MessageGroup[]> {
+    const { model, provider } = await this.getDefaultModel()
+
+    const session = await this.sessionService.create({
+      kbId,
+      modelType: 'chat',
+      modelName: model.name,
+      provider: provider.name,
+      metadata: {
+        displayName: model.displayName,
+        providerType: provider.type,
       },
-      body: JSON.stringify({
-        model: modelName,
-        messages,
-        response_format: { type: 'json_object' },
-      }),
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw Errors.cutModelError(`OpenAI API error: ${response.status} - ${errorText}`)
+    const systemPrompt = 'You are a conversation analysis expert. Always respond with valid JSON only.'
+    const prompt = this.buildMessageAnalysisPrompt(messages)
+
+    const content = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+
+    await this.sessionService.complete(session.id)
+
+    const parsed = this.parseJSON<{ groups?: any[] }>(content)
+    if (!parsed.groups || !Array.isArray(parsed.groups)) {
+      throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
     }
 
-    const data = await response.json()
-    const content = data.choices[0]?.message?.content
-    
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'assistant',
-      content,
-      tokens: data.usage?.total_tokens,
-      metadata: { model: modelName },
-    })
-
-    return this.parseCutPoints(content)
+    return parsed.groups.map((group: any) => ({
+      messageIds: group.messageIds || [],
+      summary: group.summary,
+      isComplete: group.isComplete !== false,
+    }))
   }
 
-  /**
-   * 使用 Anthropic 分析
-   */
-  private async analyzeWithAnthropic(text: string, modelName: string, apiKey: string, sessionId: number): Promise<CutPoint[]> {
-    const prompt = this.buildPrompt(text)
-    
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'user',
-      content: prompt,
-    })
-    
-    const response = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': apiKey,
-        'anthropic-version': '2023-06-01',
+  async analyzeTextGroups(text: string, kbId?: number): Promise<MessageGroup[]> {
+    const { model, provider } = await this.getDefaultModel()
+
+    const session = await this.sessionService.create({
+      kbId,
+      modelType: 'chat',
+      modelName: model.name,
+      provider: provider.name,
+      metadata: {
+        displayName: model.displayName,
+        providerType: provider.type,
       },
-      body: JSON.stringify({
-        model: modelName,
-        max_tokens: 1024,
-        messages: [
-          {
-            role: 'user',
-            content: prompt,
-          },
-        ],
-      }),
     })
 
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw Errors.cutModelError(`Anthropic API error: ${response.status} - ${errorText}`)
+    const systemPrompt = 'You are a text analysis expert. Always respond with valid JSON only.'
+    const prompt = this.buildTextAnalysisPrompt(text)
+
+    const content = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+
+    await this.sessionService.complete(session.id)
+
+    const parsed = this.parseJSON<{ groups?: any[] }>(content)
+    if (!parsed.groups || !Array.isArray(parsed.groups)) {
+      throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
     }
 
-    const data = await response.json()
-    const content = data.content[0]?.text
-    
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'assistant',
-      content,
-      metadata: { model: modelName },
-    })
-
-    return this.parseCutPoints(content)
+    return parsed.groups.map((group: any) => ({
+      messageIds: [],
+      summary: group.summary,
+      isComplete: group.isComplete !== false,
+    }))
   }
 
-  /**
-   * 使用自定义端点分析
-   */
-  private async analyzeWithCustom(text: string, modelName: string, baseUrl: string, apiKey: string | null | undefined, sessionId: number): Promise<CutPoint[]> {
-    const prompt = this.buildPrompt(text)
-    const systemMessage = 'You are a text analysis expert. Always respond with valid JSON only.'
-    const messages = [
-      { role: 'system', content: systemMessage },
-      { role: 'user', content: prompt },
-    ]
-    
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'system',
-      content: systemMessage,
-    })
-    
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'user',
-      content: prompt,
-    })
-    
-    const headers: Record<string, string> = {
-      'Content-Type': 'application/json',
-    }
-    
-    if (apiKey) {
-      headers['Authorization'] = `Bearer ${apiKey}`
-    }
-
-    const response = await fetch(`${baseUrl}/chat/completions`, {
-      method: 'POST',
-      headers,
-      body: JSON.stringify({
-        model: modelName,
-        messages,
-      }),
-    })
-
-    if (!response.ok) {
-      const errorText = await response.text()
-      throw Errors.cutModelError(`Custom API error: ${response.status} - ${errorText}`)
-    }
-
-    const data = await response.json()
-    const content = data.choices[0]?.message?.content
-    
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'assistant',
-      content,
-      tokens: data.usage?.total_tokens,
-      metadata: { model: modelName },
-    })
-
-    return this.parseCutPoints(content)
-  }
-
-  /**
-   * 构建提示词
-   */
-  private buildPrompt(text: string): string {
+  private buildCutPointsPrompt(text: string): string {
     return `分析以下文本的逻辑结构，找出最佳的切割点。切割点应该选择在语义完整的位置，如段落结束、章节结束或主题转换处。
 
 文本内容：
@@ -312,31 +261,71 @@ ${text}
 4. 如果文本很短不需要切割，返回空数组 {"cutPoints": []}`
   }
 
-  /**
-   * 解析切割点
-   */
-  private parseCutPoints(response: string): CutPoint[] {
-    let jsonStr = response.trim()
-    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1].trim()
-    }
+  private buildMessageAnalysisPrompt(messages: IngestMessage[]): string {
+    const messageList = messages.map((m) =>
+      `[${m.id}] ${m.role}: ${m.content}`
+    ).join('\n')
 
-    const parsed = JSON.parse(jsonStr)
-    
-    if (!parsed.cutPoints || !Array.isArray(parsed.cutPoints)) {
-      throw Errors.cutModelError('Invalid response format: missing cutPoints array')
-    }
+    return `分析以下对话消息列表，识别其中包含的所有独立话题。消息列表可能讨论了多件不同的事情，需要将讨论同一件事的消息分到同一组。
 
-    return parsed.cutPoints.map((point: any) => ({
-      index: Number(point.index),
-      reason: point.reason,
-    }))
+消息列表：
+${messageList}
+
+请返回 JSON 格式的消息分组数组，格式如下：
+{
+  "groups": [
+    {
+      "messageIds": ["msg1", "msg2"],
+      "summary": "这组消息在讨论XXX",
+      "isComplete": true
+    },
+    {
+      "messageIds": ["msg3", "msg4"],
+      "summary": "这组消息在讨论YYY",
+      "isComplete": true
+    }
+  ]
+}
+
+要求：
+1. 仔细分析消息内容，识别所有独立的话题，每个话题对应一个 group
+2. messageIds 是该组消息的 ID 数组，按消息顺序排列
+3. summary 是对该组消息内容的简要描述
+4. isComplete 表示这组消息是否形成了一个完整的话题（有明确的开始和结束）
+5. 最近的消息（最后几条）如果话题尚未结束，设置 isComplete 为 false
+6. 只返回 JSON，不要有其他说明文字
+7. 确保所有消息都被分配到某个分组中`
   }
 
-  /**
-   * 获取当前模型信息
-   */
+  private buildTextAnalysisPrompt(text: string): string {
+    return `分析以下文本，识别其中包含的所有独立话题或主题。一段文本可能讨论了多件不同的事情，需要将它们分开。
+
+文本内容：
+${text.slice(0, 3000)}
+
+请返回 JSON 格式的分组数组，格式如下：
+{
+  "groups": [
+    {
+      "summary": "这部分文本讨论的是XXX",
+      "isComplete": true
+    },
+    {
+      "summary": "这部分文本讨论的是YYY",
+      "isComplete": true
+    }
+  ]
+}
+
+要求：
+1. 仔细分析文本，识别所有独立的话题，每个话题对应一个 group
+2. summary 是对该话题内容的简要描述
+3. isComplete 表示该话题是否完整（有明确的开始和结束）
+4. 如果文本末尾话题未结束，设置 isComplete 为 false
+5. 只返回 JSON，不要有其他说明文字
+6. 确保所有文本内容都被分配到某个话题中`
+  }
+
   async getModelInfo(): Promise<{ provider: string; model: string }> {
     const { model, provider } = await this.getDefaultModel()
     return {
@@ -345,9 +334,6 @@ ${text}
     }
   }
 
-  /**
-   * 清除模型缓存
-   */
   clearCache(): void {
     this.modelCache.clear()
   }

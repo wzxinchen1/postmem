@@ -67,10 +67,10 @@ export const Errors = {
     new AppError(ErrorCode.MEMORY_NOT_FOUND, `片段 ID ${id} 不存在`),
 
   embeddingError: (details: string) =>
-    new AppError(ErrorCode.EMBEDDING_ERROR, '嵌入模型暂时不可用', details),
+    new AppError(ErrorCode.BAD_REQUEST, details),
 
   cutModelError: (details: string) =>
-    new AppError(ErrorCode.CUT_MODEL_ERROR, '切割模型调用失败', details),
+    new AppError(ErrorCode.BAD_REQUEST, details),
 
   databaseError: (details: string) =>
     new AppError(ErrorCode.DATABASE_ERROR, '数据库操作异常', details),

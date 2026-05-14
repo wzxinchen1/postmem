@@ -18,7 +18,7 @@ interface SessionMessage {
 
 interface Session {
   id: number
-  kbName?: string
+  kbId?: number
   modelType: string
   modelName: string
   provider: string
@@ -184,11 +184,11 @@ export default function SessionsPage() {
       ),
     },
     {
-      title: '知识库',
-      dataIndex: 'kbName',
-      key: 'kbName',
-      width: 150,
-      render: (name?: string) => name || <Text type="secondary">-</Text>,
+      title: '知识库ID',
+      dataIndex: 'kbId',
+      key: 'kbId',
+      width: 100,
+      render: (id?: number) => id || <Text type="secondary">-</Text>,
     },
     {
       title: '状态',
@@ -331,7 +331,7 @@ export default function SessionsPage() {
                 {selectedSession.metadata?.displayName || selectedSession.modelName}
               </Descriptions.Item>
               <Descriptions.Item label="提供商">{selectedSession.provider}</Descriptions.Item>
-              <Descriptions.Item label="知识库">{selectedSession.kbName || '-'}</Descriptions.Item>
+              <Descriptions.Item label="知识库ID">{selectedSession.kbId || '-'}</Descriptions.Item>
               <Descriptions.Item label="创建时间" span={2}>
                 {new Date(selectedSession.createdAt).toLocaleString('zh-CN')}
               </Descriptions.Item>

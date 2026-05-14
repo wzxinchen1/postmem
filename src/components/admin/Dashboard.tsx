@@ -88,7 +88,7 @@ export default function Dashboard() {
         {statsResults?.data?.kbNames && statsResults.data.kbNames.length > 0 ? (
           <Row gutter={[16, 16]}>
             {statsResults.data.kbNames.map((proj) => (
-              <Col xs={24} sm={12} md={8} lg={6} key={proj.kbName}>
+              <Col xs={24} sm={12} md={8} lg={6} key={proj.kbId}>
                 <Card 
                   size="small"
                   style={{ background: '#fafafa' }}

@@ -13,7 +13,7 @@ export interface MemoryMetadata {
  */
 export interface Memory {
   id: number
-  kbName: string
+  kbId: number
   content: string
   embedding: number[]
   chunkIndex: number
@@ -60,24 +60,59 @@ export interface ListItem {
  * 统计信息
  */
 export interface Stats {
+  kbId?: number
   kbName?: string
   total: number
   lastUpdated?: Date
 }
 
 /**
- * 入库请求
+ * 入库消息
  */
-export interface IngestRequest {
-  kbName: string
+export interface IngestMessage {
+  id: string
+  role: MessageRole
   content: string
+}
+
+/**
+ * 纯文本入库请求
+ */
+export interface IngestTextRequest {
+  kbId: number
+  content: string
+}
+
+/**
+ * 消息列表入库请求
+ */
+export interface IngestMessagesRequest {
+  kbId: number
+  messages: IngestMessage[]
+}
+
+/**
+ * 纯文本入库响应
+ */
+export interface IngestTextResponse {
+  count: number
+  memoryIds: number[]
+}
+
+/**
+ * 消息列表入库响应
+ */
+export interface IngestMessagesResponse {
+  count: number
+  memoryIds: number[]
+  memorizedMessageIds: string[]
 }
 
 /**
  * 检索请求
  */
 export interface SearchRequest {
-  kbName: string
+  kbId: number
   query: string
   top_k?: number
   context_window?: number
@@ -87,7 +122,7 @@ export interface SearchRequest {
  * 列表请求
  */
 export interface ListRequest {
-  kbName: string
+  kbId: number
   page?: number
   limit?: number
 }
@@ -103,7 +138,7 @@ export interface DeleteRequest {
  * 统计请求
  */
 export interface StatsRequest {
-  kbName?: string
+  kbId?: number
 }
 
 /**
@@ -130,6 +165,15 @@ export type ChunkModelType = 'local' | 'openai' | 'anthropic'
 export interface CutPoint {
   index: number
   reason?: string
+}
+
+/**
+ * 消息分组 - 表示一组在说同一件事的消息
+ */
+export interface MessageGroup {
+  messageIds: string[]
+  summary?: string
+  isComplete: boolean
 }
 
 /**
@@ -291,7 +335,7 @@ export interface SessionMessage {
  */
 export interface Session {
   id: number
-  kbName?: string
+  kbId?: number
   modelType: ModelType
   modelName: string
   provider: string
@@ -306,7 +350,7 @@ export interface Session {
  * 创建会话请求
  */
 export interface CreateSessionRequest {
-  kbName?: string
+  kbId?: number
   modelType: ModelType
   modelName: string
   provider: string

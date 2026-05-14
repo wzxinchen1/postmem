@@ -19,7 +19,7 @@ export class SessionService {
   async create(data: CreateSessionRequest): Promise<Session> {
     return this.prisma.session.create({
       data: {
-        kbName: data.kbName,
+        kbId: data.kbId,
         modelType: data.modelType,
         modelName: data.modelName,
         provider: data.provider,
@@ -59,7 +59,7 @@ export class SessionService {
   }
 
   async list(options: {
-    kbName?: string
+    kbId?: number
     modelType?: string
     status?: string
     page?: number
@@ -70,7 +70,7 @@ export class SessionService {
     const skip = (page - 1) * limit
 
     const where: any = {}
-    if (options.kbName) where.kbName = options.kbName
+    if (options.kbId) where.kbId = options.kbId
     if (options.modelType) where.modelType = options.modelType
     if (options.status) where.status = options.status
 
