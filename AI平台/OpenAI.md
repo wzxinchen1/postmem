@@ -28,11 +28,13 @@ Authorization: Bearer sk-xxx
 Content-Type: application/json
 
 {
-  "model": "o1-preview",  // 使用 o1 系列模型
+  "model": "o3-mini",  // 使用 o3 系列模型
   "messages": [
-    {"role": "user", "content": "请一步步分析：为什么天空是蓝色的？"}
+    {"role": "developer", "content": "你是一个专业的科学顾问"},
+    {"role": "user", "content": "请分析：为什么天空是蓝色的？"}
   ],
-  "max_completion_tokens": 32768,  // 使用 max_completion_tokens 而非 max_tokens
+  "max_completion_tokens": 100000,  // 使用 max_completion_tokens 而非 max_tokens
+  "reasoning_effort": "medium",  // 推理强度：low/medium/high
   "stream": true
 }
 ```
@@ -42,16 +44,45 @@ Content-Type: application/json
 - 只能通过 `usage.completion_tokens_details.reasoning_tokens` 查看思考过程使用的 token 数量
 - 思考 tokens 会占用上下文窗口并计费,但不包含在返回的 content 中
 - 使用 `max_completion_tokens` 控制总 token 数（思考 + 回答）,而非旧的 `max_tokens`
-- 建议至少预留 25,000 tokens 用于推理和输出
+- 使用 `reasoning_effort` 参数控制推理强度（low/medium/high）
 
-**o1 系列当前限制（Beta阶段）**:
-- ❌ 不支持 `system` 消息（仅支持 user 和 assistant）
-- ❌ 不支持图像输入（仅文本）
-- ❌ 不支持工具调用（tools、function calling）
-- ❌ 不支持 `temperature`、`top_p` 参数（固定为 1）
-- ❌ 不支持 `presence_penalty`、`frequency_penalty`（固定为 0）
-- ❌ 不支持 logprobs
-- ❌ 不支持 Assistants API 和 Batch API
+**可用模型与上下文窗口**:
+
+| 模型 | 输入 Token | 输出 Token | 说明 |
+|------|-----------|-----------|------|
+| o1-preview | 128,000 | 32,768 | 早期预览版 |
+| o1-mini | 128,000 | 65,536 | 轻量版 |
+| o1 | 200,000 | 100,000 | 正式版 |
+| o3-mini | 200,000 | 100,000 | 2025年1月发布 |
+| o3 | 200,000 | 100,000 | 2025年4月发布 |
+| o4-mini | 200,000 | 100,000 | 2025年4月发布 |
+
+**o1/o3 系列参数支持情况对比**:
+
+| 参数 | o1 系列 | o3/o4-mini 系列 | 说明 |
+|------|---------|----------------|------|
+| `system` 消息 | ✅ 支持 | ✅ 支持 | 会被视为 `developer` 消息处理 |
+| `developer` 消息 | ✅ 支持 | ✅ 支持 | 功能等同于 system 消息 |
+| 图像输入 | ❌ 不支持 | ✅ 支持（o3/o4-mini） | o1 仅支持文本 |
+| 工具调用（tools） | ⚠️ 有限支持 | ✅ 完整支持 | o3/o4-mini 实现革命性突破 |
+| 多工具编排 | ❌ 不支持 | ✅ 支持 | o3 可自主组合多个工具 |
+| `temperature` | ❌ 不支持 | ❌ 不支持 | 固定为 1 |
+| `top_p` | ❌ 不支持 | ❌ 不支持 | 固定为 1 |
+| `presence_penalty` | ❌ 不支持 | ❌ 不支持 | 固定为 0 |
+| `frequency_penalty` | ❌ 不支持 | ❌ 不支持 | 固定为 0 |
+| `logprobs` | ❌ 不支持 | ❌ 不支持 | - |
+| `reasoning_effort` | ❌ 不支持 | ✅ 支持 | 仅 o3-mini/o4-mini 支持 |
+| 视觉推理 | ❌ 不支持 | ✅ 支持（仅 o3） | 工作内存中动态操作图像 |
+| Assistants API | ❌ 不支持 | ✅ 支持（o3-mini） | - |
+| Batch API | ❌ 不支持 | ✅ 支持（o3-mini） | - |
+
+**重要提示**:
+- ⚠️ 不应在同一请求中同时使用 `developer` 消息和 `system` 消息
+- ⚠️ o3 的流式输出仅限有限访问
+- ⚠️ o3-pro 不支持流式输出
+- ⚠️ 当 `reasoning_effort` 设置为 `minimal` 时不支持并行工具调用
+- ⚠️ o1 系列工具调用能力有限，不建议用于复杂函数调用场景
+- ⚠️ o3/o4-mini 使用 **Responses API**，o3-mini 使用 Chat Completions API
 
 ## 3. 流式响应报文示例
 
