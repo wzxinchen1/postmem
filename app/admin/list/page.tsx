@@ -1,9 +1,10 @@
 'use client'
 
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
+import { message } from 'antd'
 import { COLORS } from '@/app/admin/constants'
 import { ListResponse } from '@/app/admin/types'
-import { useMessage } from '@/app/admin/hooks/useMessage'
+import { post } from '@/app/admin/lib/request'
 import { KBSelector } from '@/app/admin/components/KBSelector'
 
 export default function ListPage() {
@@ -13,30 +14,20 @@ export default function ListPage() {
   const [listLimit, setListLimit] = useState(10)
   const [listResults, setListResults] = useState<ListResponse | null>(null)
   
-  const { contextHolder, showMessage } = useMessage()
+  const [msg, contextHolder] = message.useMessage()
 
-  const handleList = async () => {
-    if (!kbName) {
-      showMessage('error', '请填写知识库名')
-      return
+  useEffect(() => {
+    if (kbName) {
+      fetchList()
     }
+  }, [kbName, listPage, listLimit])
 
+  const fetchList = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/kb/list', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kbName, page: listPage, limit: listLimit })
-      })
-      const data: ListResponse = await res.json()
+      const data = await post<ListResponse>('/api/kb/list', { kbName, page: listPage, limit: listLimit })
       setListResults(data)
-      if (data.success) {
-        showMessage('success', `获取到 ${data.data?.items.length || 0} 条记录`)
-      } else {
-        showMessage('error', data.error?.message || '列表获取失败')
-      }
     } catch (err) {
-      showMessage('error', '网络请求失败')
     } finally {
       setLoading(false)
     }
@@ -47,20 +38,12 @@ export default function ListPage() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/kb/delete', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ id })
-      })
-      const data = await res.json()
+      const data = await post<{ success: boolean }>('/api/kb/delete', { id })
       if (data.success) {
-        showMessage('success', '删除成功')
-        handleList()
-      } else {
-        showMessage('error', data.error?.message || '删除失败')
+        msg.success('删除成功')
+        fetchList()
       }
     } catch (err) {
-      showMessage('error', '网络请求失败')
     } finally {
       setLoading(false)
     }
@@ -90,88 +73,27 @@ export default function ListPage() {
             fontWeight: '600',
             color: COLORS.text
           }}>
-            列表管理
+            片段列表
           </h2>
         </div>
         <div style={{ padding: '1.5rem' }}>
-          <div style={{
-            display: 'flex',
-            gap: '1rem',
-            marginBottom: '1.5rem',
-            alignItems: 'flex-end'
-          }}>
-            <div style={{ flex: '0 0 120px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                color: COLORS.text
-              }}>
-                页码
-              </label>
-              <input
-                type="number"
-                value={listPage}
-                onChange={(e) => setListPage(Number(e.target.value))}
-                min={1}
-                style={{
-                  width: '100%',
-                  padding: '0.625rem 0.875rem',
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  background: COLORS.bg
-                }}
-              />
+          {!kbName ? (
+            <div style={{
+              padding: '3rem',
+              textAlign: 'center',
+              color: COLORS.textSecondary
+            }}>
+              请先选择知识库
             </div>
-            <div style={{ flex: '0 0 120px' }}>
-              <label style={{
-                display: 'block',
-                marginBottom: '0.5rem',
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                color: COLORS.text
-              }}>
-                每页数量
-              </label>
-              <input
-                type="number"
-                value={listLimit}
-                onChange={(e) => setListLimit(Number(e.target.value))}
-                min={1}
-                max={100}
-                style={{
-                  width: '100%',
-                  padding: '0.625rem 0.875rem',
-                  border: `1px solid ${COLORS.border}`,
-                  borderRadius: '6px',
-                  fontSize: '0.875rem',
-                  outline: 'none',
-                  background: COLORS.bg
-                }}
-              />
+          ) : loading ? (
+            <div style={{
+              padding: '3rem',
+              textAlign: 'center',
+              color: COLORS.textSecondary
+            }}>
+              加载中...
             </div>
-            <button
-              onClick={handleList}
-              disabled={loading}
-              style={{
-                padding: '0.625rem 1.5rem',
-                background: loading ? COLORS.border : COLORS.primary,
-                color: loading ? COLORS.textMuted : 'white',
-                border: 'none',
-                borderRadius: '6px',
-                cursor: loading ? 'not-allowed' : 'pointer',
-                fontWeight: '500',
-                fontSize: '0.875rem'
-              }}
-            >
-              {loading ? '获取中...' : '获取列表'}
-            </button>
-          </div>
-
-          {listResults && listResults.data && (
+          ) : listResults && listResults.data ? (
             <div>
               <div style={{
                 marginBottom: '1rem',
@@ -185,7 +107,28 @@ export default function ListPage() {
                 alignItems: 'center'
               }}>
                 <span>共 {listResults.data.total} 条记录</span>
-                <span>当前第 {listResults.data.page} 页</span>
+                <div style={{ display: 'flex', gap: '1rem', alignItems: 'center' }}>
+                  <span>当前第 {listResults.data.page} 页</span>
+                  <div style={{ display: 'flex', gap: '0.5rem', alignItems: 'center' }}>
+                    <label style={{ fontSize: '0.875rem' }}>每页显示:</label>
+                    <select
+                      value={listLimit}
+                      onChange={(e) => { setListLimit(Number(e.target.value)); setListPage(1); }}
+                      style={{
+                        padding: '0.25rem 0.5rem',
+                        border: `1px solid ${COLORS.border}`,
+                        borderRadius: '4px',
+                        fontSize: '0.875rem',
+                        background: COLORS.cardBg
+                      }}
+                    >
+                      <option value={10}>10</option>
+                      <option value={20}>20</option>
+                      <option value={50}>50</option>
+                      <option value={100}>100</option>
+                    </select>
+                  </div>
+                </div>
               </div>
               <div style={{
                 border: `1px solid ${COLORS.border}`,
@@ -313,7 +256,7 @@ export default function ListPage() {
                   alignItems: 'center'
                 }}>
                   <button
-                    onClick={() => { setListPage(p => Math.max(1, p - 1)); handleList(); }}
+                    onClick={() => setListPage(p => Math.max(1, p - 1))}
                     disabled={listPage === 1}
                     style={{
                       padding: '0.5rem 1rem',
@@ -336,7 +279,7 @@ export default function ListPage() {
                     {listPage}
                   </span>
                   <button
-                    onClick={() => { setListPage(p => p + 1); handleList(); }}
+                    onClick={() => setListPage(p => p + 1)}
                     disabled={listResults.data.items.length < listResults.data.limit}
                     style={{
                       padding: '0.5rem 1rem',
@@ -353,6 +296,14 @@ export default function ListPage() {
                   </button>
                 </div>
               )}
+            </div>
+          ) : (
+            <div style={{
+              padding: '3rem',
+              textAlign: 'center',
+              color: COLORS.textSecondary
+            }}>
+              暂无数据
             </div>
           )}
         </div>

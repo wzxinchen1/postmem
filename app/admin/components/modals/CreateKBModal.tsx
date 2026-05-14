@@ -34,16 +34,23 @@ export function CreateKBModal({
     }
     
     try {
-      const res = await fetch('/api/kb/ingest', {
+      const res = await fetch('/api/kb/create', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          kbName: newKbName, 
-          content: `[知识库占位符] ${newKbName} - 创建于 ${new Date().toLocaleString('zh-CN')}` 
-        })
+        body: JSON.stringify({ name: newKbName })
       })
-      const data = await res.json()
       
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('创建失败')
+        }
+        return
+      }
+      
+      const data = await res.json()
       if (data.success) {
         msg.success(`知识库 "${newKbName}" 创建成功`)
         onCreated()

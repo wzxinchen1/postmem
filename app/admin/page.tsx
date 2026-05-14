@@ -1,15 +1,13 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { COLORS } from './constants'
-import { StatsResponse } from './types'
-import { useMessage } from './hooks/useMessage'
+import { COLORS } from '@/app/admin/constants'
+import { StatsResponse } from '@/app/admin/types'
+import { post } from '@/app/admin/lib/request'
 
 export default function Dashboard() {
   const [loading, setLoading] = useState(false)
   const [statsResults, setStatsResults] = useState<StatsResponse | null>(null)
-  
-  const { contextHolder, showMessage } = useMessage()
 
   useEffect(() => {
     handleStats()
@@ -18,15 +16,9 @@ export default function Dashboard() {
   const handleStats = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/kb/stats', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      })
-      const data: StatsResponse = await res.json()
+      const data = await post<StatsResponse>('/api/kb/stats', {})
       setStatsResults(data)
     } catch (err) {
-      showMessage('error', '获取统计数据失败')
     } finally {
       setLoading(false)
     }
@@ -34,8 +26,6 @@ export default function Dashboard() {
 
   return (
     <>
-      {contextHolder}
-
       {/* 统计卡片 */}
       <div style={{
         display: 'grid',
@@ -284,7 +274,7 @@ export default function Dashboard() {
                 fontSize: '0.875rem',
                 color: COLORS.textSecondary
               }}>
-                请前往"知识库管理"创建知识库
+                请前往"知识列表"创建知识库
               </div>
             </div>
           )}

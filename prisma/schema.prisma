@@ -11,13 +11,13 @@ datasource db {
 }
 
 model Memory {
-  id         Int                    @id @default(autoincrement())
-  kbName     String                 @map("kb_name") @db.VarChar(100)
-  content    String                 @db.Text
-  embedding  Unsupported("vector(1024)")?
-  chunkIndex Int                    @map("chunk_index")
-  metadata   Json                   @default("{}")
-  createdAt  DateTime               @default(now()) @map("created_at") @db.Timestamptz()
+  id             Int                    @id @default(autoincrement())
+  kbName         String                 @map("kb_name") @db.VarChar(100)
+  content        String                 @db.Text
+  embedding      Unsupported("vector(1024)")?
+  chunkIndex     Int                    @map("chunk_index")
+  metadata       Json                   @default("{}")
+  createdAt      DateTime               @default(now()) @map("created_at") @db.Timestamptz()
 
   @@index([kbName])
   @@index([createdAt])
@@ -61,6 +61,18 @@ model Model {
   @@index([isActive])
   @@index([isDefault])
   @@map("models")
+}
+
+// 知识库元数据表
+model KnowledgeBase {
+  id          Int       @id @default(autoincrement())
+  name        String    @unique @db.VarChar(100)
+  description String?   @db.VarChar(500)
+  createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz()
+  updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz()
+
+  @@index([name])
+  @@map("knowledge_bases")
 }
 
 // 应用设置表

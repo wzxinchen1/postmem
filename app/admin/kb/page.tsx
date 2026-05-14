@@ -1,9 +1,10 @@
 'use client'
 
 import { useState, useEffect } from 'react'
+import { message } from 'antd'
 import { COLORS } from '@/app/admin/constants'
 import { StatsResponse, IngestResponse } from '@/app/admin/types'
-import { useMessage } from '@/app/admin/hooks/useMessage'
+import { post } from '@/app/admin/lib/request'
 import { CreateKBModal } from '@/app/admin/components/modals/CreateKBModal'
 import { IngestModal } from '@/app/admin/components/modals/IngestModal'
 
@@ -17,7 +18,7 @@ export default function KBManagePage() {
   const [ingestContent, setIngestContent] = useState('')
   const [ingestResult, setIngestResult] = useState<IngestResponse | null>(null)
   
-  const { contextHolder, showMessage } = useMessage()
+  const [msg, contextHolder] = message.useMessage()
 
   useEffect(() => {
     handleStats()
@@ -26,15 +27,9 @@ export default function KBManagePage() {
   const handleStats = async () => {
     setLoading(true)
     try {
-      const res = await fetch('/api/kb/stats', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({})
-      })
-      const data: StatsResponse = await res.json()
+      const data = await post<StatsResponse>('/api/kb/stats', {})
       setStatsResults(data)
     } catch (err) {
-      showMessage('error', '获取知识库列表失败')
     } finally {
       setLoading(false)
     }
@@ -42,65 +37,46 @@ export default function KBManagePage() {
 
   const handleIngest = async () => {
     if (!selectedKbForIngest || !ingestContent) {
-      showMessage('error', '请填写知识库名和内容')
+      msg.error('请填写知识库名和内容')
       return
     }
 
     try {
-      const res = await fetch('/api/kb/ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kbName: selectedKbForIngest, content: ingestContent })
-      })
-      const data: IngestResponse = await res.json()
+      const data = await post<IngestResponse>('/api/kb/ingest', { kbName: selectedKbForIngest, content: ingestContent })
       setIngestResult(data)
       if (data.success) {
-        showMessage('success', `入库成功！创建了 ${data.data?.count} 个片段`)
+        msg.success(`入库成功！创建了 ${data.data?.count} 个片段`)
         setIngestContent('')
         handleStats()
         setTimeout(() => {
           setShowIngestModal(false)
           setIngestResult(null)
         }, 2000)
-      } else {
-        showMessage('error', data.error?.message || '入库失败')
       }
     } catch (err) {
-      showMessage('error', '网络请求失败')
     }
   }
 
   const handleCreateKB = async () => {
     if (!newKbName.trim()) {
-      showMessage('error', '请输入知识库名称')
+      msg.error('请输入知识库名称')
       return
     }
     if (!/^[a-zA-Z0-9_-]+$/.test(newKbName)) {
-      showMessage('error', '名称只能包含字母、数字、中划线和下划线')
+      msg.error('名称只能包含字母、数字、中划线和下划线')
       return
     }
     
     try {
-      const res = await fetch('/api/kb/ingest', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          kbName: newKbName, 
-          content: `[知识库占位符] ${newKbName} - 创建于 ${new Date().toLocaleString('zh-CN')}` 
-        })
-      })
-      const data = await res.json()
+      const data = await post<{ success: boolean }>('/api/kb/create', { name: newKbName })
       
       if (data.success) {
-        showMessage('success', `知识库 "${newKbName}" 创建成功`)
+        msg.success(`知识库 "${newKbName}" 创建成功`)
         setShowCreateModal(false)
         setNewKbName('')
         handleStats()
-      } else {
-        showMessage('error', data.error?.message || '创建失败')
       }
     } catch (err) {
-      showMessage('error', '网络请求失败')
     }
   }
 

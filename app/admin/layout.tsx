@@ -24,9 +24,9 @@ const COLORS = {
 
 const menuItems = [
   { id: 'dashboard', label: '概览', icon: '📊', href: '/admin' },
-  { id: 'kb', label: '知识库管理', icon: '📚', href: '/admin/kb' },
+  { id: 'kb', label: '知识列表', icon: '📚', href: '/admin/kb' },
   { id: 'search', label: '语义检索', icon: '🔍', href: '/admin/search' },
-  { id: 'list', label: '列表管理', icon: '📋', href: '/admin/list' },
+  { id: 'list', label: '片段列表', icon: '📋', href: '/admin/list' },
   { id: 'providers', label: '提供商管理', icon: '🔌', href: '/admin/providers' },
   { id: 'models', label: '模型管理', icon: '🤖', href: '/admin/models' },
   { id: 'settings', label: '应用设置', icon: '⚙️', href: '/admin/settings' },

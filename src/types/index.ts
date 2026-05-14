@@ -243,3 +243,22 @@ export interface AppSettings {
   defaultContextWindow: number
   defaultPageSize: number
 }
+
+/**
+ * 创建知识库请求
+ */
+export interface CreateKBRequest {
+  name: string
+  description?: string
+}
+
+/**
+ * 知识库信息
+ */
+export interface KnowledgeBaseInfo {
+  id: number
+  name: string
+  description?: string
+  createdAt: Date
+  updatedAt: Date
+}

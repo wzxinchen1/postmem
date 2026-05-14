@@ -63,11 +63,16 @@ export function withErrorHandler(
       console.error('\n')
 
       let statusCode = 500
+      let errorMessage = '内部错误'
+      
       if (error instanceof AppError) {
         statusCode = error.statusCode
+        errorMessage = error.message
+      } else if (error instanceof Error) {
+        errorMessage = error.message
       }
 
-      res.status(statusCode).setHeader('Content-Type', 'text/plain; charset=utf-8').send(errorDetails)
+      res.status(statusCode).setHeader('Content-Type', 'text/plain; charset=utf-8').send(errorMessage)
     }
   }
 }

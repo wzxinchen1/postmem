@@ -4,6 +4,7 @@ import type {
   SearchResult,
   ListItem,
   Stats,
+  KnowledgeBaseInfo,
 } from '@/src/types'
 import { EmbeddingService } from '@/src/services/embedding.service'
 import { ChunkService } from '@/src/services/chunk.service'
@@ -33,6 +34,42 @@ export class KBService {
     this.embeddingService = embeddingService
     this.chunkService = chunkService
     this.settingService = settingService
+  }
+
+  /**
+   * 创建知识库
+   */
+  async createKnowledgeBase(name: string, description?: string): Promise<KnowledgeBaseInfo> {
+    if (!name || name.trim().length === 0) {
+      throw Errors.badRequest('知识库名不能为空')
+    }
+
+    if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
+      throw Errors.badRequest('名称只能包含字母、数字、中划线和下划线')
+    }
+
+    const existing = await this.prisma.knowledgeBase.findUnique({
+      where: { name: name.trim() },
+    })
+
+    if (existing) {
+      throw Errors.badRequest(`知识库 "${name}" 已存在`)
+    }
+
+    const kb = await this.prisma.knowledgeBase.create({
+      data: {
+        name: name.trim(),
+        description: description?.trim() || null,
+      },
+    })
+
+    return {
+      id: kb.id,
+      name: kb.name,
+      description: kb.description || undefined,
+      createdAt: kb.createdAt,
+      updatedAt: kb.updatedAt,
+    }
   }
 
   /**
@@ -268,19 +305,30 @@ export class KBService {
         lastUpdated: result._max.createdAt || undefined,
       }
     } else {
-      const kbNames = await this.prisma.memory.groupBy({
+      const knowledgeBases = await this.prisma.knowledgeBase.findMany({
+        orderBy: { createdAt: 'desc' },
+      })
+
+      const memoryStats = await this.prisma.memory.groupBy({
         by: ['kbName'],
         _count: { id: true },
         _max: { createdAt: true },
       })
 
-      return {
-        kbNames: kbNames.map(p => ({
-          kbName: p.kbName,
-          total: p._count.id,
-          lastUpdated: p._max.createdAt || undefined,
-        })),
-      }
+      const memoryStatsMap = new Map(
+        memoryStats.map(stat => [stat.kbName, stat])
+      )
+
+      const kbNames: Stats[] = knowledgeBases.map(kb => {
+        const memStat = memoryStatsMap.get(kb.name)
+        return {
+          kbName: kb.name,
+          total: memStat?._count.id || 0,
+          lastUpdated: memStat?._max.createdAt || kb.createdAt,
+        }
+      })
+
+      return { kbNames }
     }
   }
 }
