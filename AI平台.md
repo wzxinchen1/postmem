@@ -18,8 +18,8 @@
 
 ### 3. Google
 - **官网**：https://ai.google.dev
-- **代表模型**：Gemini 2.5 Pro、Gemini Ultra
-- **特点**：多模态领先，与Google生态深度整合
+- **代表模型**：Gemini 3.1 Pro、Gemini 3.0 Pro/Flash、Gemini 2.5 Pro/Flash
+- **特点**：多模态领先，与Google生态深度整合，支持Deep Think Mini推理模式
 - **服务**：Vertex AI、Gemini API
 
 ### 4. Meta
@@ -642,15 +642,40 @@ Content-Type: application/json
   ],
   "generationConfig": {
     "temperature": 0.7,
-    "maxOutputTokens": 8192,
-    "thinkingConfig": {
-      "thinkingBudget": 4096  // 思考过程的 token 预算
+    "maxOutputTokens": 8192
+  },
+  "thinking_budget": -1  // -1=动态思考, 0=禁用, 正整数=精确上限（仅 Gemini 2.5）
+}
+
+// 或使用 Gemini 3.0+ 的 thinking_level 参数：
+{
+  "contents": [
+    {
+      "parts": [
+        {"text": "请详细推导：为什么 E=mc²？"}
+      ]
     }
-  }
+  ],
+  "generationConfig": {
+    "temperature": 0.7,
+    "maxOutputTokens": 8192
+  },
+  "thinking_level": "high"  // minimal/low/medium/high（仅 Gemini 3.0+）
 }
 ```
 
-**注意**：Gemini 3.0+ 系列已改用 `thinking_level` 参数（可选值：LOW/MEDIUM/HIGH），不再使用 `thinkingBudget`。
+**注意**：Gemini 3.0+ 系列已改用 `thinking_level` 参数（可选值：minimal/low/medium/high），不再使用 `thinkingBudget`。
+
+**`thinking_level` 级别说明**：
+- `"minimal"`: 最小思考，用于传递思考签名场景，接近零预算
+- `"low"`: 低强度思考，适合翻译、分类、简单问答等任务
+- `"medium"`: 中等思考，推荐日常默认，适合代码生成、内容写作（仅 Gemini 3 Flash 和 3.1 Pro 支持）
+- `"high"`: 高强度思考，激活 Deep Think Mini，适合复杂推理任务（**API 默认值，最贵**）
+
+**重要限制**：
+- ⚠️ `thinking_budget` 和 `thinking_level` **不能同时使用**，否则返回 HTTP 400 错误
+- ⚠️ API 默认使用 `"high"`（最贵选项），建议显式指定级别
+- ⚠️ Gemini 3.0+ 多轮对话复杂推理时需要传递 `thought_signatures`
 
 #### 3.3 流式请求
 
@@ -669,11 +694,10 @@ Content-Type: application/json
   ],
   "generationConfig": {
     "temperature": 0.7,
-    "maxOutputTokens": 4096,
-    "thinkingConfig": {
-      "thinkingBudget": 2048
-    }
-  }
+    "maxOutputTokens": 4096
+  },
+  "thinking_budget": 2048  // Gemini 2.5 思考预算
+  // 或使用 thinking_level: "medium"（Gemini 3.0+）
 }
 ```
 
@@ -1176,7 +1200,7 @@ data: [DONE]
 |------|----------|---------|---------|------------|
 | OpenAI | o1 系列（隐藏） | SSE | - | ✅ 原生 |
 | Claude | Extended Thinking | SSE | `thinking`, `thinking_delta` | ❌ 自定义 |
-| Gemini | Thinking Mode | SSE | `thought`, `thinkingBudget` | ❌ 自定义 |
+| Gemini | Thinking Mode | SSE | `thought`, `thinking_budget`, `thinking_level` | ❌ 自定义 |
 | DeepSeek | R1 系列（可见） | SSE | `reasoning_content` | ✅ 兼容 |
 | 通义千问 | Qwen-Long | SSE | `incremental_output` | ⚠️ 部分兼容 |
 | GLM | Prompt 触发 | SSE | - | ✅ 兼容 |
