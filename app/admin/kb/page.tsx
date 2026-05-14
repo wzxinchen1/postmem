@@ -45,7 +45,6 @@ export default function KBManagePage() {
       const data = await post<IngestResponse>('/api/kb/ingest', { kbName: selectedKbForIngest, content: ingestContent })
       setIngestResult(data)
       if (data.success) {
-        msg.success(`入库成功！创建了 ${data.data?.count} 个片段`)
         setIngestContent('')
         handleStats()
         setTimeout(() => {

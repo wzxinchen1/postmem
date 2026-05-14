@@ -1,5 +1,7 @@
 'use client'
 
+import { useEffect } from 'react'
+import { message } from 'antd'
 import { COLORS } from '@/app/admin/constants'
 import { IngestResponse } from '@/app/admin/types'
 
@@ -24,6 +26,18 @@ export function IngestModal({
   result,
   onIngest
 }: IngestModalProps) {
+  const [msg, contextHolder] = message.useMessage()
+
+  useEffect(() => {
+    if (result) {
+      if (result.success) {
+        msg.success(`入库成功！创建了 ${result.data?.count} 个片段`)
+      } else if (result.error) {
+        msg.error(result.error.message || '入库失败')
+      }
+    }
+  }, [result, msg])
+
   if (!show) return null
 
   return (
@@ -40,6 +54,7 @@ export function IngestModal({
       zIndex: 100,
       padding: '1rem'
     }}>
+      {contextHolder}
       <div style={{
         background: COLORS.cardBg,
         borderRadius: '12px',
@@ -182,41 +197,6 @@ export function IngestModal({
               稍后添加
             </button>
           </div>
-
-          {result && (
-            <div style={{
-              marginTop: '1.5rem',
-              padding: '1rem',
-              background: result.success ? COLORS.successLight : COLORS.errorLight,
-              borderRadius: '6px',
-              border: `1px solid ${result.success ? '#6ee7b7' : '#fca5a5'}`
-            }}>
-              <div style={{
-                fontSize: '0.875rem',
-                fontWeight: '600',
-                marginBottom: '0.5rem',
-                color: result.success ? '#065f46' : '#991b1b'
-              }}>
-                {result.success ? '✓ 入库成功' : '✕ 入库失败'}
-              </div>
-              {result.success && result.data && (
-                <div style={{
-                  fontSize: '0.8125rem',
-                  color: '#065f46'
-                }}>
-                  创建了 {result.data.count} 个片段
-                </div>
-              )}
-              {result.error && (
-                <div style={{
-                  fontSize: '0.8125rem',
-                  color: '#991b1b'
-                }}>
-                  {result.error.message}
-                </div>
-              )}
-            </div>
-          )}
         </div>
       </div>
     </div>
