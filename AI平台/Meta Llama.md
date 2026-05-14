@@ -151,7 +151,8 @@ data: [DONE]
 | Meta官方 | meta.ai | - | 无API | 仅网页版 |
 
 **重要说明**:
-- Meta官方（meta.ai）仅提供网页版访问,**无官方API**
-- 所有API访问需通过第三方提供商（GroqCloud、OpenRouter、Together AI等）
+- Meta官方于2025年4月30日在首届LlamaCon大会发布**官方Llama API**（预览版）
+- 官方API与Groq合作，使用Groq LPU芯片提供加速推理
+- 也可通过第三方提供商访问（GroqCloud、OpenRouter、Together AI等）
 - 不同提供商的模型ID格式可能略有差异
 - Llama 4 Scout支持10M tokens超长上下文,Maverick支持1M tokens
