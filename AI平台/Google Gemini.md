@@ -3,7 +3,7 @@
 ## 1. 基础请求格式
 
 ```http
-POST /v1beta/models/gemini-2.5-pro:generateContent?key=YOUR_API_KEY HTTP/1.1
+POST /v1/models/gemini-2.5-pro:generateContent?key=YOUR_API_KEY HTTP/1.1
 Host: generativelanguage.googleapis.com
 Content-Type: application/json
 
@@ -27,7 +27,7 @@ Content-Type: application/json
 Gemini 2.5 Pro 支持思考模式（使用 `thinkingBudget`）:
 
 ```http
-POST /v1beta/models/gemini-2.5-pro:generateContent?key=YOUR_API_KEY HTTP/1.1
+POST /v1/models/gemini-2.5-pro:generateContent?key=YOUR_API_KEY HTTP/1.1
 Host: generativelanguage.googleapis.com
 Content-Type: application/json
 
@@ -43,7 +43,7 @@ Content-Type: application/json
     "temperature": 0.7,
     "maxOutputTokens": 8192
   },
-  "thinking_budget": -1  // -1=动态思考, 0=禁用, 正整数=精确上限（仅 Gemini 2.5）
+  "thinking_budget": -1  // -1=动态思考（默认）, 正整数=精确上限（Gemini 2.5 Pro 范围：128-32768）
 }
 
 // 或使用 Gemini 3.0+ 的 thinking_level 参数：
@@ -59,27 +59,33 @@ Content-Type: application/json
     "temperature": 0.7,
     "maxOutputTokens": 8192
   },
-  "thinking_level": "high"  // minimal/low/medium/high（仅 Gemini 3.0+）
+  "thinking_level": "high"  // low/medium/high（Gemini 3.0+）
 }
 ```
 
-**注意**: Gemini 3.0+ 系列已改用 `thinking_level` 参数（可选值：minimal/low/medium/high）,不再使用 `thinkingBudget`。
+**注意**: Gemini 3.0+ 系列已改用 `thinking_level` 参数,不再使用 `thinkingBudget`。
 
 **`thinking_level` 级别说明**:
-- `"minimal"`: 最小思考,用于传递思考签名场景,接近零预算
-- `"low"`: 低强度思考,适合翻译、分类、简单问答等任务
-- `"medium"`: 中等思考,推荐日常默认,适合代码生成、内容写作（仅 Gemini 3 Flash 和 3.1 Pro 支持）
-- `"high"`: 高强度思考,激活 Deep Think Mini,适合复杂推理任务（**API 默认值，最贵**）
+- `"minimal"`: 最小思考,用于传递思考签名场景（仅 Gemini 3 Flash，**无法保证完全关闭思考**）
+- `"low"`: 低强度思考,适合翻译、分类、简单问答等任务（Gemini 3 Pro 和 Flash 均支持）
+- `"medium"`: 中等思考,推荐日常默认,适合代码生成、内容写作（**仅 Gemini 3 Flash 支持**）
+- `"high"`: 高强度思考,最大限度提高推理深度,适合复杂推理任务（**API 默认值**）
+
+**`thinking_budget` 范围说明**（Gemini 2.5 系列）:
+- **Gemini 2.5 Pro**: 范围 128-32768，**无法禁用思考**（最小值 128）
+- **Gemini 2.5 Flash**: 范围 0-24576，`0` 可禁用思考
+- **Gemini 2.5 Flash Lite**: 范围 512-24576，默认不思考
+- `-1`: 动态思考模式（自动调整，默认值）
 
 **重要限制**:
 - ⚠️ `thinking_budget` 和 `thinking_level` **不能同时使用**,否则返回 HTTP 400 错误
-- ⚠️ API 默认使用 `"high"`（最贵选项）,建议显式指定级别
+- ⚠️ Gemini 2.5 Pro **无法完全禁用思考**,最小思考预算为 128 tokens
 - ⚠️ Gemini 3.0+ 多轮对话复杂推理时需要传递 `thought_signatures`
 
 ## 3. 流式请求
 
 ```http
-POST /v1beta/models/gemini-2.5-pro:streamGenerateContent?key=YOUR_API_KEY&alt=sse HTTP/1.1
+POST /v1/models/gemini-2.5-pro:streamGenerateContent?key=YOUR_API_KEY&alt=sse HTTP/1.1
 Host: generativelanguage.googleapis.com
 Content-Type: application/json
 
@@ -95,8 +101,8 @@ Content-Type: application/json
     "temperature": 0.7,
     "maxOutputTokens": 4096
   },
-  "thinking_budget": 2048  // Gemini 2.5 思考预算
-  // 或使用 thinking_level: "medium"（Gemini 3.0+）
+  "thinking_budget": 2048  // Gemini 2.5 思考预算（范围：128-32768）
+  // 或使用 thinking_level: "medium"（仅 Gemini 3 Flash）
 }
 ```
 
