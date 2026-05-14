@@ -52,12 +52,12 @@ Content-Type: application/json
 - `max_tokens`: 总 token 数（包含思考 + 回答）,需大于 `budget_tokens`
 
 **Extended Thinking 限制**:
-- ❌ 不能修改 `temperature` 或 `top_k`
-- ❌ `top_p` 只能设置在 0.95-1 之间
+- ❌ `temperature` 必须设置为 1（不能设置为其他值）
 - ❌ 不能预填充响应（prefill）
 - ⚠️ `max_tokens > 21,333` 时必须使用流式输出
 - ⚠️ 与工具配合时,`tool_choice` 仅支持 `{"type": "auto"}` 或 `{"type": "none"}`
-- ⚠️ 多轮工具调用时必须将完整的 thinking 块传回 API
+- ⚠️ 多轮工具调用时必须将完整的 thinking 块（包括 signature）传回 API
+- ⚠️ thinking 和 redacted_thinking 块在响应中会在 text 块之前返回
 
 ## 3. 流式响应报文示例（含思考链）
 
