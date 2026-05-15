@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react'
 import { Layout, Menu, Typography, Space, Button } from 'antd'
-import { HomeOutlined, BookOutlined, SearchOutlined, UnorderedListOutlined, ApiOutlined, RobotOutlined, SettingOutlined, MessageOutlined, ArrowLeftOutlined } from '@ant-design/icons'
+import { HomeOutlined, BookOutlined, SearchOutlined, UnorderedListOutlined, ApiOutlined, SettingOutlined, MessageOutlined, ArrowLeftOutlined } from '@ant-design/icons'
 import { usePathname, useRouter } from 'next/navigation'
 
 const { Header, Content } = Layout
@@ -15,7 +15,6 @@ const menuItems = [
   { key: '/admin/list', label: '片段列表', icon: <UnorderedListOutlined /> },
   { key: '/admin/sessions', label: '会话记录', icon: <MessageOutlined /> },
   { key: '/admin/providers', label: '提供商管理', icon: <ApiOutlined /> },
-  { key: '/admin/models', label: '模型管理', icon: <RobotOutlined /> },
   { key: '/admin/settings', label: '应用设置', icon: <SettingOutlined /> },
 ]
 
