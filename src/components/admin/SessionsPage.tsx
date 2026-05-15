@@ -318,6 +318,7 @@ export default function SessionsPage() {
         onCancel={() => { setShowModal(false); setSelectedSession(null); }}
         footer={null}
         width={800}
+        styles={{ body: { maxHeight: 'calc(100vh - 150px)', overflowY: 'auto' } }}
       >
         {selectedSession && (
           <Space direction="vertical" size="middle" style={{ width: '100%' }}>
