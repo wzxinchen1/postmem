@@ -43,6 +43,7 @@ export type MemoryMinAggregateOutputType = {
   kbId: number | null
   content: string | null
   chunkIndex: number | null
+  ingestBatch: string | null
   createdAt: Date | null
 }
 
@@ -51,6 +52,7 @@ export type MemoryMaxAggregateOutputType = {
   kbId: number | null
   content: string | null
   chunkIndex: number | null
+  ingestBatch: string | null
   createdAt: Date | null
 }
 
@@ -59,6 +61,7 @@ export type MemoryCountAggregateOutputType = {
   kbId: number
   content: number
   chunkIndex: number
+  ingestBatch: number
   metadata: number
   createdAt: number
   _all: number
@@ -82,6 +85,7 @@ export type MemoryMinAggregateInputType = {
   kbId?: true
   content?: true
   chunkIndex?: true
+  ingestBatch?: true
   createdAt?: true
 }
 
@@ -90,6 +94,7 @@ export type MemoryMaxAggregateInputType = {
   kbId?: true
   content?: true
   chunkIndex?: true
+  ingestBatch?: true
   createdAt?: true
 }
 
@@ -98,6 +103,7 @@ export type MemoryCountAggregateInputType = {
   kbId?: true
   content?: true
   chunkIndex?: true
+  ingestBatch?: true
   metadata?: true
   createdAt?: true
   _all?: true
@@ -194,6 +200,7 @@ export type MemoryGroupByOutputType = {
   kbId: number
   content: string
   chunkIndex: number
+  ingestBatch: string
   metadata: runtime.JsonValue
   createdAt: Date
   _count: MemoryCountAggregateOutputType | null
@@ -226,6 +233,7 @@ export type MemoryWhereInput = {
   kbId?: Prisma.IntFilter<"Memory"> | number
   content?: Prisma.StringFilter<"Memory"> | string
   chunkIndex?: Prisma.IntFilter<"Memory"> | number
+  ingestBatch?: Prisma.StringFilter<"Memory"> | string
   metadata?: Prisma.JsonFilter<"Memory">
   createdAt?: Prisma.DateTimeFilter<"Memory"> | Date | string
   knowledgeBase?: Prisma.XOR<Prisma.KnowledgeBaseScalarRelationFilter, Prisma.KnowledgeBaseWhereInput>
@@ -236,6 +244,7 @@ export type MemoryOrderByWithRelationInput = {
   kbId?: Prisma.SortOrder
   content?: Prisma.SortOrder
   chunkIndex?: Prisma.SortOrder
+  ingestBatch?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   knowledgeBase?: Prisma.KnowledgeBaseOrderByWithRelationInput
@@ -249,6 +258,7 @@ export type MemoryWhereUniqueInput = Prisma.AtLeast<{
   kbId?: Prisma.IntFilter<"Memory"> | number
   content?: Prisma.StringFilter<"Memory"> | string
   chunkIndex?: Prisma.IntFilter<"Memory"> | number
+  ingestBatch?: Prisma.StringFilter<"Memory"> | string
   metadata?: Prisma.JsonFilter<"Memory">
   createdAt?: Prisma.DateTimeFilter<"Memory"> | Date | string
   knowledgeBase?: Prisma.XOR<Prisma.KnowledgeBaseScalarRelationFilter, Prisma.KnowledgeBaseWhereInput>
@@ -259,6 +269,7 @@ export type MemoryOrderByWithAggregationInput = {
   kbId?: Prisma.SortOrder
   content?: Prisma.SortOrder
   chunkIndex?: Prisma.SortOrder
+  ingestBatch?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.MemoryCountOrderByAggregateInput
@@ -276,6 +287,7 @@ export type MemoryScalarWhereWithAggregatesInput = {
   kbId?: Prisma.IntWithAggregatesFilter<"Memory"> | number
   content?: Prisma.StringWithAggregatesFilter<"Memory"> | string
   chunkIndex?: Prisma.IntWithAggregatesFilter<"Memory"> | number
+  ingestBatch?: Prisma.StringWithAggregatesFilter<"Memory"> | string
   metadata?: Prisma.JsonWithAggregatesFilter<"Memory">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Memory"> | Date | string
 }
@@ -283,6 +295,7 @@ export type MemoryScalarWhereWithAggregatesInput = {
 export type MemoryCreateInput = {
   content: string
   chunkIndex: number
+  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   knowledgeBase: Prisma.KnowledgeBaseCreateNestedOneWithoutMemoriesInput
@@ -293,6 +306,7 @@ export type MemoryUncheckedCreateInput = {
   kbId: number
   content: string
   chunkIndex: number
+  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -300,6 +314,7 @@ export type MemoryUncheckedCreateInput = {
 export type MemoryUpdateInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
+  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   knowledgeBase?: Prisma.KnowledgeBaseUpdateOneRequiredWithoutMemoriesNestedInput
@@ -310,6 +325,7 @@ export type MemoryUncheckedUpdateInput = {
   kbId?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
+  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -319,6 +335,7 @@ export type MemoryCreateManyInput = {
   kbId: number
   content: string
   chunkIndex: number
+  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -326,6 +343,7 @@ export type MemoryCreateManyInput = {
 export type MemoryUpdateManyMutationInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
+  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -335,6 +353,7 @@ export type MemoryUncheckedUpdateManyInput = {
   kbId?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
+  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -344,6 +363,7 @@ export type MemoryCountOrderByAggregateInput = {
   kbId?: Prisma.SortOrder
   content?: Prisma.SortOrder
   chunkIndex?: Prisma.SortOrder
+  ingestBatch?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -359,6 +379,7 @@ export type MemoryMaxOrderByAggregateInput = {
   kbId?: Prisma.SortOrder
   content?: Prisma.SortOrder
   chunkIndex?: Prisma.SortOrder
+  ingestBatch?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -367,6 +388,7 @@ export type MemoryMinOrderByAggregateInput = {
   kbId?: Prisma.SortOrder
   content?: Prisma.SortOrder
   chunkIndex?: Prisma.SortOrder
+  ingestBatch?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
 
@@ -447,6 +469,7 @@ export type MemoryUncheckedUpdateManyWithoutKnowledgeBaseNestedInput = {
 export type MemoryCreateWithoutKnowledgeBaseInput = {
   content: string
   chunkIndex: number
+  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -455,6 +478,7 @@ export type MemoryUncheckedCreateWithoutKnowledgeBaseInput = {
   id?: number
   content: string
   chunkIndex: number
+  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -493,6 +517,7 @@ export type MemoryScalarWhereInput = {
   kbId?: Prisma.IntFilter<"Memory"> | number
   content?: Prisma.StringFilter<"Memory"> | string
   chunkIndex?: Prisma.IntFilter<"Memory"> | number
+  ingestBatch?: Prisma.StringFilter<"Memory"> | string
   metadata?: Prisma.JsonFilter<"Memory">
   createdAt?: Prisma.DateTimeFilter<"Memory"> | Date | string
 }
@@ -501,6 +526,7 @@ export type MemoryCreateManyKnowledgeBaseInput = {
   id?: number
   content: string
   chunkIndex: number
+  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -508,6 +534,7 @@ export type MemoryCreateManyKnowledgeBaseInput = {
 export type MemoryUpdateWithoutKnowledgeBaseInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
+  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -516,6 +543,7 @@ export type MemoryUncheckedUpdateWithoutKnowledgeBaseInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
+  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -524,6 +552,7 @@ export type MemoryUncheckedUpdateManyWithoutKnowledgeBaseInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   content?: Prisma.StringFieldUpdateOperationsInput | string
   chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
+  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -535,6 +564,7 @@ export type MemorySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   kbId?: boolean
   content?: boolean
   chunkIndex?: boolean
+  ingestBatch?: boolean
   metadata?: boolean
   createdAt?: boolean
   knowledgeBase?: boolean | Prisma.KnowledgeBaseDefaultArgs<ExtArgs>
@@ -545,6 +575,7 @@ export type MemorySelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   kbId?: boolean
   content?: boolean
   chunkIndex?: boolean
+  ingestBatch?: boolean
   metadata?: boolean
   createdAt?: boolean
   knowledgeBase?: boolean | Prisma.KnowledgeBaseDefaultArgs<ExtArgs>
@@ -555,6 +586,7 @@ export type MemorySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   kbId?: boolean
   content?: boolean
   chunkIndex?: boolean
+  ingestBatch?: boolean
   metadata?: boolean
   createdAt?: boolean
   knowledgeBase?: boolean | Prisma.KnowledgeBaseDefaultArgs<ExtArgs>
@@ -565,11 +597,12 @@ export type MemorySelectScalar = {
   kbId?: boolean
   content?: boolean
   chunkIndex?: boolean
+  ingestBatch?: boolean
   metadata?: boolean
   createdAt?: boolean
 }
 
-export type MemoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "kbId" | "content" | "chunkIndex" | "metadata" | "createdAt", ExtArgs["result"]["memory"]>
+export type MemoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "kbId" | "content" | "chunkIndex" | "ingestBatch" | "metadata" | "createdAt", ExtArgs["result"]["memory"]>
 export type MemoryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   knowledgeBase?: boolean | Prisma.KnowledgeBaseDefaultArgs<ExtArgs>
 }
@@ -590,6 +623,7 @@ export type $MemoryPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     kbId: number
     content: string
     chunkIndex: number
+    ingestBatch: string
     metadata: runtime.JsonValue
     createdAt: Date
   }, ExtArgs["result"]["memory"]>
@@ -1020,6 +1054,7 @@ export interface MemoryFieldRefs {
   readonly kbId: Prisma.FieldRef<"Memory", 'Int'>
   readonly content: Prisma.FieldRef<"Memory", 'String'>
   readonly chunkIndex: Prisma.FieldRef<"Memory", 'Int'>
+  readonly ingestBatch: Prisma.FieldRef<"Memory", 'String'>
   readonly metadata: Prisma.FieldRef<"Memory", 'Json'>
   readonly createdAt: Prisma.FieldRef<"Memory", 'DateTime'>
 }

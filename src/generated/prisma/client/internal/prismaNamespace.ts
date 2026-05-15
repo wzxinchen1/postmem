@@ -1122,6 +1122,7 @@ export const MemoryScalarFieldEnum = {
   kbId: 'kbId',
   content: 'content',
   chunkIndex: 'chunkIndex',
+  ingestBatch: 'ingestBatch',
   metadata: 'metadata',
   createdAt: 'createdAt'
 } as const

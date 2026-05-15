@@ -2,6 +2,7 @@ import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import { Errors } from '@/src/lib/errors'
 import type {
   SearchResult,
+  SearchSource,
   ListItem,
   Stats,
   KnowledgeBaseInfo,
@@ -12,6 +13,7 @@ import type {
 import { EmbeddingService } from '@/src/services/embedding.service'
 import { SettingService } from '@/src/services/setting.service'
 import { CutModelService } from '@/src/services/cut-model.service'
+import { randomUUID } from 'crypto'
 
 /**
  * 知识库核心服务
@@ -141,6 +143,7 @@ export class KBService {
 
     await this.getKnowledgeBaseById(kbId)
 
+    const batchId = randomUUID()
     const chunks = await this.cutModelService.cutAndRewrite(content, kbId)
     const memoryIds: number[] = []
 
@@ -148,13 +151,15 @@ export class KBService {
       const embedding = await this.embeddingService.generateEmbedding(chunks[i], kbId)
 
       await this.prisma.$executeRaw`
-        INSERT INTO memories (kb_id, content, embedding, chunk_index, metadata, created_at)
+        INSERT INTO memories (kb_id, content, embedding, chunk_index, ingest_batch, metadata, "contentTsvector", created_at)
         VALUES (
           ${kbId},
           ${chunks[i]},
           ${`[${embedding.join(',')}]`}::vector,
           ${i},
+          ${batchId},
           ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::json,
+          to_tsvector('simple', ${chunks[i]}),
           NOW()
         )
         RETURNING id
@@ -164,6 +169,7 @@ export class KBService {
         where: {
           kbId: kbId,
           chunkIndex: i,
+          ingestBatch: batchId,
         },
         orderBy: { createdAt: 'desc' },
         select: { id: true },
@@ -201,6 +207,7 @@ export class KBService {
 
     await this.getKnowledgeBaseById(kbId)
 
+    const batchId = randomUUID()
     const memoryIds: number[] = []
     const memorizedMessageIds: string[] = []
 
@@ -211,17 +218,19 @@ export class KBService {
       const embedding = await this.embeddingService.generateEmbedding(content, kbId)
 
       await this.prisma.$executeRaw`
-        INSERT INTO memories (kb_id, content, embedding, chunk_index, metadata, created_at)
+        INSERT INTO memories (kb_id, content, embedding, chunk_index, ingest_batch, metadata, "contentTsvector", created_at)
         VALUES (
           ${kbId},
           ${content},
           ${`[${embedding.join(',')}]`}::vector,
           ${i},
+          ${batchId},
           ${JSON.stringify({
             cutModel: 'verbatim',
             messageId: msg.id,
             role: msg.role,
           })}::json,
+          to_tsvector('simple', ${content}),
           NOW()
         )
         RETURNING id
@@ -231,6 +240,7 @@ export class KBService {
         where: {
           kbId: kbId,
           chunkIndex: i,
+          ingestBatch: batchId,
         },
         orderBy: { createdAt: 'desc' },
         select: { id: true },
@@ -250,7 +260,7 @@ export class KBService {
   }
 
   /**
-   * 语义检索
+   * 混合检索：Dense + Sparse + RRF 融合
    */
   async search(
     kbId: number,
@@ -265,39 +275,102 @@ export class KBService {
     await this.getKnowledgeBaseById(kbId)
     const queryEmbedding = await this.embeddingService.generateEmbedding(query, kbId)
 
-    const results = await this.prisma.$queryRaw<
-      Array<{
-        id: number
-        content: string
-        chunk_index: number
-        metadata: any
-        score: number
-      }>
-    >`
-      SELECT 
-        id, 
-        content, 
-        chunk_index, 
-        metadata,
-        1 - (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) as score
-      FROM memories
-      WHERE kb_id = ${kbId}
-      ORDER BY embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector
-      LIMIT ${topK}
-    `
+    const sparseTopK = topK * 3
+
+    const [denseResults, sparseResults] = await Promise.all([
+      this.prisma.$queryRaw<
+        Array<{
+          id: number
+          content: string
+          chunk_index: number
+          ingest_batch: string
+          metadata: any
+          score: number
+        }>
+      >`
+        SELECT 
+          id, 
+          content, 
+          chunk_index,
+          ingest_batch,
+          metadata,
+          1 - (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) as score
+        FROM memories
+        WHERE kb_id = ${kbId}
+        ORDER BY embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector
+        LIMIT ${sparseTopK}
+      `,
+      this.prisma.$queryRaw<
+        Array<{
+          id: number
+          content: string
+          chunk_index: number
+          ingest_batch: string
+          metadata: any
+          score: number
+        }>
+      >`
+        SELECT 
+          id, 
+          content, 
+          chunk_index,
+          ingest_batch,
+          metadata,
+          ts_rank("contentTsvector", plainto_tsquery('simple', ${query})) as score
+        FROM memories
+        WHERE kb_id = ${kbId} AND "contentTsvector" @@ plainto_tsquery('simple', ${query})
+        ORDER BY ts_rank("contentTsvector", plainto_tsquery('simple', ${query})) DESC
+        LIMIT ${sparseTopK}
+      `
+    ])
+
+    const rrfK = 60
+    const rrfScores = new Map<number, { score: number; source: SearchSource; data: typeof denseResults[0] }>()
+
+    for (let i = 0; i < denseResults.length; i++) {
+      const item = denseResults[i]
+      const existing = rrfScores.get(item.id)
+      const rrfContribution = 1 / (rrfK + i + 1)
+      if (existing) {
+        existing.score += rrfContribution
+        existing.source = 'hybrid'
+      } else {
+        rrfScores.set(item.id, { score: rrfContribution, source: 'dense', data: item })
+      }
+    }
+
+    for (let i = 0; i < sparseResults.length; i++) {
+      const item = sparseResults[i]
+      const existing = rrfScores.get(item.id)
+      const rrfContribution = 1 / (rrfK + i + 1)
+      if (existing) {
+        existing.score += rrfContribution
+        existing.source = 'hybrid'
+      } else {
+        rrfScores.set(item.id, { score: rrfContribution, source: 'sparse', data: item })
+      }
+    }
+
+    const merged = [...rrfScores.values()]
+      .sort((a, b) => b.score - a.score)
+      .slice(0, topK)
+
+    const maxScore = merged.length > 0 ? merged[0].score : 1
 
     const searchResults: SearchResult[] = []
-    for (const result of results) {
-      const context = contextWindow > 0 
-        ? await this.getContext(result.id, kbId, contextWindow)
+    for (const item of merged) {
+      const normalizedScore = item.score / maxScore
+      const context = contextWindow > 0
+        ? await this.getContext(item.data.id, kbId, item.data.ingest_batch, contextWindow)
         : undefined
 
       searchResults.push({
-        id: result.id,
-        content: result.content,
-        score: result.score,
-        chunkIndex: result.chunk_index,
-        metadata: result.metadata,
+        id: item.data.id,
+        content: item.data.content,
+        score: normalizedScore,
+        chunkIndex: item.data.chunk_index,
+        metadata: item.data.metadata,
+        source: item.source,
         context,
       })
     }
@@ -308,38 +381,56 @@ export class KBService {
   private async getContext(
     memoryId: number,
     kbId: number,
+    ingestBatch: string,
     windowSize: number
-  ): Promise<{ prev?: string; next?: string }> {
-    const context: { prev?: string; next?: string } = {}
-
+  ): Promise<{ prev: string[]; next: string[] }> {
     const current = await this.prisma.memory.findUnique({
       where: { id: memoryId },
       select: { chunkIndex: true },
     })
 
-    if (!current) return context
+    if (!current) return { prev: [], next: [] }
 
-    if (current.chunkIndex > 0) {
-      const prev = await this.prisma.memory.findFirst({
-        where: {
-          kbId,
-          chunkIndex: current.chunkIndex - 1,
-        },
-        select: { content: true },
-      })
-      if (prev) context.prev = prev.content
+    const prevChunkIndexes: number[] = []
+    for (let i = 1; i <= windowSize; i++) {
+      const idx = current.chunkIndex - i
+      if (idx >= 0) prevChunkIndexes.push(idx)
     }
 
-    const next = await this.prisma.memory.findFirst({
-      where: {
-        kbId,
-        chunkIndex: current.chunkIndex + 1,
-      },
-      select: { content: true },
-    })
-    if (next) context.next = next.content
+    const nextChunkIndexes: number[] = []
+    for (let i = 1; i <= windowSize; i++) {
+      nextChunkIndexes.push(current.chunkIndex + i)
+    }
 
-    return context
+    const [prevMemories, nextMemories] = await Promise.all([
+      prevChunkIndexes.length > 0
+        ? this.prisma.memory.findMany({
+            where: {
+              kbId,
+              ingestBatch,
+              chunkIndex: { in: prevChunkIndexes },
+            },
+            orderBy: { chunkIndex: 'desc' },
+            select: { content: true },
+          })
+        : [],
+      nextChunkIndexes.length > 0
+        ? this.prisma.memory.findMany({
+            where: {
+              kbId,
+              ingestBatch,
+              chunkIndex: { in: nextChunkIndexes },
+            },
+            orderBy: { chunkIndex: 'asc' },
+            select: { content: true },
+          })
+        : [],
+    ])
+
+    return {
+      prev: prevMemories.map(m => m.content),
+      next: nextMemories.map(m => m.content),
+    }
   }
 
   /**

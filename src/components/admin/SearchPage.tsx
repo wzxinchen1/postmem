@@ -132,13 +132,20 @@ export default function SearchPage() {
                     <Space direction="vertical" size="small" style={{ width: '100%' }}>
                       <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                         <Text strong>#{index + 1} · ID: {result.id}</Text>
-                        <Tag color="success">{(result.score * 100).toFixed(1)}% 相似度</Tag>
+                        <Space>
+                          <Tag color={result.source === 'hybrid' ? 'purple' : result.source === 'dense' ? 'blue' : 'green'}>
+                            {result.source === 'hybrid' ? '混合' : result.source === 'dense' ? '语义' : '关键词'}
+                          </Tag>
+                          <Tag color="success">{(result.score * 100).toFixed(1)}% 相似度</Tag>
+                        </Space>
                       </Space>
                       
-                      {result.context?.prev && (
+                      {result.context?.prev && result.context.prev.length > 0 && (
                         <Card size="small" style={{ background: '#e6f4ff', borderLeft: '3px solid #1677ff' }}>
                           <Text type="secondary" style={{ fontSize: 12 }}>上文：</Text>
-                          <Text>{result.context.prev}</Text>
+                          {result.context.prev.map((text, i) => (
+                            <Text key={i} style={{ display: 'block', marginBottom: i < result.context!.prev.length - 1 ? 8 : 0 }}>{text}</Text>
+                          ))}
                         </Card>
                       )}
                       
@@ -146,10 +153,12 @@ export default function SearchPage() {
                         <Text>{result.content}</Text>
                       </Card>
                       
-                      {result.context?.next && (
+                      {result.context?.next && result.context.next.length > 0 && (
                         <Card size="small" style={{ background: '#e6f4ff', borderLeft: '3px solid #1677ff' }}>
                           <Text type="secondary" style={{ fontSize: 12 }}>下文：</Text>
-                          <Text>{result.context.next}</Text>
+                          {result.context.next.map((text, i) => (
+                            <Text key={i} style={{ display: 'block', marginBottom: i < result.context!.next.length - 1 ? 8 : 0 }}>{text}</Text>
+                          ))}
                         </Card>
                       )}
                       

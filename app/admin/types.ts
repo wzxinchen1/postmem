@@ -12,19 +12,22 @@ export interface IngestResponse {
   }
 }
 
+export type SearchSource = 'dense' | 'sparse' | 'hybrid'
+
 export interface SearchResult {
   id: number
   content: string
   score: number
   chunkIndex: number
+  source: SearchSource
   metadata?: {
     cutModel?: string
     chunkSize?: number
     originalLength?: number
   }
   context?: {
-    prev?: string
-    next?: string
+    prev: string[]
+    next: string[]
   }
 }
 

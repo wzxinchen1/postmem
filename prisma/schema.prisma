@@ -12,13 +12,16 @@ model Memory {
   kbId          Int                    @map("kb_id")
   content       String
   embedding     Unsupported("vector")?
+  contentTsvector Unsupported("tsvector")?
   chunkIndex    Int                    @map("chunk_index")
+  ingestBatch   String                 @map("ingest_batch")
   metadata      Json                   @default("{}")
   createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
   knowledgeBase KnowledgeBase          @relation(fields: [kbId], references: [id], onDelete: Cascade)
 
   @@index([kbId])
   @@index([createdAt])
+  @@index([ingestBatch])
   @@map("memories")
 }
 

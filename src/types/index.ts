@@ -17,6 +17,7 @@ export interface Memory {
   content: string
   embedding: number[]
   chunkIndex: number
+  ingestBatch: string
   metadata: MemoryMetadata
   createdAt: Date
 }
@@ -33,15 +34,18 @@ export interface ChunkResult {
 /**
  * 检索结果
  */
+export type SearchSource = 'dense' | 'sparse' | 'hybrid'
+
 export interface SearchResult {
   id: number
   content: string
   score: number
   chunkIndex: number
   metadata: MemoryMetadata
+  source: SearchSource
   context?: {
-    prev?: string
-    next?: string
+    prev: string[]
+    next: string[]
   }
 }
 
