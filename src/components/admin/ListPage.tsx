@@ -172,6 +172,7 @@ export default function ListPage() {
           </Button>
         ]}
         width={700}
+        styles={{ body: { maxHeight: '60vh', overflowY: 'auto' } }}
       >
         <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
           {viewContent}

@@ -257,6 +257,41 @@ export class CutModelService {
     }))
   }
 
+  async cutAndRewrite(text: string, kbId?: number): Promise<string[]> {
+    const { model, provider } = await this.getDefaultModel()
+
+    if (!provider.vendor) {
+      throw Errors.cutModelError('提供商缺少厂商信息')
+    }
+
+    const session = await this.sessionService.create({
+      kbId,
+      modelType: 'chat',
+      modelName: model.name,
+      provider: provider.name,
+      metadata: {
+        displayName: model.displayName,
+        vendorId: provider.vendor.id,
+        vendorName: provider.vendor.name,
+        task: 'cut-and-rewrite',
+      },
+    })
+
+    const systemPrompt = Prompts.cutAndRewriteExpert()
+    const prompt = Prompts.cutAndRewrite(text)
+
+    const content = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+
+    await this.sessionService.complete(session.id)
+
+    const parsed = this.parseJSON<{ chunks?: Array<{ content: string; reason?: string }> }>(content)
+    if (!parsed.chunks || !Array.isArray(parsed.chunks) || parsed.chunks.length === 0) {
+      throw Errors.cutModelError('响应格式无效: 缺少 chunks 数组或数组为空')
+    }
+
+    return parsed.chunks.map((chunk: { content: string; reason?: string }) => chunk.content.trim())
+  }
+
   async getModelInfo(): Promise<{ provider: string; model: string }> {
     const { model, provider } = await this.getDefaultModel()
     return {

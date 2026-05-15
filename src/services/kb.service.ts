@@ -11,8 +11,7 @@ import type {
 } from '@/src/types'
 import { EmbeddingService } from '@/src/services/embedding.service'
 import { SettingService } from '@/src/services/setting.service'
-
-const CHUNK_SIZE = 1000
+import { CutModelService } from '@/src/services/cut-model.service'
 
 /**
  * 知识库核心服务
@@ -26,46 +25,23 @@ export class KBService {
   private prisma: PrismaClient
   private embeddingService: EmbeddingService
   private settingService: SettingService
+  private cutModelService: CutModelService
 
   constructor({
     prisma,
     embeddingService,
     settingService,
+    cutModelService,
   }: {
     prisma: PrismaClient
     embeddingService: EmbeddingService
     settingService: SettingService
+    cutModelService: CutModelService
   }) {
     this.prisma = prisma
     this.embeddingService = embeddingService
     this.settingService = settingService
-  }
-
-  /**
-   * 按段落边界分块（纯字符串操作，无 LLM）
-   */
-  private splitByParagraphs(text: string): string[] {
-    const chunks: string[] = []
-    const paragraphs = text.split(/\n\s*\n/)
-    let currentChunk = ''
-
-    for (const para of paragraphs) {
-      const trimmed = para.trim()
-      if (!trimmed) continue
-
-      if (currentChunk.length + trimmed.length > CHUNK_SIZE && currentChunk.length > 0) {
-        chunks.push(currentChunk.trim())
-        currentChunk = trimmed
-      } else {
-        currentChunk = currentChunk ? `${currentChunk}\n\n${trimmed}` : trimmed
-      }
-    }
-
-    if (currentChunk.trim()) {
-      chunks.push(currentChunk.trim())
-    }
-
-    return chunks.length > 0 ? chunks : [text]
+    this.cutModelService = cutModelService
   }
 
   /**
@@ -149,7 +125,7 @@ export class KBService {
   /**
    * 知识入库 - 纯文本方式
    *
-   * MemPalace 原理：零 LLM 调用，按段落分块，原文完整存储
+   * MemPalace 原理：LLM 切分+重写一步到位，每个片段语义完整连贯，完整存储
    */
   async ingestText(kbId: number, content: string): Promise<IngestTextResponse> {
     const settings = await this.settingService.getAppSettings()
@@ -165,7 +141,7 @@ export class KBService {
 
     await this.getKnowledgeBaseById(kbId)
 
-    const chunks = this.splitByParagraphs(content)
+    const chunks = await this.cutModelService.cutAndRewrite(content, kbId)
     const memoryIds: number[] = []
 
     for (let i = 0; i < chunks.length; i++) {
@@ -178,7 +154,7 @@ export class KBService {
           ${chunks[i]},
           ${`[${embedding.join(',')}]`}::vector,
           ${i},
-          ${JSON.stringify({ cutModel: 'paragraph' })}::json,
+          ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::json,
           NOW()
         )
         RETURNING id
@@ -400,9 +376,7 @@ export class KBService {
     return {
       items: items.map(item => ({
         id: item.id,
-        content: item.content.length > 200 
-          ? item.content.slice(0, 200) + '...' 
-          : item.content,
+        content: item.content,
         chunkIndex: item.chunkIndex,
         metadata: item.metadata as any,
         createdAt: item.createdAt,
