@@ -239,10 +239,10 @@ export default function SessionsPage() {
   ]
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 16 }}>
       {contextHolder}
 
-      <Card style={{ marginBottom: 16 }}>
+      <Card>
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
           <Space>
             <Select
@@ -370,6 +370,6 @@ export default function SessionsPage() {
           </Space>
         )}
       </Modal>
-    </>
+    </div>
   )
 }

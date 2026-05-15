@@ -28,7 +28,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   )?.key || '/admin'
 
   return (
-    <Layout style={{ minHeight: '100vh' }}>
+    <Layout style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <Header style={{ 
         display: 'flex', 
         alignItems: 'center',
@@ -57,7 +57,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           返回首页
         </Button>
       </Header>
-      <Content style={{ padding: '24px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+      <Content style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
         {children}
       </Content>
     </Layout>

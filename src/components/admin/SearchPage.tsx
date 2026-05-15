@@ -61,15 +61,15 @@ export default function SearchPage() {
   }
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 16 }}>
       {contextHolder}
       
       <KBSelector kbId={kbId} setKbId={setKbId} />
 
       <Card title={<Title level={4} style={{ margin: 0 }}>语义检索</Title>}>
         <Space direction="vertical" size="middle" style={{ width: '100%' }}>
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>查询语句</Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>查询语句</Text>
             <Input
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
@@ -79,8 +79,8 @@ export default function SearchPage() {
           </div>
           
           <Space size="large">
-            <div>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>返回结果数量 (top_k)</Text>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Text strong style={{ display: 'block', marginBottom: 0 }}>返回结果数量 (top_k)</Text>
               <InputNumber
                 value={searchTopK}
                 onChange={(value) => setSearchTopK(value || 5)}
@@ -89,8 +89,8 @@ export default function SearchPage() {
                 style={{ width: 150 }}
               />
             </div>
-            <div>
-              <Text strong style={{ display: 'block', marginBottom: 8 }}>上下文窗口大小</Text>
+            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+              <Text strong style={{ display: 'block', marginBottom: 0 }}>上下文窗口大小</Text>
               <InputNumber
                 value={searchContextWindow}
                 onChange={(value) => setSearchContextWindow(value || 1)}
@@ -113,7 +113,7 @@ export default function SearchPage() {
         </Space>
 
         {searchResults && searchResults.data && (
-          <div style={{ marginTop: 24 }}>
+          <div style={{ display: 'flex', flexDirection: 'column', marginTop: 24, gap: 16 }}>
             <Space style={{ marginBottom: 16 }}>
               <Text strong>检索结果</Text>
               <Tag color="blue">{searchResults.data.results.length} 条</Tag>
@@ -168,6 +168,6 @@ export default function SearchPage() {
           </div>
         )}
       </Card>
-    </>
+    </div>
   )
 }

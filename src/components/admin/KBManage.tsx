@@ -90,12 +90,10 @@ export default function KBManagePage() {
   }
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 16 }}>
       {contextHolder}
 
-      <Card
-        style={{ marginBottom: 24 }}
-      >
+      <Card>
         <Space style={{ width: '100%', justifyContent: 'space-between' }}>
           <Text type="secondary">点击知识库卡片进行入库操作</Text>
           <Space>
@@ -189,6 +187,6 @@ export default function KBManagePage() {
         result={ingestResult}
         onIngest={handleIngest}
       />
-    </>
+    </div>
   )
 }

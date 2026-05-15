@@ -32,7 +32,7 @@ export default function Dashboard() {
   const totalFragments = statsResults?.data?.kbNames?.reduce((sum, kb) => sum + kb.total, 0) || 0
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1 }}>
       {contextHolder}
       
       <Row gutter={[16, 16]} style={{ marginBottom: 24 }}>
@@ -117,6 +117,6 @@ export default function Dashboard() {
           />
         )}
       </Card>
-    </>
+    </div>
   )
 }

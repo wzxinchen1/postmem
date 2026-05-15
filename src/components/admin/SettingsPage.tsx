@@ -80,7 +80,7 @@ export default function SettingsPage() {
   }
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 24 }}>
       {contextHolder}
 
       <Alert
@@ -93,8 +93,8 @@ export default function SettingsPage() {
 
       <Card title={<Title level={4} style={{ margin: 0 }}>应用设置</Title>} style={{ maxWidth: 800 }}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>最大内容长度</Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>最大内容长度</Text>
             <InputNumber
               value={settings.maxContentLength}
               onChange={(value) => setSettings({ ...settings, maxContentLength: value || 20000 })}
@@ -106,8 +106,8 @@ export default function SettingsPage() {
             </Text>
           </div>
 
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>默认检索数量 (Top K)</Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>默认检索数量 (Top K)</Text>
             <InputNumber
               value={settings.defaultTopK}
               onChange={(value) => setSettings({ ...settings, defaultTopK: value || 5 })}
@@ -120,8 +120,8 @@ export default function SettingsPage() {
             </Text>
           </div>
 
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>默认上下文窗口</Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>默认上下文窗口</Text>
             <InputNumber
               value={settings.defaultContextWindow}
               onChange={(value) => setSettings({ ...settings, defaultContextWindow: value || 1 })}
@@ -134,8 +134,8 @@ export default function SettingsPage() {
             </Text>
           </div>
 
-          <div>
-            <Text strong style={{ display: 'block', marginBottom: 8 }}>默认分页大小</Text>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>默认分页大小</Text>
             <InputNumber
               value={settings.defaultPageSize}
               onChange={(value) => setSettings({ ...settings, defaultPageSize: value || 20 })}
@@ -167,6 +167,6 @@ export default function SettingsPage() {
           </Space>
         </Space>
       </Card>
-    </>
+    </div>
   )
 }

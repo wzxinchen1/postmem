@@ -104,7 +104,7 @@ export default function ListPage() {
   ]
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 16 }}>
       {contextHolder}
       
       <KBSelector kbId={kbId} setKbId={setKbId} />
@@ -149,6 +149,6 @@ export default function ListPage() {
           </>
         )}
       </Card>
-    </>
+    </div>
   )
 }

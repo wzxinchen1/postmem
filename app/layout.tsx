@@ -1,4 +1,5 @@
 import './globals.css'
+import './global_flex.scss'
 import { AntdRegistry } from '@ant-design/nextjs-registry'
 
 export const metadata = {
@@ -12,9 +13,11 @@ export default function RootLayout({
   children: React.ReactNode
 }) {
   return (
-    <html lang="zh-CN">
-      <body>
-        <AntdRegistry>{children}</AntdRegistry>
+    <html lang="zh-CN" style={{ display: 'flex', flexDirection: 'column', height: '100%' }}>
+      <body style={{ display: 'flex', flexDirection: 'column' }}>
+        <AntdRegistry>
+          {children}
+        </AntdRegistry>
       </body>
     </html>
   )

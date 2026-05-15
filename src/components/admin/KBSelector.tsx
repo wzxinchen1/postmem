@@ -38,8 +38,8 @@ export function KBSelector({ kbId, setKbId }: KBSelectorProps) {
   }, [])
 
   return (
-    <Card style={{ marginBottom: 24 }}>
-      <Text strong style={{ display: 'block', marginBottom: 8 }}>知识库</Text>
+    <Card style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <Text strong style={{ display: 'block', marginBottom: 0 }}>知识库</Text>
       <Select
         value={kbId || undefined}
         onChange={setKbId}

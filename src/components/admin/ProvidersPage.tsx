@@ -281,7 +281,7 @@ export default function ProvidersPage() {
   }
 
   return (
-    <>
+    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 16 }}>
       {contextHolder}
 
       <Card>
@@ -449,6 +449,6 @@ export default function ProvidersPage() {
           </Form.Item>
         </Form>
       </Modal>
-    </>
+    </div>
   )
 }
