@@ -9,6 +9,7 @@ const { Title, Text } = Typography
 interface Vendor {
   id: number
   name: string
+  url: string
   chatModelClass?: string | null
   factoryCode?: string | null
   isActive: boolean
@@ -18,7 +19,9 @@ interface Provider {
   id: number
   name: string
   vendorId: number
-  vendor?: Vendor
+  vendor?: {
+    chatModelClass?: string | null
+  }
   apiKey?: string
   baseUrl?: string
   config: Record<string, unknown>
@@ -53,7 +56,7 @@ export default function ProvidersPage() {
     isActive: true,
   })
   const [validating, setValidating] = useState(false)
-  const [validationResult, setValidationResult] = useState<{ valid: boolean; error?: string } | null>(null)
+  const [validationResult, setValidationResult] = useState<{ valid: boolean; error?: string; models?: string[] } | null>(null)
 
   const [msg, contextHolder] = message.useMessage()
   const [form] = Form.useForm()
@@ -113,13 +116,13 @@ export default function ProvidersPage() {
 
   const handleValidate = async () => {
     if (!formData.vendorId) {
-      msg.info('请选择厂商')
+      msg.info('请选择类型')
       return
     }
 
     const selectedVendor = vendors.find(v => v.id === formData.vendorId)
     if (!selectedVendor) {
-      msg.info('厂商不存在')
+      msg.info('类型不存在')
       return
     }
 
@@ -130,11 +133,6 @@ export default function ProvidersPage() {
 
     if (selectedVendor.chatModelClass === 'ChatAnthropic' && !formData.apiKey) {
       msg.info('Anthropic 需要 API Key')
-      return
-    }
-
-    if (!formData.baseUrl) {
-      msg.info('Base URL 为必填项')
       return
     }
 
@@ -164,8 +162,8 @@ export default function ProvidersPage() {
 
       const data = await res.json()
       if (data.success) {
-        setValidationResult({ valid: true })
-        msg.success('验证成功')
+        setValidationResult({ valid: true, models: data.data.models })
+        msg.success(`验证成功，获取到 ${data.data.models.length} 个模型`)
       }
     } catch (err) {
       setValidationResult({ valid: false, error: '网络请求失败' })
@@ -277,7 +275,7 @@ export default function ProvidersPage() {
 
   const getVendorLabel = (vendorId: number) => {
     const vendor = vendors.find(v => v.id === vendorId)
-    return vendor?.name || '未知厂商'
+    return vendor?.name || '未知'
   }
 
   return (
@@ -345,7 +343,7 @@ export default function ProvidersPage() {
                     </Popconfirm>
                   </Space>
                 </Space>
-                
+
                 {provider.models && provider.models.length > 0 && (
                   <Card size="small" style={{ background: '#fafafa' }}>
                     <Text type="secondary" style={{ fontSize: 12 }}>关联模型 ({provider.models.length})</Text>
@@ -384,12 +382,16 @@ export default function ProvidersPage() {
               onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setValidationResult(null) }}
             />
           </Form.Item>
-          <Form.Item label="厂商" required>
+          <Form.Item label="类型" required>
             <Select
               value={formData.vendorId}
-              onChange={(value) => { setFormData({ ...formData, vendorId: value }); setValidationResult(null) }}
+              onChange={(value) => {
+                const selected = vendors.find(v => v.id === value)
+                setFormData({ ...formData, vendorId: value, baseUrl: selected?.url || '' })
+                setValidationResult(null)
+              }}
               options={vendors.map(v => ({ value: v.id, label: v.name }))}
-              placeholder="请选择厂商"
+              placeholder="请选择类型"
             />
           </Form.Item>
           <Form.Item label="API Key">
@@ -403,7 +405,7 @@ export default function ProvidersPage() {
             <Input
               value={formData.baseUrl}
               onChange={(e) => { setFormData({ ...formData, baseUrl: e.target.value }); setValidationResult(null) }}
-              placeholder="必填，如：https://api.openai.com/v1"
+              placeholder={`如：${vendors.find(v => v.id === formData.vendorId)?.url || ''}`}
             />
           </Form.Item>
           <Form.Item>
@@ -415,27 +417,49 @@ export default function ProvidersPage() {
               <Text>启用此提供商</Text>
             </Space>
           </Form.Item>
-          
+
           {validationResult && (
-            <Form.Item>
-              <Space>
-                {validationResult.valid ? (
-                  <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />
-                ) : (
-                  <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
-                )}
-                <Text type={validationResult.valid ? 'success' : 'danger'}>
-                  {validationResult.valid ? '验证成功' : validationResult.error}
-                </Text>
-              </Space>
-            </Form.Item>
+            <>
+              <Form.Item>
+                <Space>
+                  {validationResult.valid ? (
+                    <CheckCircleOutlined style={{ color: '#52c41a', fontSize: 16 }} />
+                  ) : (
+                    <CloseCircleOutlined style={{ color: '#ff4d4f', fontSize: 16 }} />
+                  )}
+                  <Text type={validationResult.valid ? 'success' : 'danger'}>
+                    {validationResult.valid
+                      ? `验证成功，获取到 ${validationResult.models?.length || 0} 个模型`
+                      : validationResult.error}
+                  </Text>
+                </Space>
+              </Form.Item>
+              {validationResult.valid && validationResult.models && (
+                <Form.Item label="可用模型">
+                  <div style={{
+                    maxHeight: 150,
+                    overflowY: 'auto',
+                    padding: '8px 12px',
+                    background: '#fafafa',
+                    borderRadius: 6,
+                    border: '1px solid #f0f0f0',
+                  }}>
+                    <Space size={[4, 4]} wrap>
+                      {validationResult.models.map(m => (
+                        <Tag key={m} style={{ margin: 0 }}>{m}</Tag>
+                      ))}
+                    </Space>
+                  </div>
+                </Form.Item>
+              )}
+            </>
           )}
 
           <Form.Item style={{ marginBottom: 0 }}>
             <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-              <Button 
+              <Button
                 icon={validating ? <Spin size="small" /> : undefined}
-                onClick={handleValidate} 
+                onClick={handleValidate}
                 loading={validating}
                 disabled={validating}
               >

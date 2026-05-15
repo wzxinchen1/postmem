@@ -204,6 +204,7 @@ export interface VendorFactory {
 export interface Vendor {
   id: number
   name: string
+  url: string
   chatModelClass?: string | null
   factoryCode?: string | null
   isActive: boolean

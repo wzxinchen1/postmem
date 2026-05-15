@@ -13,10 +13,6 @@ export default createApiHandler<Deps>({
       POST: async (deps) => {
         const { vendorId, apiKey, baseUrl } = req.body
 
-        if (!baseUrl) {
-          return errorResponse(res, 'VALIDATION_ERROR', 'Base URL为必填项', 400)
-        }
-
         if (!vendorId) {
           return errorResponse(res, 'VALIDATION_ERROR', '厂商ID为必填项', 400)
         }
@@ -31,7 +27,7 @@ export default createApiHandler<Deps>({
           return errorResponse(res, 'VALIDATION_ERROR', result.error || '验证失败', 400)
         }
 
-        return successResponse(res, { valid: true, vendor: result.vendor })
+        return successResponse(res, { valid: true, models: result.models })
       },
     })
   },

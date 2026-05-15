@@ -82,13 +82,7 @@ export function withErrorHandler(
         errorMessage = error.message
       }
 
-      res.status(statusCode).json({
-        success: false,
-        error: {
-          code: error instanceof AppError ? error.code : 'INTERNAL_ERROR',
-          message: errorMessage,
-        },
-      })
+      res.status(statusCode).send(errorMessage)
     }
   }
 }
@@ -103,13 +97,7 @@ export function withMethod(
   return async (req: NextApiRequest, res: NextApiResponse) => {
     if (!allowedMethods.includes(req.method || '')) {
       res.setHeader('Allow', allowedMethods.join(', '))
-      res.status(405).json({
-        success: false,
-        error: {
-          code: 'METHOD_NOT_ALLOWED',
-          message: `方法 ${req.method} 不被允许`,
-        },
-      })
+      res.status(405).send(`方法 ${req.method} 不被允许`)
       return
     }
 
@@ -198,24 +186,16 @@ export function successResponse<T>(res: NextApiResponse, data: T, statusCode = 2
 }
 
 /**
- * 错误响应
+ * 错误响应 - 返回纯文本格式（符合开发规范）
  */
 export function errorResponse(
   res: NextApiResponse,
-  code: string,
+  _code: string,
   message: string,
   statusCode = 400,
-  details?: string
+  _details?: string
 ) {
-  const response: ApiResponse = {
-    success: false,
-    error: {
-      code,
-      message,
-      details,
-    },
-  }
-  res.status(statusCode).json(response)
+  res.status(statusCode).send(message)
 }
 
 /**
@@ -239,13 +219,7 @@ export function apiHandler<TDeps extends Record<string, any>>(
   if (!handler) {
     const allowedMethods = Object.keys(handlers).join(', ')
     res.setHeader('Allow', allowedMethods)
-    return res.status(405).json({
-      success: false,
-      error: {
-        code: 'METHOD_NOT_ALLOWED',
-        message: `方法 ${method} 不被允许`,
-      },
-    })
+    return res.status(405).send(`方法 ${method} 不被允许`)
   }
 
   return handler(deps)
