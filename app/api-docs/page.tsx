@@ -23,7 +23,7 @@ export default function ApiDocsPage() {
   }
 
   return (
-    <div style={{ height: '100vh' }}>
+    <div style={{ height: '100vh', overflow: 'auto' }}>
       <SwaggerUI url="/swagger.json" />
     </div>
   )

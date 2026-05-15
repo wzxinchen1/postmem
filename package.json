@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "predev": "prisma generate && prisma migrate deploy && prisma db seed",
-    "dev": "next dev",
+    "dev": "pnpm tsx scripts/generate-swagger.ts && next dev",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -18,7 +18,8 @@
     "db:push": "prisma db push",
     "db:setup": "prisma generate && prisma migrate deploy && prisma db seed",
     "test": "vitest run",
-    "test:watch": "vitest"
+    "test:watch": "vitest",
+    "swagger": "pnpm tsx scripts/generate-swagger.ts"
   },
   "prisma": {
     "seed": "pnpm tsx prisma/seed.ts"

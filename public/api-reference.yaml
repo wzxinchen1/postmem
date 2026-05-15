@@ -1,0 +1,621 @@
+# PostMem API Reference (for LLM)
+# 自动生成的精简文档，供大模型理解 API 结构
+
+---
+
+## Knowledge Base
+
+### POST /api/kb/create
+
+Request Body:
+  type: CreateKBRequest
+  - `name`: string (required)
+  - `description`: string
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+### POST /api/kb/delete
+
+Request Body:
+  type: DeleteRequest
+  - `id`: number (required)
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+### POST /api/kb/ingest
+
+Request Body:
+  type: IngestTextRequest
+  - `kbId`: number (required)
+  - `content`: string (required)
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+### POST /api/kb/list
+
+Request Body:
+  type: ListRequest
+  - `kbId`: number (required)
+  - `page`: number
+  - `limit`: number
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+### POST /api/kb/search
+
+Request Body:
+  type: SearchRequest
+  - `kbId`: number (required)
+  - `query`: string (required)
+  - `top_k`: number
+  - `context_window`: number
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+### POST /api/kb/stats
+
+Request Body:
+  type: StatsRequest
+  - `kbId`: number
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+---
+
+## Models
+
+### GET /api/models/{id}
+单个模型 API
+
+Path Parameters:
+  - `id`: integer (required) - 模型ID
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### PUT /api/models/{id}
+单个模型 API
+
+Path Parameters:
+  - `id`: integer (required) - 模型ID
+
+Request Body:
+  type: UpdateModelRequest
+  - `name`: string
+  - `displayName`: string
+  - `modelType`: ModelType
+  - `config`: unknown
+  - `isActive`: boolean
+  - `isDefault`: boolean
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### DELETE /api/models/{id}
+单个模型 API
+
+Path Parameters:
+  - `id`: integer (required) - 模型ID
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### GET /api/models/default
+获取默认模型 API
+
+Query Parameters:
+  - `modelType`: string [chat|embedding] - 模型类型
+
+Responses:
+  - 200: 成功响应
+
+### GET /api/models/index
+模型列表和创建 API
+
+Query Parameters:
+  - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
+  - `providerId`: integer - 按提供商ID筛选
+
+Responses:
+  - 200: 成功响应
+
+### POST /api/models/index
+模型列表和创建 API
+
+Query Parameters:
+  - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
+  - `providerId`: integer - 按提供商ID筛选
+
+Request Body:
+  type: CreateModelRequest
+  - `providerId`: number (required)
+  - `name`: string (required)
+  - `displayName`: string
+  - `modelType`: ModelType (required)
+  - `config`: unknown
+  - `isActive`: boolean
+  - `isDefault`: boolean
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+---
+
+## Providers
+
+### GET /api/providers/{id}
+单个提供商 API
+
+Path Parameters:
+  - `id`: integer (required) - 提供商ID
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### PUT /api/providers/{id}
+单个提供商 API
+
+Path Parameters:
+  - `id`: integer (required) - 提供商ID
+
+Request Body:
+  type: UpdateProviderRequest
+  - `name`: string
+  - `vendorId`: number
+  - `apiKey`: string
+  - `baseUrl`: string
+  - `config`: unknown
+  - `isActive`: boolean
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### DELETE /api/providers/{id}
+单个提供商 API
+
+Path Parameters:
+  - `id`: integer (required) - 提供商ID
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### GET /api/providers/index
+提供商列表和创建 API
+
+Query Parameters:
+  - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
+
+Responses:
+  - 200: 成功响应
+
+### POST /api/providers/index
+提供商列表和创建 API
+
+Query Parameters:
+  - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
+
+Request Body:
+  type: CreateProviderRequest
+  - `name`: string (required)
+  - `vendorId`: number (required)
+  - `apiKey`: string
+  - `baseUrl`: string (required)
+  - `config`: unknown
+  - `isActive`: boolean
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+### POST /api/providers/models
+
+Request Body:
+  - `vendorId`: string (required)
+  - `apiKey`: string (required)
+  - `baseUrl`: string (required)
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+### POST /api/providers/validate
+
+Request Body:
+  - `vendorId`: string (required)
+  - `apiKey`: string (required)
+  - `baseUrl`: string (required)
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+---
+
+## Sessions
+
+### GET /api/sessions/{id}
+会话详情和删除 API
+
+Path Parameters:
+  - `id`: integer (required) - 会话ID
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### DELETE /api/sessions/{id}
+会话详情和删除 API
+
+Path Parameters:
+  - `id`: integer (required) - 会话ID
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### GET /api/sessions/index
+会话列表 API
+
+Query Parameters:
+  - `kbId`: integer (required) - 按知识库筛选
+  - `modelType`: string [chat|embedding] - 模型类型
+  - `status`: string [pending|completed|failed] - 按状态筛选
+  - `page`: integer (默认: 1) - 页码
+  - `limit`: integer (默认: 20) - 每页数量
+
+Responses:
+  - 200: 成功响应
+
+### GET /api/sessions/stats
+会话统计 API
+
+Responses:
+  - 200: 成功响应
+
+---
+
+## Settings
+
+### GET /api/settings/index
+应用设置 API
+
+Responses:
+  - 200: 成功响应
+
+### PUT /api/settings/index
+应用设置 API
+
+Responses:
+  - 200: 成功响应
+
+---
+
+## Vendors
+
+### GET /api/vendors/{id}
+单个厂商 API
+
+Path Parameters:
+  - `id`: integer (required) - 厂商ID
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### PUT /api/vendors/{id}
+单个厂商 API
+
+Path Parameters:
+  - `id`: integer (required) - 厂商ID
+
+Request Body:
+  type: UpdateVendorRequest
+  - `name`: string
+  - `chatModelClass`: string
+  - `embeddingModelClass`: string
+  - `factoryCode`: string
+  - `isActive`: boolean
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### DELETE /api/vendors/{id}
+单个厂商 API
+
+Path Parameters:
+  - `id`: integer (required) - 厂商ID
+
+Responses:
+  - 200: 成功响应
+  - 404: 资源不存在
+
+### GET /api/vendors/index
+厂商列表和创建 API
+
+Query Parameters:
+  - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
+
+Responses:
+  - 200: 成功响应
+
+### POST /api/vendors/index
+厂商列表和创建 API
+
+Query Parameters:
+  - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
+
+Request Body:
+  type: CreateVendorRequest
+  - `name`: string (required)
+  - `chatModelClass`: string
+  - `embeddingModelClass`: string
+  - `factoryCode`: string
+  - `isActive`: boolean
+
+Responses:
+  - 200: 成功响应
+  - 201: 创建成功
+  - 400: 请求参数错误
+  - 409: 冲突（重复）
+
+---
+
+## Data Types
+
+### IngestTextRequest
+Required:
+kbId, content
+
+- `kbId`*: number
+- `content`*: string
+
+### IngestMessagesRequest
+Required:
+kbId, messages
+
+- `kbId`*: number
+- `messages`*: IngestMessage[]
+
+### SearchRequest
+Required:
+kbId, query
+
+- `kbId`*: number
+- `query`*: string
+- `top_k`?: number
+- `context_window`?: number
+
+### ListRequest
+Required:
+kbId
+
+- `kbId`*: number
+- `page`?: number
+- `limit`?: number
+
+### DeleteRequest
+Required:
+id
+
+- `id`*: number
+
+### StatsRequest
+
+- `kbId`?: number
+
+### Vendor
+Required:
+id, name, url, isActive, createdAt, updatedAt
+
+- `id`*: number
+- `name`*: string
+- `url`*: string
+- `chatModelClass`?: string | null
+- `embeddingModelClass`?: string | null
+- `factoryCode`?: string | null
+- `isActive`*: boolean
+- `createdAt`*: Date
+- `updatedAt`*: Date
+
+### Provider
+Required:
+id, name, vendorId, baseUrl, config, isActive, createdAt, updatedAt
+
+- `id`*: number
+- `name`*: string
+- `vendorId`*: number
+- `vendor`?: Vendor
+- `apiKey`?: string
+- `baseUrl`*: string
+- `config`*: unknown
+- `isActive`*: boolean
+- `createdAt`*: Date
+- `updatedAt`*: Date
+
+### Model
+Required:
+id, providerId, name, modelType, config, isActive, isDefault, createdAt, updatedAt
+
+- `id`*: number
+- `providerId`*: number
+- `name`*: string
+- `displayName`?: string
+- `modelType`*: ModelType
+- `config`*: unknown
+- `isActive`*: boolean
+- `isDefault`*: boolean
+- `createdAt`*: Date
+- `updatedAt`*: Date
+
+### CreateProviderRequest
+Required:
+name, vendorId, baseUrl
+
+- `name`*: string
+- `vendorId`*: number
+- `apiKey`?: string
+- `baseUrl`*: string
+- `config`?: unknown
+- `isActive`?: boolean
+
+### UpdateProviderRequest
+
+- `name`?: string
+- `vendorId`?: number
+- `apiKey`?: string
+- `baseUrl`?: string
+- `config`?: unknown
+- `isActive`?: boolean
+
+### CreateVendorRequest
+Required:
+name
+
+- `name`*: string
+- `chatModelClass`?: string
+- `embeddingModelClass`?: string
+- `factoryCode`?: string
+- `isActive`?: boolean
+
+### UpdateVendorRequest
+
+- `name`?: string
+- `chatModelClass`?: string
+- `embeddingModelClass`?: string
+- `factoryCode`?: string
+- `isActive`?: boolean
+
+### CreateModelRequest
+Required:
+providerId, name, modelType
+
+- `providerId`*: number
+- `name`*: string
+- `displayName`?: string
+- `modelType`*: ModelType
+- `config`?: unknown
+- `isActive`?: boolean
+- `isDefault`?: boolean
+
+### UpdateModelRequest
+
+- `name`?: string
+- `displayName`?: string
+- `modelType`?: ModelType
+- `config`?: unknown
+- `isActive`?: boolean
+- `isDefault`?: boolean
+
+### AppSettings
+Required:
+maxContentLength, defaultTopK, defaultContextWindow, defaultPageSize
+
+- `maxContentLength`*: number
+- `defaultTopK`*: number
+- `defaultContextWindow`*: number
+- `defaultPageSize`*: number
+
+### CreateKBRequest
+Required:
+name
+
+- `name`*: string
+- `description`?: string
+
+### KnowledgeBaseInfo
+Required:
+id, name, createdAt, updatedAt
+
+- `id`*: number
+- `name`*: string
+- `description`?: string
+- `createdAt`*: Date
+- `updatedAt`*: Date
+
+### SessionMessage
+Required:
+id, sessionId, role, content, metadata, createdAt
+
+- `id`*: number
+- `sessionId`*: number
+- `role`*: MessageRole
+- `content`*: string
+- `tokens`?: number
+- `metadata`*: unknown
+- `createdAt`*: Date
+
+### Session
+Required:
+id, modelType, modelName, provider, status, metadata, createdAt
+
+- `id`*: number
+- `kbId`?: number
+- `modelType`*: ModelType
+- `modelName`*: string
+- `provider`*: string
+- `status`*: SessionStatus
+- `error`?: string
+- `metadata`*: unknown
+- `createdAt`*: Date
+- `messages`?: SessionMessage[]
+
+### CreateSessionRequest
+Required:
+modelType, modelName, provider
+
+- `kbId`?: number
+- `modelType`*: ModelType
+- `modelName`*: string
+- `provider`*: string
+- `metadata`?: unknown
+
+### AddMessageRequest
+Required:
+sessionId, role, content
+
+- `sessionId`*: number
+- `role`*: MessageRole
+- `content`*: string
+- `tokens`?: number
+- `metadata`?: unknown
+
