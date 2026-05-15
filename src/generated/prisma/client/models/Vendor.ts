@@ -39,6 +39,7 @@ export type VendorMinAggregateOutputType = {
   name: string | null
   url: string | null
   chatModelClass: string | null
+  embeddingModelClass: string | null
   factoryCode: string | null
   isActive: boolean | null
   createdAt: Date | null
@@ -50,6 +51,7 @@ export type VendorMaxAggregateOutputType = {
   name: string | null
   url: string | null
   chatModelClass: string | null
+  embeddingModelClass: string | null
   factoryCode: string | null
   isActive: boolean | null
   createdAt: Date | null
@@ -61,6 +63,7 @@ export type VendorCountAggregateOutputType = {
   name: number
   url: number
   chatModelClass: number
+  embeddingModelClass: number
   factoryCode: number
   isActive: number
   createdAt: number
@@ -82,6 +85,7 @@ export type VendorMinAggregateInputType = {
   name?: true
   url?: true
   chatModelClass?: true
+  embeddingModelClass?: true
   factoryCode?: true
   isActive?: true
   createdAt?: true
@@ -93,6 +97,7 @@ export type VendorMaxAggregateInputType = {
   name?: true
   url?: true
   chatModelClass?: true
+  embeddingModelClass?: true
   factoryCode?: true
   isActive?: true
   createdAt?: true
@@ -104,6 +109,7 @@ export type VendorCountAggregateInputType = {
   name?: true
   url?: true
   chatModelClass?: true
+  embeddingModelClass?: true
   factoryCode?: true
   isActive?: true
   createdAt?: true
@@ -202,6 +208,7 @@ export type VendorGroupByOutputType = {
   name: string
   url: string
   chatModelClass: string | null
+  embeddingModelClass: string | null
   factoryCode: string | null
   isActive: boolean
   createdAt: Date
@@ -236,6 +243,7 @@ export type VendorWhereInput = {
   name?: Prisma.StringFilter<"Vendor"> | string
   url?: Prisma.StringFilter<"Vendor"> | string
   chatModelClass?: Prisma.StringNullableFilter<"Vendor"> | string | null
+  embeddingModelClass?: Prisma.StringNullableFilter<"Vendor"> | string | null
   factoryCode?: Prisma.StringNullableFilter<"Vendor"> | string | null
   isActive?: Prisma.BoolFilter<"Vendor"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Vendor"> | Date | string
@@ -249,6 +257,7 @@ export type VendorOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   url?: Prisma.SortOrder
   chatModelClass?: Prisma.SortOrderInput | Prisma.SortOrder
+  embeddingModelClass?: Prisma.SortOrderInput | Prisma.SortOrder
   factoryCode?: Prisma.SortOrderInput | Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -265,6 +274,7 @@ export type VendorWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.VendorWhereInput | Prisma.VendorWhereInput[]
   url?: Prisma.StringFilter<"Vendor"> | string
   chatModelClass?: Prisma.StringNullableFilter<"Vendor"> | string | null
+  embeddingModelClass?: Prisma.StringNullableFilter<"Vendor"> | string | null
   factoryCode?: Prisma.StringNullableFilter<"Vendor"> | string | null
   isActive?: Prisma.BoolFilter<"Vendor"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Vendor"> | Date | string
@@ -278,6 +288,7 @@ export type VendorOrderByWithAggregationInput = {
   name?: Prisma.SortOrder
   url?: Prisma.SortOrder
   chatModelClass?: Prisma.SortOrderInput | Prisma.SortOrder
+  embeddingModelClass?: Prisma.SortOrderInput | Prisma.SortOrder
   factoryCode?: Prisma.SortOrderInput | Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -297,6 +308,7 @@ export type VendorScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"Vendor"> | string
   url?: Prisma.StringWithAggregatesFilter<"Vendor"> | string
   chatModelClass?: Prisma.StringNullableWithAggregatesFilter<"Vendor"> | string | null
+  embeddingModelClass?: Prisma.StringNullableWithAggregatesFilter<"Vendor"> | string | null
   factoryCode?: Prisma.StringNullableWithAggregatesFilter<"Vendor"> | string | null
   isActive?: Prisma.BoolWithAggregatesFilter<"Vendor"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Vendor"> | Date | string
@@ -307,6 +319,7 @@ export type VendorCreateInput = {
   name: string
   url: string
   chatModelClass?: string | null
+  embeddingModelClass?: string | null
   factoryCode?: string | null
   isActive?: boolean
   createdAt?: Date | string
@@ -320,6 +333,7 @@ export type VendorUncheckedCreateInput = {
   name: string
   url: string
   chatModelClass?: string | null
+  embeddingModelClass?: string | null
   factoryCode?: string | null
   isActive?: boolean
   createdAt?: Date | string
@@ -332,6 +346,7 @@ export type VendorUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  embeddingModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   factoryCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -345,6 +360,7 @@ export type VendorUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  embeddingModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   factoryCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -358,6 +374,7 @@ export type VendorCreateManyInput = {
   name: string
   url: string
   chatModelClass?: string | null
+  embeddingModelClass?: string | null
   factoryCode?: string | null
   isActive?: boolean
   createdAt?: Date | string
@@ -368,6 +385,7 @@ export type VendorUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  embeddingModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   factoryCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -379,6 +397,7 @@ export type VendorUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  embeddingModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   factoryCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -390,6 +409,7 @@ export type VendorCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   url?: Prisma.SortOrder
   chatModelClass?: Prisma.SortOrder
+  embeddingModelClass?: Prisma.SortOrder
   factoryCode?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -405,6 +425,7 @@ export type VendorMaxOrderByAggregateInput = {
   name?: Prisma.SortOrder
   url?: Prisma.SortOrder
   chatModelClass?: Prisma.SortOrder
+  embeddingModelClass?: Prisma.SortOrder
   factoryCode?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -416,6 +437,7 @@ export type VendorMinOrderByAggregateInput = {
   name?: Prisma.SortOrder
   url?: Prisma.SortOrder
   chatModelClass?: Prisma.SortOrder
+  embeddingModelClass?: Prisma.SortOrder
   factoryCode?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -471,6 +493,7 @@ export type VendorCreateWithoutProvidersInput = {
   name: string
   url: string
   chatModelClass?: string | null
+  embeddingModelClass?: string | null
   factoryCode?: string | null
   isActive?: boolean
   createdAt?: Date | string
@@ -483,6 +506,7 @@ export type VendorUncheckedCreateWithoutProvidersInput = {
   name: string
   url: string
   chatModelClass?: string | null
+  embeddingModelClass?: string | null
   factoryCode?: string | null
   isActive?: boolean
   createdAt?: Date | string
@@ -510,6 +534,7 @@ export type VendorUpdateWithoutProvidersInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  embeddingModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   factoryCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -522,6 +547,7 @@ export type VendorUncheckedUpdateWithoutProvidersInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  embeddingModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   factoryCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -533,6 +559,7 @@ export type VendorCreateWithoutProvider_optionsInput = {
   name: string
   url: string
   chatModelClass?: string | null
+  embeddingModelClass?: string | null
   factoryCode?: string | null
   isActive?: boolean
   createdAt?: Date | string
@@ -545,6 +572,7 @@ export type VendorUncheckedCreateWithoutProvider_optionsInput = {
   name: string
   url: string
   chatModelClass?: string | null
+  embeddingModelClass?: string | null
   factoryCode?: string | null
   isActive?: boolean
   createdAt?: Date | string
@@ -572,6 +600,7 @@ export type VendorUpdateWithoutProvider_optionsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  embeddingModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   factoryCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -584,6 +613,7 @@ export type VendorUncheckedUpdateWithoutProvider_optionsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
+  embeddingModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   factoryCode?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -636,6 +666,7 @@ export type VendorSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs =
   name?: boolean
   url?: boolean
   chatModelClass?: boolean
+  embeddingModelClass?: boolean
   factoryCode?: boolean
   isActive?: boolean
   createdAt?: boolean
@@ -650,6 +681,7 @@ export type VendorSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extens
   name?: boolean
   url?: boolean
   chatModelClass?: boolean
+  embeddingModelClass?: boolean
   factoryCode?: boolean
   isActive?: boolean
   createdAt?: boolean
@@ -661,6 +693,7 @@ export type VendorSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extens
   name?: boolean
   url?: boolean
   chatModelClass?: boolean
+  embeddingModelClass?: boolean
   factoryCode?: boolean
   isActive?: boolean
   createdAt?: boolean
@@ -672,13 +705,14 @@ export type VendorSelectScalar = {
   name?: boolean
   url?: boolean
   chatModelClass?: boolean
+  embeddingModelClass?: boolean
   factoryCode?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type VendorOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "url" | "chatModelClass" | "factoryCode" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["vendor"]>
+export type VendorOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "url" | "chatModelClass" | "embeddingModelClass" | "factoryCode" | "isActive" | "createdAt" | "updatedAt", ExtArgs["result"]["vendor"]>
 export type VendorInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   provider_options?: boolean | Prisma.Vendor$provider_optionsArgs<ExtArgs>
   providers?: boolean | Prisma.Vendor$providersArgs<ExtArgs>
@@ -698,6 +732,7 @@ export type $VendorPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     name: string
     url: string
     chatModelClass: string | null
+    embeddingModelClass: string | null
     factoryCode: string | null
     isActive: boolean
     createdAt: Date
@@ -1131,6 +1166,7 @@ export interface VendorFieldRefs {
   readonly name: Prisma.FieldRef<"Vendor", 'String'>
   readonly url: Prisma.FieldRef<"Vendor", 'String'>
   readonly chatModelClass: Prisma.FieldRef<"Vendor", 'String'>
+  readonly embeddingModelClass: Prisma.FieldRef<"Vendor", 'String'>
   readonly factoryCode: Prisma.FieldRef<"Vendor", 'String'>
   readonly isActive: Prisma.FieldRef<"Vendor", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Vendor", 'DateTime'>

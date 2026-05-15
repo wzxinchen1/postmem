@@ -1,10 +1,7 @@
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Vendor, CreateVendorRequest, UpdateVendorRequest } from '@/src/types'
-import { createChatModel } from './vendor-protocol.service'
+import { createModel } from './vendor-protocol.service'
 
-/**
- * 厂商服务
- */
 export class VendorService {
   private prisma: PrismaClient
 
@@ -12,9 +9,6 @@ export class VendorService {
     this.prisma = prisma
   }
 
-  /**
-   * 获取所有厂商
-   */
   async list(includeInactive = false): Promise<Vendor[]> {
     return this.prisma.vendor.findMany({
       where: includeInactive ? {} : { isActive: true },
@@ -22,18 +16,12 @@ export class VendorService {
     }) as Promise<Vendor[]>
   }
 
-  /**
-   * 获取单个厂商
-   */
   async get(id: number): Promise<Vendor | null> {
     return this.prisma.vendor.findUnique({
       where: { id },
     }) as Promise<Vendor | null>
   }
 
-  /**
-   * 创建厂商
-   */
   async create(data: CreateVendorRequest): Promise<Vendor> {
     if (data.factoryCode) {
       this.validateCode(data.factoryCode)
@@ -42,6 +30,7 @@ export class VendorService {
       data: {
         name: data.name,
         chatModelClass: data.chatModelClass,
+        embeddingModelClass: data.embeddingModelClass,
         factoryCode: data.factoryCode,
         isActive: data.isActive ?? true,
       },
@@ -49,9 +38,6 @@ export class VendorService {
     return vendor as Vendor
   }
 
-  /**
-   * 更新厂商
-   */
   async update(id: number, data: UpdateVendorRequest): Promise<Vendor> {
     if (data.factoryCode) {
       this.validateCode(data.factoryCode)
@@ -59,6 +45,7 @@ export class VendorService {
     const updateData: Record<string, unknown> = {
       ...(data.name && { name: data.name }),
       ...(data.chatModelClass && { chatModelClass: data.chatModelClass }),
+      ...(data.embeddingModelClass && { embeddingModelClass: data.embeddingModelClass }),
       ...(data.factoryCode && { factoryCode: data.factoryCode }),
       ...(data.isActive !== undefined && { isActive: data.isActive }),
     }
@@ -68,18 +55,12 @@ export class VendorService {
     }) as Promise<Vendor>
   }
 
-  /**
-   * 删除厂商
-   */
   async delete(id: number): Promise<void> {
     await this.prisma.vendor.delete({
       where: { id },
     })
   }
 
-  /**
-   * 检查厂商名称是否存在
-   */
   async exists(name: string, excludeId?: number): Promise<boolean> {
     const count = await this.prisma.vendor.count({
       where: {
@@ -90,28 +71,22 @@ export class VendorService {
     return count > 0
   }
 
-  /**
-   * 创建 ChatModel 实例
-   */
-  createChatModel(vendor: Vendor, params: {
+  createModel(vendor: Vendor, params: {
     model: string
+    modelType: 'chat' | 'embedding'
     apiKey?: string
     baseUrl?: string
     config?: Record<string, unknown>
   }) {
-    return createChatModel(vendor, params)
+    return createModel(vendor, params)
   }
 
-  /**
-   * 验证代码语法
-   */
   private validateCode(code: string): void {
-    // 简单验证：检查是否包含 module.exports
     if (!code.includes('module.exports')) {
       throw new Error('Factory code must export using module.exports')
     }
-    if (!code.includes('createChatModel')) {
-      throw new Error('Factory code must have createChatModel method')
+    if (!code.includes('createModel')) {
+      throw new Error('Factory code must have createModel method')
     }
   }
 }

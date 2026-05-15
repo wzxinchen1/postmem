@@ -3,7 +3,6 @@ import type {
   Provider,
   CreateProviderRequest,
   UpdateProviderRequest,
-  VendorFactory,
 } from '@/src/types'
 import { VendorService } from './vendor.service'
 
@@ -54,18 +53,19 @@ export class ProviderService {
   /**
    * 创建 LangChain ChatModel 实例
    */
-  async createChatModel(providerId: number, model: string, config?: Record<string, unknown>): Promise<unknown> {
+  async createModel(providerId: number, model: string, modelType: 'chat' | 'embedding', config?: Record<string, unknown>): Promise<unknown> {
     const provider = await this.get(providerId)
     if (!provider) {
       throw new Error(`提供商不存在: ${providerId}`)
     }
-    
+
     if (!provider.vendor) {
       throw new Error(`提供商未关联厂商: ${providerId}`)
     }
-    
-    return this.vendorService.createChatModel(provider.vendor, {
+
+    return this.vendorService.createModel(provider.vendor, {
       model,
+      modelType,
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
       config: {

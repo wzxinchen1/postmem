@@ -65,6 +65,7 @@ export class CutModelService {
           id: model.provider.vendor.id,
           name: model.provider.vendor.name,
           chatModelClass: model.provider.vendor.chatModelClass,
+          embeddingModelClass: model.provider.vendor.embeddingModelClass,
           factoryCode: model.provider.vendor.factoryCode,
           isActive: model.provider.vendor.isActive,
           createdAt: model.provider.vendor.createdAt,
@@ -82,13 +83,14 @@ export class CutModelService {
     return result
   }
 
-  private async createChatModel(model: Model, provider: Provider): Promise<BaseChatModel> {
+  private async createModel(model: Model, provider: Provider): Promise<BaseChatModel> {
     if (!provider.vendor) {
       throw Errors.cutModelError('提供商缺少厂商信息')
     }
 
-    return this.vendorService.createChatModel(provider.vendor, {
+    return this.vendorService.createModel(provider.vendor, {
       model: model.name,
+      modelType: 'chat',
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
       config: model.config,
@@ -102,7 +104,7 @@ export class CutModelService {
     provider: Provider,
     sessionId: number
   ): Promise<string> {
-    const chatModel = await this.createChatModel(model, provider)
+    const chatModel = await this.createModel(model, provider)
 
     await this.sessionService.addMessage({
       sessionId,

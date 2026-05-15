@@ -187,15 +187,16 @@ export type ProviderType = 'openai' | 'anthropic' | 'local' | 'custom'
 export type ModelType = 'embedding' | 'chat'
 
 /**
- * 厂商工厂接口 - 创建 LangChain ChatModel
+ * 厂商工厂接口 - 创建 LangChain 模型实例（Chat 或 Embedding）
  */
 export interface VendorFactory {
-  createChatModel(params: {
+  createModel(params: {
     model: string
+    modelType: 'chat' | 'embedding'
     apiKey?: string
     baseUrl?: string
     config?: Record<string, unknown>
-  }): unknown // BaseChatModel 实例
+  }): unknown // BaseChatModel 或 Embeddings 实例
 }
 
 /**
@@ -206,6 +207,7 @@ export interface Vendor {
   name: string
   url: string
   chatModelClass?: string | null
+  embeddingModelClass?: string | null
   factoryCode?: string | null
   isActive: boolean
   createdAt: Date
@@ -274,6 +276,7 @@ export interface UpdateProviderRequest {
 export interface CreateVendorRequest {
   name: string
   chatModelClass?: string
+  embeddingModelClass?: string
   factoryCode?: string
   isActive?: boolean
 }
@@ -284,6 +287,7 @@ export interface CreateVendorRequest {
 export interface UpdateVendorRequest {
   name?: string
   chatModelClass?: string
+  embeddingModelClass?: string
   factoryCode?: string
   isActive?: boolean
 }

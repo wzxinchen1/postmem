@@ -1,85 +1,99 @@
 import { VM } from 'vm2'
 import type { VendorFactory } from '@/src/types'
 
-/**
- * LangChain ChatModel 类映射
- * 有现成类的厂商直接用类名
- */
 const CHAT_MODEL_CLASSES: Record<string, new (...args: unknown[]) => unknown> = {
   ChatOpenAI: require('@langchain/openai').ChatOpenAI,
   ChatAnthropic: require('@langchain/anthropic').ChatAnthropic,
   ChatOllama: require('@langchain/ollama').ChatOllama,
 }
 
-/**
- * 创建 ChatModel 实例
- * 优先使用 chatModelClass，没有则执行 factoryCode
- */
-export function createChatModel(vendor: {
+const EMBEDDING_MODEL_CLASSES: Record<string, new (...args: unknown[]) => unknown> = {
+  OpenAIEmbeddings: require('@langchain/openai').OpenAIEmbeddings,
+  OllamaEmbeddings: require('@langchain/ollama').OllamaEmbeddings,
+}
+
+export function createModel(vendor: {
+  name?: string
   chatModelClass?: string | null
+  embeddingModelClass?: string | null
   factoryCode?: string | null
 }, params: {
   model: string
+  modelType: 'chat' | 'embedding'
   apiKey?: string
   baseUrl?: string
   config?: Record<string, unknown>
 }) {
-  if (vendor.chatModelClass) {
-    const ChatModelClass = CHAT_MODEL_CLASSES[vendor.chatModelClass]
-    if (!ChatModelClass) {
-      throw new Error(`Unknown ChatModel class: ${vendor.chatModelClass}`)
+  const classKey = params.modelType === 'chat' ? vendor.chatModelClass : vendor.embeddingModelClass
+
+  if (classKey) {
+    const classMap = params.modelType === 'chat' ? CHAT_MODEL_CLASSES : EMBEDDING_MODEL_CLASSES
+    const ModelClass = classMap[classKey]
+    if (!ModelClass) {
+      throw new Error(`Unknown ${params.modelType} model class: ${classKey}`)
     }
-    
-    if (vendor.chatModelClass === 'ChatOpenAI') {
-      return new ChatModelClass({
-        model: params.model,
-        apiKey: params.apiKey,
-        configuration: {
-          baseURL: params.baseUrl,
-        },
-        ...params.config,
-      })
+
+    if (params.modelType === 'chat') {
+      if (classKey === 'ChatOpenAI') {
+        return new ModelClass({
+          model: params.model,
+          apiKey: params.apiKey,
+          configuration: { baseURL: params.baseUrl },
+          ...params.config,
+        })
+      }
+      if (classKey === 'ChatAnthropic') {
+        return new ModelClass({
+          model: params.model,
+          apiKey: params.apiKey,
+          clientOptions: { baseURL: params.baseUrl },
+          ...params.config,
+        })
+      }
+      if (classKey === 'ChatOllama') {
+        return new ModelClass({
+          model: params.model,
+          baseUrl: params.baseUrl,
+          ...params.config,
+        })
+      }
     }
-    
-    if (vendor.chatModelClass === 'ChatAnthropic') {
-      return new ChatModelClass({
-        model: params.model,
-        apiKey: params.apiKey,
-        clientOptions: {
-          baseURL: params.baseUrl,
-        },
-        ...params.config,
-      })
+
+    if (params.modelType === 'embedding') {
+      if (classKey === 'OpenAIEmbeddings') {
+        return new ModelClass({
+          model: params.model,
+          apiKey: params.apiKey,
+          configuration: { baseURL: params.baseUrl },
+          ...params.config,
+        })
+      }
+      if (classKey === 'OllamaEmbeddings') {
+        return new ModelClass({
+          model: params.model,
+          baseUrl: params.baseUrl,
+          ...params.config,
+        })
+      }
     }
-    
-    if (vendor.chatModelClass === 'ChatOllama') {
-      return new ChatModelClass({
-        model: params.model,
-        baseUrl: params.baseUrl,
-        ...params.config,
-      })
-    }
-    
-    return new ChatModelClass({ ...params })
+
+    return new ModelClass({ ...params })
   }
-  
+
   if (vendor.factoryCode) {
     const factory = executeFactoryCode(vendor.factoryCode)
-    return factory.createChatModel(params)
+    return factory.createModel({ ...params })
   }
-  
-  throw new Error('Vendor must have either chatModelClass or factoryCode')
+
+  throw new Error(`Vendor "${vendor.name ?? 'unknown'}" (${params.modelType}) must have either modelClass or factoryCode`)
 }
 
-/**
- * 执行工厂代码，返回 VendorFactory
- */
 function executeFactoryCode(code: string): VendorFactory {
   const vm = new VM({
     sandbox: {},
     timeout: 5000,
   })
-  
+
   vm.run(`
     const require = (name) => {
       if (name === '@langchain/core/language_models/chat_models') {
@@ -91,16 +105,24 @@ function executeFactoryCode(code: string): VendorFactory {
       if (name === '@langchain/core/outputs') {
         return require('@langchain/core/outputs')
       }
+      if (name === '@langchain/openai') {
+        return require('@langchain/openai')
+      }
+      if (name === '@langchain/anthropic') {
+        return require('@langchain/anthropic')
+      }
+      if (name === '@langchain/ollama') {
+        return require('@langchain/ollama')
+      }
       throw new Error('Unknown module: ' + name)
     }
   `)
-  
+
   const result = vm.run(code) as Record<string, unknown>
-  
-  if (!result || typeof result.createChatModel !== 'function') {
-    throw new Error('Factory code must export an object with createChatModel method')
+
+  if (!result || typeof result.createModel !== 'function') {
+    throw new Error('Factory code must export an object with createModel method')
   }
-  
+
   return result as unknown as VendorFactory
 }
-

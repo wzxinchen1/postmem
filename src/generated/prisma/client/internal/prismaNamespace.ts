@@ -1134,6 +1134,7 @@ export const VendorScalarFieldEnum = {
   name: 'name',
   url: 'url',
   chatModelClass: 'chatModelClass',
+  embeddingModelClass: 'embeddingModelClass',
   factoryCode: 'factoryCode',
   isActive: 'isActive',
   createdAt: 'createdAt',
