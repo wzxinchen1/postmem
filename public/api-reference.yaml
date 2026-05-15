@@ -7,43 +7,57 @@
 
 ### POST /api/kb/create
 
+**Types:** CreateKBRequest (请求), KnowledgeBaseInfo (响应)
+
 Request Body:
   type: CreateKBRequest
   - `name`: string (required)
   - `description`: string
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (KnowledgeBaseInfo)
+    { success: boolean, data: KnowledgeBaseInfo }
+  201: 创建成功 (KnowledgeBaseInfo)
+    { success: boolean, data: KnowledgeBaseInfo }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/kb/delete
+
+**Types:** DeleteRequest (请求), void (响应)
 
 Request Body:
   type: DeleteRequest
   - `id`: number (required)
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (void)
+    { success: boolean, data: void }
+  201: 创建成功 (void)
+    { success: boolean, data: void }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/kb/ingest
+
+**Types:** IngestTextRequest (请求), IngestTextResponse (响应)
 
 Request Body:
   type: IngestTextRequest
   - `kbId`: number (required)
   - `content`: string (required)
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (IngestTextResponse)
+    { success: boolean, data: IngestTextResponse }
+  201: 创建成功 (IngestTextResponse)
+    { success: boolean, data: IngestTextResponse }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/kb/list
+
+**Types:** ListRequest (请求), ListItem[] (响应)
 
 Request Body:
   type: ListRequest
@@ -51,13 +65,17 @@ Request Body:
   - `page`: number
   - `limit`: number
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (ListItem[])
+    { success: boolean, data: ListItem[] }
+  201: 创建成功 (ListItem[])
+    { success: boolean, data: ListItem[] }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/kb/search
+
+**Types:** SearchRequest (请求), SearchResult[] (响应)
 
 Request Body:
   type: SearchRequest
@@ -66,23 +84,29 @@ Request Body:
   - `top_k`: number
   - `context_window`: number
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (SearchResult[])
+    { success: boolean, data: SearchResult[] }
+  201: 创建成功 (SearchResult[])
+    { success: boolean, data: SearchResult[] }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/kb/stats
+
+**Types:** StatsRequest (请求), Stats (响应)
 
 Request Body:
   type: StatsRequest
   - `kbId`: number
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (Stats)
+    { success: boolean, data: Stats }
+  201: 创建成功 (Stats)
+    { success: boolean, data: Stats }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ---
 
@@ -91,15 +115,20 @@ Responses:
 ### GET /api/models/{id}
 单个模型 API
 
+**Types:** Model (响应)
+
 Path Parameters:
   - `id`: integer (required) - 模型ID
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Model)
+    { success: boolean, data: Model }
+  404: 资源不存在 (ErrorResponse)
 
 ### PUT /api/models/{id}
 单个模型 API
+
+**Types:** UpdateModelRequest (请求), Model (响应)
 
 Path Parameters:
   - `id`: integer (required) - 模型ID
@@ -113,41 +142,53 @@ Request Body:
   - `isActive`: boolean
   - `isDefault`: boolean
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Model)
+    { success: boolean, data: Model }
+  404: 资源不存在 (ErrorResponse)
 
 ### DELETE /api/models/{id}
 单个模型 API
 
+**Types:** Model (响应)
+
 Path Parameters:
   - `id`: integer (required) - 模型ID
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Model)
+    { success: boolean, data: Model }
+  404: 资源不存在 (ErrorResponse)
 
 ### GET /api/models/default
 获取默认模型 API
 
+**Types:** Model (响应)
+
 Query Parameters:
   - `modelType`: string [chat|embedding] - 模型类型
 
-Responses:
-  - 200: 成功响应
+Response Body:
+  200: 成功响应 (Model)
+    { success: boolean, data: Model }
 
 ### GET /api/models/index
 模型列表和创建 API
+
+**Types:** Model[] (响应)
 
 Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
   - `providerId`: integer - 按提供商ID筛选
 
-Responses:
-  - 200: 成功响应
+Response Body:
+  200: 成功响应 (Model[])
+    { success: boolean, data: Model[] }
 
 ### POST /api/models/index
 模型列表和创建 API
+
+**Types:** CreateModelRequest (请求), Model (响应)
 
 Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
@@ -163,11 +204,13 @@ Request Body:
   - `isActive`: boolean
   - `isDefault`: boolean
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (Model)
+    { success: boolean, data: Model }
+  201: 创建成功 (Model)
+    { success: boolean, data: Model }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ---
 
@@ -176,15 +219,20 @@ Responses:
 ### GET /api/providers/{id}
 单个提供商 API
 
+**Types:** Provider (响应)
+
 Path Parameters:
   - `id`: integer (required) - 提供商ID
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Provider)
+    { success: boolean, data: Provider }
+  404: 资源不存在 (ErrorResponse)
 
 ### PUT /api/providers/{id}
 单个提供商 API
+
+**Types:** UpdateProviderRequest (请求), Provider (响应)
 
 Path Parameters:
   - `id`: integer (required) - 提供商ID
@@ -198,31 +246,40 @@ Request Body:
   - `config`: unknown
   - `isActive`: boolean
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Provider)
+    { success: boolean, data: Provider }
+  404: 资源不存在 (ErrorResponse)
 
 ### DELETE /api/providers/{id}
 单个提供商 API
 
+**Types:** Provider (响应)
+
 Path Parameters:
   - `id`: integer (required) - 提供商ID
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Provider)
+    { success: boolean, data: Provider }
+  404: 资源不存在 (ErrorResponse)
 
 ### GET /api/providers/index
 提供商列表和创建 API
 
+**Types:** Provider[] (响应)
+
 Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
 
-Responses:
-  - 200: 成功响应
+Response Body:
+  200: 成功响应 (Provider[])
+    { success: boolean, data: Provider[] }
 
 ### POST /api/providers/index
 提供商列表和创建 API
+
+**Types:** CreateProviderRequest (请求), Provider (响应)
 
 Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
@@ -236,37 +293,47 @@ Request Body:
   - `config`: unknown
   - `isActive`: boolean
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (Provider)
+    { success: boolean, data: Provider }
+  201: 创建成功 (Provider)
+    { success: boolean, data: Provider }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/providers/models
 
+**Types:** Model[] (响应)
+
 Request Body:
   - `vendorId`: string (required)
   - `apiKey`: string (required)
   - `baseUrl`: string (required)
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (Model[])
+    { success: boolean, data: Model[] }
+  201: 创建成功 (Model[])
+    { success: boolean, data: Model[] }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/providers/validate
 
+**Types:** boolean (响应)
+
 Request Body:
   - `vendorId`: string (required)
   - `apiKey`: string (required)
   - `baseUrl`: string (required)
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (boolean)
+    { success: boolean, data: boolean }
+  201: 创建成功 (boolean)
+    { success: boolean, data: boolean }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ---
 
@@ -275,25 +342,33 @@ Responses:
 ### GET /api/sessions/{id}
 会话详情和删除 API
 
+**Types:** Session (响应)
+
 Path Parameters:
   - `id`: integer (required) - 会话ID
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Session)
+    { success: boolean, data: Session }
+  404: 资源不存在 (ErrorResponse)
 
 ### DELETE /api/sessions/{id}
 会话详情和删除 API
 
+**Types:** Session (响应)
+
 Path Parameters:
   - `id`: integer (required) - 会话ID
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Session)
+    { success: boolean, data: Session }
+  404: 资源不存在 (ErrorResponse)
 
 ### GET /api/sessions/index
 会话列表 API
+
+**Types:** Session[] (响应)
 
 Query Parameters:
   - `kbId`: integer (required) - 按知识库筛选
@@ -302,14 +377,18 @@ Query Parameters:
   - `page`: integer (默认: 1) - 页码
   - `limit`: integer (默认: 20) - 每页数量
 
-Responses:
-  - 200: 成功响应
+Response Body:
+  200: 成功响应 (Session[])
+    { success: boolean, data: Session[] }
 
 ### GET /api/sessions/stats
 会话统计 API
 
-Responses:
-  - 200: 成功响应
+**Types:** Stats (响应)
+
+Response Body:
+  200: 成功响应 (Stats)
+    { success: boolean, data: Stats }
 
 ---
 
@@ -318,14 +397,20 @@ Responses:
 ### GET /api/settings/index
 应用设置 API
 
-Responses:
-  - 200: 成功响应
+**Types:** AppSettings (响应)
+
+Response Body:
+  200: 成功响应 (AppSettings)
+    { success: boolean, data: AppSettings }
 
 ### PUT /api/settings/index
 应用设置 API
 
-Responses:
-  - 200: 成功响应
+**Types:** AppSettings (响应)
+
+Response Body:
+  200: 成功响应 (AppSettings)
+    { success: boolean, data: AppSettings }
 
 ---
 
@@ -334,15 +419,20 @@ Responses:
 ### GET /api/vendors/{id}
 单个厂商 API
 
+**Types:** Vendor (响应)
+
 Path Parameters:
   - `id`: integer (required) - 厂商ID
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Vendor)
+    { success: boolean, data: Vendor }
+  404: 资源不存在 (ErrorResponse)
 
 ### PUT /api/vendors/{id}
 单个厂商 API
+
+**Types:** UpdateVendorRequest (请求), Vendor (响应)
 
 Path Parameters:
   - `id`: integer (required) - 厂商ID
@@ -355,31 +445,40 @@ Request Body:
   - `factoryCode`: string
   - `isActive`: boolean
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Vendor)
+    { success: boolean, data: Vendor }
+  404: 资源不存在 (ErrorResponse)
 
 ### DELETE /api/vendors/{id}
 单个厂商 API
 
+**Types:** Vendor (响应)
+
 Path Parameters:
   - `id`: integer (required) - 厂商ID
 
-Responses:
-  - 200: 成功响应
-  - 404: 资源不存在
+Response Body:
+  200: 成功响应 (Vendor)
+    { success: boolean, data: Vendor }
+  404: 资源不存在 (ErrorResponse)
 
 ### GET /api/vendors/index
 厂商列表和创建 API
 
+**Types:** Vendor[] (响应)
+
 Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
 
-Responses:
-  - 200: 成功响应
+Response Body:
+  200: 成功响应 (Vendor[])
+    { success: boolean, data: Vendor[] }
 
 ### POST /api/vendors/index
 厂商列表和创建 API
+
+**Types:** CreateVendorRequest (请求), Vendor (响应)
 
 Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
@@ -392,15 +491,59 @@ Request Body:
   - `factoryCode`: string
   - `isActive`: boolean
 
-Responses:
-  - 200: 成功响应
-  - 201: 创建成功
-  - 400: 请求参数错误
-  - 409: 冲突（重复）
+Response Body:
+  200: 成功响应 (Vendor)
+    { success: boolean, data: Vendor }
+  201: 创建成功 (Vendor)
+    { success: boolean, data: Vendor }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
 
 ---
 
 ## Data Types
+
+### MemoryMetadata
+Required:
+key
+
+- `cutModel`?: string
+- `chunkSize`?: number
+- `originalLength`?: number
+- `key`*: string]: unknown
+
+### SearchResult
+Required:
+id, content, score, chunkIndex, metadata, source, prev, next
+
+- `id`*: number
+- `content`*: string
+- `score`*: number
+- `chunkIndex`*: number
+- `metadata`*: MemoryMetadata
+- `source`*: SearchSource
+- `context`?: {
+- `prev`*: string[]
+- `next`*: string[]
+
+### ListItem
+Required:
+id, content, chunkIndex, metadata, createdAt
+
+- `id`*: number
+- `content`*: string
+- `chunkIndex`*: number
+- `metadata`*: MemoryMetadata
+- `createdAt`*: Date
+
+### Stats
+Required:
+total
+
+- `kbId`?: number
+- `kbName`?: string
+- `total`*: number
+- `lastUpdated`?: Date
 
 ### IngestTextRequest
 Required:
@@ -409,12 +552,12 @@ kbId, content
 - `kbId`*: number
 - `content`*: string
 
-### IngestMessagesRequest
+### IngestTextResponse
 Required:
-kbId, messages
+count, memoryIds
 
-- `kbId`*: number
-- `messages`*: IngestMessage[]
+- `count`*: number
+- `memoryIds`*: number[]
 
 ### SearchRequest
 Required:
@@ -598,24 +741,4 @@ id, modelType, modelName, provider, status, metadata, createdAt
 - `metadata`*: unknown
 - `createdAt`*: Date
 - `messages`?: SessionMessage[]
-
-### CreateSessionRequest
-Required:
-modelType, modelName, provider
-
-- `kbId`?: number
-- `modelType`*: ModelType
-- `modelName`*: string
-- `provider`*: string
-- `metadata`?: unknown
-
-### AddMessageRequest
-Required:
-sessionId, role, content
-
-- `sessionId`*: number
-- `role`*: MessageRole
-- `content`*: string
-- `tokens`?: number
-- `metadata`?: unknown
 

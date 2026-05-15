@@ -206,14 +206,15 @@ function parseTypesFile(): TypeSchema[] {
   const content = fs.readFileSync(TYPES_FILE, 'utf-8')
   const schemas: TypeSchema[] = []
 
-  const interfaceRegex = /export interface (\w+Request|\w+Info|AppSettings|Session|SessionMessage|Vendor|Provider|Model)\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/g
+  // 匹配所有 export interface / export type
+  const interfaceRegex = /export\s+(interface|type)\s+(\w+)\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/g
   
   let match
   while ((match = interfaceRegex.exec(content)) !== null) {
-    const name = match[1]
-    const body = match[2]
+    const name = match[2]
+    const body = match[3]
 
-    const propRegex = /(\w+)(\?)?:\s*([^;\n]+)/g
+    const propRegex = /(\w+)(\?)?:\s*([^;\n]+?)(?:\s*\/\/.*)?$/gm
     const properties: TypeSchema['properties'] = []
 
     let propMatch
@@ -244,6 +245,68 @@ function parseTypesFile(): TypeSchema[] {
   }
 
   return schemas
+}
+
+/**
+ * 从所有已解析的类型中，筛选出被端点直接或间接引用的类型集合（递归）
+ */
+function getUsedTypes(endpoints: ApiEndpoint[], allTypes: TypeSchema[]): TypeSchema[] {
+  // 收集所有端点直接引用的类型名
+  const directRefs = new Set<string>()
+
+  for (const ep of endpoints) {
+    // 请求体类型
+    if (ep.requestBody?.type) directRefs.add(ep.requestBody.type)
+
+    // 响应类型
+    for (const [code] of Object.entries(ep.responses).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+      const typeInfo = getResponseType(ep.path, ep.method, Number(code), allTypes)
+      if (typeInfo && typeInfo !== 'object' && typeInfo !== 'void' && !typeInfo.startsWith('Error') && !typeInfo.startsWith('boolean')) {
+        // 去掉数组后缀获取基础类型名
+        const baseType = typeInfo.replace(/\[\]$/, '')
+        directRefs.add(baseType)
+      }
+    }
+  }
+
+  // 递归收集：从已引用类型的属性中，继续收集引用的其他自定义类型
+  const visited = new Set<string>()
+  function collectNested(typeName: string) {
+    if (visited.has(typeName)) return
+    visited.add(typeName)
+
+    const schema = allTypes.find(t => t.name === typeName)
+    if (!schema) return
+
+    for (const prop of schema.properties) {
+      // 属性值是自定义类型（不是原始类型）
+      const baseType = prop.type.replace(/\[\]$/, '').replace(/Array<(.+)>/, '$1').trim()
+      if (isCustomType(baseType, allTypes)) {
+        directRefs.add(baseType)
+        collectNested(baseType)
+      }
+      // 数组项也是自定义类型
+      if (prop.itemsType && isCustomType(prop.itemsType, allTypes)) {
+        directRefs.add(prop.itemsType)
+        collectNested(prop.itemsType)
+      }
+    }
+  }
+
+  for (const typeName of directRefs) {
+    collectNested(typeName)
+  }
+
+  return allTypes.filter(t => visited.has(t.name))
+}
+
+function isCustomType(typeName: string, allTypes: TypeSchema[]): boolean {
+  if (!typeName || /^[a-z]/.test(typeName)) return false // 小写开头是原始类型
+  const primitives = new Set(['string', 'number', 'boolean', 'Date', 'unknown', 'null', 'object'])
+  if (primitives.has(typeName)) return false
+  // 包含 | 或 Record 是联合/泛型类型，跳过
+  if (typeName.includes('|') || typeName.includes('Record')) return false
+  return allTypes.some(t => t.name === typeName)
 }
 
 function typeToSwaggerType(typeStr: string): { type: string; items?: any; enum?: string[] } {
@@ -533,18 +596,22 @@ function main() {
   console.log(`   提取 ${allEndpoints.length} 个端点`)
 
   console.log('📦 正在解析类型定义...')
-  const types = parseTypesFile()
-  console.log(`   提取 ${types.length} 个类型`)
+  const allTypes = parseTypesFile()
+  console.log(`   提取 ${allTypes.length} 个类型`)
+
+  // 过滤：只保留被端点引用的类型（递归）
+  const usedTypes = getUsedTypes(allEndpoints, allTypes)
+  console.log(`   筛选后: ${usedTypes.length} 个类型（已排除未使用的）`)
 
   console.log('🔨 正在生成 OpenAPI 规范...')
-  const spec = generateOpenAPI(allEndpoints, types)
+  const spec = generateOpenAPI(allEndpoints, usedTypes)
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(spec, null, 2) + '\n')
   console.log(`✅ 已生成: ${OUTPUT_FILE}`)
   console.log(`   大小: ${(fs.statSync(OUTPUT_FILE).size / 1024).toFixed(1)} KB`)
 
   console.log('🤖 正在生成 LLM 友好的 YAML 文档...')
-  const yaml = generateLLMYaml(allEndpoints, types)
+  const yaml = generateLLMYaml(allEndpoints, usedTypes)
   fs.writeFileSync(LLM_YAML_FILE, yaml)
   console.log(`✅ 已生成: ${LLM_YAML_FILE}`)
   console.log(`   大小: ${(fs.statSync(LLM_YAML_FILE).size / 1024).toFixed(1)} KB`)
@@ -572,6 +639,29 @@ function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[]): string 
         lines.push(`${ep.summary}`)
       }
       lines.push('')
+
+      // 汇总该 API 使用的所有类型
+      const usedTypes: string[] = []
+      if (ep.requestBody?.type && types.find(t => t.name === ep.requestBody!.type)) {
+        usedTypes.push(`${ep.requestBody.type} (请求)`)
+      }
+
+      // 收集所有成功响应的类型（去重）
+      const respTypes = new Set<string>()
+      for (const [code] of Object.entries(ep.responses).sort((a, b) => Number(a[0]) - Number(b[0]))) {
+        const typeInfo = getResponseType(ep.path, ep.method, Number(code), types)
+        if (typeInfo && !typeInfo.startsWith('Error') && typeInfo !== 'object') {
+          respTypes.add(typeInfo)
+        }
+      }
+      for (const t of respTypes) {
+        usedTypes.push(`${t} (响应)`)
+      }
+
+      if (usedTypes.length) {
+        lines.push(`**Types:** ${usedTypes.join(', ')}`)
+        lines.push('')
+      }
 
       if (ep.params?.length) {
         lines.push('Path Parameters:')
@@ -610,11 +700,15 @@ function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[]): string 
         lines.push('')
       }
 
-      lines.push('Responses:')
+      lines.push('Response Body:')
       const respEntries = Object.entries(ep.responses).sort((a, b) => Number(a[0]) - Number(b[0]))
       for (const [code, resp] of respEntries) {
-        const dataRef = getResponseType(ep.path, ep.method, code, types)
-        lines.push(`  - ${code}: ${resp.description}${dataRef ? ` -> ${dataRef}` : ''}`)
+        const typeInfo = getResponseType(ep.path, ep.method, Number(code), types)
+        const refStr = typeInfo ? ` (${typeInfo})` : ''
+        lines.push(`  ${code}: ${resp.description}${refStr}`)
+        if (typeInfo && !typeInfo.startsWith('Error')) {
+          lines.push(`    { success: boolean, data: ${typeInfo} }`)
+        }
       }
       lines.push('')
     }
@@ -663,30 +757,54 @@ function groupByTag(endpoints: ApiEndpoint[]): Record<string, ApiEndpoint[]> {
 }
 
 function getResponseType(apiPath: string, method: string, code: number, types: TypeSchema[]): string | undefined {
-  const dataKeyMap: Record<string, string> = {
+  if (code !== 200 && code !== 201) return 'ErrorResponse'
+
+  // 精确匹配优先
+  const exactMap: Record<string, string> = {
     '/api/kb/create': 'KnowledgeBaseInfo',
-    '/api/kb': 'KnowledgeBaseInfo',
-    '/api/models': 'Model',
-    '/api/providers': 'Provider',
-    '/api/vendors': 'Vendor',
-    '/api/settings': 'AppSettings',
-    '/api/sessions': 'Session'
+    '/api/kb/delete': 'void',
+    '/api/kb/ingest': 'IngestTextResponse',
+    '/api/kb/list': 'ListItem[]',
+    '/api/kb/search': 'SearchResult[]',
+    '/api/kb/stats': 'Stats',
+    '/api/settings/index': 'AppSettings',
   }
 
-  if (code !== 200 && code !== 201) return undefined
+  if (exactMap[apiPath]) return exactMap[apiPath]
 
-  for (const [key, typeName] of Object.entries(dataKeyMap)) {
-    if (!apiPath.startsWith(key)) continue
-    
-    if (apiPath.includes('{id}') || apiPath.match(/\[id\]/)) {
-      return typeName
+  // 前缀匹配（带子路径精确规则）
+  const pathToType: Array<{ prefix: string; subPaths?: Record<string, string>; type: string; isListForGET: boolean }> = [
+    {
+      prefix: '/api/models/',
+      type: 'Model', isListForGET: true,
+      subPaths: { '/default': 'Model' }
+    },
+    { prefix: '/api/providers/', type: 'Provider', isListForGET: true,
+      subPaths: { '/models': 'Model[]', '/validate': 'boolean' }
+    },
+    { prefix: '/api/vendors/', type: 'Vendor', isListForGET: true },
+    { prefix: '/api/sessions/', type: 'Session', isListForGET: true,
+      subPaths: { '/stats': 'Stats' }
+    },
+  ]
+
+  for (const rule of pathToType) {
+    if (!apiPath.startsWith(rule.prefix)) continue
+
+    // 子路径精确匹配（如 /api/providers/models）
+    if (rule.subPaths) {
+      const remaining = apiPath.slice(rule.prefix.length - 1) // 包含前导 /
+      if (rule.subPaths[remaining]) return rule.subPaths[remaining]
     }
-    
-    const isList = method === 'GET' && typeName !== 'AppSettings' && !apiPath.includes('{id}')
-    return isList ? `${typeName}[]` : typeName
+
+    if (apiPath.includes('{id}') || /\/\w+\/\d?$/.test(apiPath)) return rule.type
+
+    if (method === 'GET' && rule.isListForGET) return `${rule.type}[]`
+
+    return rule.type
   }
-  
-  return undefined
+
+  return 'object'
 }
 
 main()

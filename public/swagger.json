@@ -2176,6 +2176,137 @@
   },
   "components": {
     "schemas": {
+      "MemoryMetadata": {
+        "type": "object",
+        "required": [
+          "key"
+        ],
+        "properties": {
+          "cutModel": {
+            "type": "string",
+            "description": "cutModel"
+          },
+          "chunkSize": {
+            "type": "number",
+            "description": "chunkSize"
+          },
+          "originalLength": {
+            "type": "number",
+            "description": "originalLength"
+          },
+          "key": {
+            "type": "string",
+            "description": "key"
+          }
+        }
+      },
+      "SearchResult": {
+        "type": "object",
+        "required": [
+          "id",
+          "content",
+          "score",
+          "chunkIndex",
+          "metadata",
+          "source",
+          "prev",
+          "next"
+        ],
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "id"
+          },
+          "content": {
+            "type": "string",
+            "description": "content"
+          },
+          "score": {
+            "type": "number",
+            "description": "score"
+          },
+          "chunkIndex": {
+            "type": "number",
+            "description": "chunkIndex"
+          },
+          "metadata": {
+            "type": "string",
+            "description": "metadata"
+          },
+          "source": {
+            "type": "string",
+            "description": "source"
+          },
+          "context": {
+            "type": "string",
+            "description": "context"
+          },
+          "prev": {
+            "type": "string",
+            "description": "prev"
+          },
+          "next": {
+            "type": "string",
+            "description": "next"
+          }
+        }
+      },
+      "ListItem": {
+        "type": "object",
+        "required": [
+          "id",
+          "content",
+          "chunkIndex",
+          "metadata",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "number",
+            "description": "id"
+          },
+          "content": {
+            "type": "string",
+            "description": "content"
+          },
+          "chunkIndex": {
+            "type": "number",
+            "description": "chunkIndex"
+          },
+          "metadata": {
+            "type": "string",
+            "description": "metadata"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "createdAt"
+          }
+        }
+      },
+      "Stats": {
+        "type": "object",
+        "required": [
+          "total"
+        ],
+        "properties": {
+          "kbId": {
+            "type": "number",
+            "description": "kbId"
+          },
+          "kbName": {
+            "type": "string",
+            "description": "kbName"
+          },
+          "total": {
+            "type": "number",
+            "description": "total"
+          },
+          "lastUpdated": {
+            "type": "string",
+            "description": "lastUpdated"
+          }
+        }
+      },
       "IngestTextRequest": {
         "type": "object",
         "required": [
@@ -2193,20 +2324,20 @@
           }
         }
       },
-      "IngestMessagesRequest": {
+      "IngestTextResponse": {
         "type": "object",
         "required": [
-          "kbId",
-          "messages"
+          "count",
+          "memoryIds"
         ],
         "properties": {
-          "kbId": {
+          "count": {
             "type": "number",
-            "description": "kbId"
+            "description": "count"
           },
-          "messages": {
+          "memoryIds": {
             "type": "string",
-            "description": "messages"
+            "description": "memoryIds"
           }
         }
       },
@@ -2797,66 +2928,6 @@
           "messages": {
             "type": "string",
             "description": "messages"
-          }
-        }
-      },
-      "CreateSessionRequest": {
-        "type": "object",
-        "required": [
-          "modelType",
-          "modelName",
-          "provider"
-        ],
-        "properties": {
-          "kbId": {
-            "type": "number",
-            "description": "kbId"
-          },
-          "modelType": {
-            "type": "string",
-            "description": "modelType"
-          },
-          "modelName": {
-            "type": "string",
-            "description": "modelName"
-          },
-          "provider": {
-            "type": "string",
-            "description": "provider"
-          },
-          "metadata": {
-            "type": "object",
-            "description": "metadata"
-          }
-        }
-      },
-      "AddMessageRequest": {
-        "type": "object",
-        "required": [
-          "sessionId",
-          "role",
-          "content"
-        ],
-        "properties": {
-          "sessionId": {
-            "type": "number",
-            "description": "sessionId"
-          },
-          "role": {
-            "type": "string",
-            "description": "role"
-          },
-          "content": {
-            "type": "string",
-            "description": "content"
-          },
-          "tokens": {
-            "type": "number",
-            "description": "tokens"
-          },
-          "metadata": {
-            "type": "object",
-            "description": "metadata"
           }
         }
       },
