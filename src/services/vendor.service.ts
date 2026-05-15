@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client'
+import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Vendor, CreateVendorRequest, UpdateVendorRequest } from '@/src/types'
 import { createChatModel } from './vendor-protocol.service'
 

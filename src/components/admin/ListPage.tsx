@@ -1,8 +1,8 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { message, Card, Table, Button, Select, Space, Typography, Empty, Popconfirm } from 'antd'
-import { DeleteOutlined } from '@ant-design/icons'
+import { message, Card, Table, Button, Select, Space, Typography, Empty, Popconfirm, Modal } from 'antd'
+import { DeleteOutlined, EyeOutlined } from '@ant-design/icons'
 import { ListResponse } from '@/app/admin/types'
 import { post } from '@/app/admin/lib/request'
 import { KBSelector } from '@/src/components/admin/KBSelector'
@@ -17,6 +17,7 @@ export default function ListPage() {
   const [listResults, setListResults] = useState<ListResponse | null>(null)
   
   const [msg, contextHolder] = message.useMessage()
+  const [viewContent, setViewContent] = useState<string | null>(null)
 
   useEffect(() => {
     if (kbId) {
@@ -82,23 +83,34 @@ export default function ListPage() {
     {
       title: '操作',
       key: 'action',
-      width: 100,
-      render: (_: unknown, record: { id: number }) => (
-        <Popconfirm
-          title="确定要删除这条记录吗？"
-          onConfirm={() => handleDelete(record.id)}
-          okText="确定"
-          cancelText="取消"
-        >
-          <Button 
-            type="primary" 
-            danger 
-            icon={<DeleteOutlined />}
-            loading={loading}
+      width: 160,
+      render: (_: unknown, record: { id: number; content: string }) => (
+        <Space>
+          <Button
+            type="link"
+            size="small"
+            icon={<EyeOutlined />}
+            onClick={() => setViewContent(record.content)}
           >
-            删除
+            查看
           </Button>
-        </Popconfirm>
+          <Popconfirm
+            title="确定要删除这条记录吗？"
+            onConfirm={() => handleDelete(record.id)}
+            okText="确定"
+            cancelText="取消"
+          >
+            <Button 
+              type="primary" 
+              danger 
+              size="small"
+              icon={<DeleteOutlined />}
+              loading={loading}
+            >
+              删除
+            </Button>
+          </Popconfirm>
+        </Space>
       ),
     },
   ]
@@ -149,6 +161,22 @@ export default function ListPage() {
           </>
         )}
       </Card>
+      
+      <Modal
+        title="内容详情"
+        open={!!viewContent}
+        onCancel={() => setViewContent(null)}
+        footer={[
+          <Button key="close" onClick={() => setViewContent(null)}>
+            关闭
+          </Button>
+        ]}
+        width={700}
+      >
+        <div style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
+          {viewContent}
+        </div>
+      </Modal>
     </div>
   )
 }

@@ -1,5 +1,5 @@
 import { createContainer, asClass, asValue, InjectionMode } from 'awilix'
-import type { PrismaClient } from '@prisma/client'
+import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import prisma from '@/src/lib/prisma'
 import { EmbeddingService } from '@/src/services/embedding.service'
 import { CutModelService } from '@/src/services/cut-model.service'

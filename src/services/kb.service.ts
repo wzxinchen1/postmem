@@ -1,4 +1,4 @@
-import type { PrismaClient } from '@prisma/client'
+import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import { Errors } from '@/src/lib/errors'
 import type {
   SearchResult,
@@ -8,36 +8,64 @@ import type {
   IngestMessage,
   IngestTextResponse,
   IngestMessagesResponse,
-  MessageGroup,
 } from '@/src/types'
 import { EmbeddingService } from '@/src/services/embedding.service'
 import { SettingService } from '@/src/services/setting.service'
-import { CutModelService } from '@/src/services/cut-model.service'
+
+const CHUNK_SIZE = 1000
 
 /**
  * 知识库核心服务
+ *
+ * 设计原则（MemPalace 原理）：
+ * - 写入零 LLM 调用，不提取不总结
+ * - 只存完整原文（Verbatim-First）
+ * - 向量仅作为检索原文的索引
  */
 export class KBService {
   private prisma: PrismaClient
   private embeddingService: EmbeddingService
-  private cutModelService: CutModelService
   private settingService: SettingService
 
   constructor({
     prisma,
     embeddingService,
-    cutModelService,
     settingService,
   }: {
     prisma: PrismaClient
     embeddingService: EmbeddingService
-    cutModelService: CutModelService
     settingService: SettingService
   }) {
     this.prisma = prisma
     this.embeddingService = embeddingService
-    this.cutModelService = cutModelService
     this.settingService = settingService
+  }
+
+  /**
+   * 按段落边界分块（纯字符串操作，无 LLM）
+   */
+  private splitByParagraphs(text: string): string[] {
+    const chunks: string[] = []
+    const paragraphs = text.split(/\n\s*\n/)
+    let currentChunk = ''
+
+    for (const para of paragraphs) {
+      const trimmed = para.trim()
+      if (!trimmed) continue
+
+      if (currentChunk.length + trimmed.length > CHUNK_SIZE && currentChunk.length > 0) {
+        chunks.push(currentChunk.trim())
+        currentChunk = trimmed
+      } else {
+        currentChunk = currentChunk ? `${currentChunk}\n\n${trimmed}` : trimmed
+      }
+    }
+
+    if (currentChunk.trim()) {
+      chunks.push(currentChunk.trim())
+    }
+
+    return chunks.length > 0 ? chunks : [text]
   }
 
   /**
@@ -119,7 +147,9 @@ export class KBService {
   }
 
   /**
-   * 知识入库 - 纯文本方式（用于测试）
+   * 知识入库 - 纯文本方式
+   *
+   * MemPalace 原理：零 LLM 调用，按段落分块，原文完整存储
    */
   async ingestText(kbId: number, content: string): Promise<IngestTextResponse> {
     const settings = await this.settingService.getAppSettings()
@@ -133,35 +163,22 @@ export class KBService {
       throw Errors.badRequest(`内容长度超过限制 (${maxLength} 字符)`)
     }
 
-    const kb = await this.getKnowledgeBaseById(kbId)
-    
-    let groups: MessageGroup[]
-    try {
-      groups = await this.cutModelService.analyzeTextGroups(content, kb.id)
-    } catch (error) {
-      throw error
-    }
+    await this.getKnowledgeBaseById(kbId)
 
+    const chunks = this.splitByParagraphs(content)
     const memoryIds: number[] = []
 
-    for (let i = 0; i < groups.length; i++) {
-      const group = groups[i]
-
-      const groupContent = group.summary 
-        ? `【话题摘要】${group.summary}\n【内容】${content.slice(0, 500)}`
-        : content
+    for (let i = 0; i < chunks.length; i++) {
+      const embedding = await this.embeddingService.generateEmbedding(chunks[i], kbId)
 
       await this.prisma.$executeRaw`
-        INSERT INTO memories (kb_id, content, chunk_index, metadata, created_at)
+        INSERT INTO memories (kb_id, content, embedding, chunk_index, metadata, created_at)
         VALUES (
           ${kbId},
-          ${groupContent},
+          ${chunks[i]},
+          ${`[${embedding.join(',')}]`}::vector,
           ${i},
-          ${JSON.stringify({
-            cutModel: 'llm',
-            summary: group.summary,
-            isComplete: group.isComplete,
-          })}::json,
+          ${JSON.stringify({ cutModel: 'paragraph' })}::json,
           NOW()
         )
         RETURNING id
@@ -188,7 +205,9 @@ export class KBService {
   }
 
   /**
-   * 知识入库 - 消息列表方式（智能切割）
+   * 知识入库 - 消息列表方式
+   *
+   * MemPalace 原理：零 LLM 调用，每条消息原文完整存储
    */
   async ingestMessages(kbId: number, messages: IngestMessage[]): Promise<IngestMessagesResponse> {
     const settings = await this.settingService.getAppSettings()
@@ -204,47 +223,28 @@ export class KBService {
       }
     }
 
-    const kb = await this.getKnowledgeBaseById(kbId)
-    
-    let groups: MessageGroup[]
-    try {
-      groups = await this.cutModelService.analyzeMessageGroups(messages, kb.id)
-    } catch (error) {
-      throw error
-    }
+    await this.getKnowledgeBaseById(kbId)
 
-    const messageMap = new Map(messages.map(m => [m.id, m]))
     const memoryIds: number[] = []
     const memorizedMessageIds: string[] = []
 
-    for (let i = 0; i < groups.length; i++) {
-      const group = groups[i]
-
-      if (!group.isComplete) {
-        continue
-      }
-
-      const groupMessages = group.messageIds
-        .map(id => messageMap.get(id))
-        .filter((m): m is IngestMessage => m !== undefined)
-
-      if (groupMessages.length === 0) {
-        continue
-      }
-
-      const content = this.formatGroupContent(groupMessages, group.summary)
+    for (let i = 0; i < messages.length; i++) {
+      const msg = messages[i]
+      const roleLabel = msg.role === 'user' ? '用户' : msg.role === 'assistant' ? '助手' : '系统'
+      const content = `${roleLabel}: ${msg.content}`
+      const embedding = await this.embeddingService.generateEmbedding(content, kbId)
 
       await this.prisma.$executeRaw`
-        INSERT INTO memories (kb_id, content, chunk_index, metadata, created_at)
+        INSERT INTO memories (kb_id, content, embedding, chunk_index, metadata, created_at)
         VALUES (
           ${kbId},
           ${content},
+          ${`[${embedding.join(',')}]`}::vector,
           ${i},
           ${JSON.stringify({
-            cutModel: 'llm',
-            messageIds: group.messageIds,
-            summary: group.summary,
-            messageCount: groupMessages.length,
+            cutModel: 'verbatim',
+            messageId: msg.id,
+            role: msg.role,
           })}::json,
           NOW()
         )
@@ -262,7 +262,7 @@ export class KBService {
 
       if (memory) {
         memoryIds.push(memory.id)
-        memorizedMessageIds.push(...group.messageIds)
+        memorizedMessageIds.push(msg.id)
       }
     }
 
@@ -271,25 +271,6 @@ export class KBService {
       memoryIds,
       memorizedMessageIds,
     }
-  }
-
-  /**
-   * 格式化消息组内容为记忆文本
-   */
-  private formatGroupContent(messages: IngestMessage[], summary?: string): string {
-    const parts: string[] = []
-    
-    if (summary) {
-      parts.push(`【话题摘要】${summary}`)
-    }
-    
-    parts.push('【对话内容】')
-    for (const msg of messages) {
-      const roleLabel = msg.role === 'user' ? '用户' : msg.role === 'assistant' ? '助手' : '系统'
-      parts.push(`${roleLabel}: ${msg.content}`)
-    }
-    
-    return parts.join('\n')
   }
 
   /**

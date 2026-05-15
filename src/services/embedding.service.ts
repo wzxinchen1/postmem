@@ -1,5 +1,5 @@
 import { Errors } from '@/src/lib/errors'
-import type { PrismaClient } from '@prisma/client'
+import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Model, Provider, Vendor } from '@/src/types'
 import { SessionService } from '@/src/services/session.service'
 import { VendorService } from './vendor.service'
