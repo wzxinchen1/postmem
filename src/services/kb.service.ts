@@ -148,7 +148,7 @@ export class KBService {
     const memoryIds: number[] = []
 
     for (let i = 0; i < chunks.length; i++) {
-      const embedding = await this.embeddingService.generateEmbedding(chunks[i], kbId)
+      const embedding = await this.embeddingService.generateEmbedding(chunks[i])
 
       await this.prisma.$executeRaw`
         INSERT INTO memories (kb_id, content, embedding, chunk_index, ingest_batch, metadata, "contentTsvector", created_at)
@@ -215,7 +215,7 @@ export class KBService {
       const msg = messages[i]
       const roleLabel = msg.role === 'user' ? '用户' : msg.role === 'assistant' ? '助手' : '系统'
       const content = `${roleLabel}: ${msg.content}`
-      const embedding = await this.embeddingService.generateEmbedding(content, kbId)
+      const embedding = await this.embeddingService.generateEmbedding(content)
 
       await this.prisma.$executeRaw`
         INSERT INTO memories (kb_id, content, embedding, chunk_index, ingest_batch, metadata, "contentTsvector", created_at)
@@ -273,9 +273,9 @@ export class KBService {
     }
 
     await this.getKnowledgeBaseById(kbId)
-    const queryEmbedding = await this.embeddingService.generateEmbedding(query, kbId)
+    const queryEmbedding = await this.embeddingService.generateEmbedding(query)
 
-    const sparseTopK = topK * 3
+    const denseLimit = topK * 3
 
     const [denseResults, sparseResults] = await Promise.all([
       this.prisma.$queryRaw<
@@ -285,7 +285,7 @@ export class KBService {
           chunk_index: number
           ingest_batch: string
           metadata: any
-          score: number
+          cosine_distance: number
         }>
       >`
         SELECT 
@@ -294,11 +294,12 @@ export class KBService {
           chunk_index,
           ingest_batch,
           metadata,
-          1 - (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) as score
+          (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) as cosine_distance
         FROM memories
         WHERE kb_id = ${kbId}
+          AND (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) < 0.3
         ORDER BY embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector
-        LIMIT ${sparseTopK}
+        LIMIT ${denseLimit}
       `,
       this.prisma.$queryRaw<
         Array<{
@@ -307,7 +308,7 @@ export class KBService {
           chunk_index: number
           ingest_batch: string
           metadata: any
-          score: number
+          ts_rank: number
         }>
       >`
         SELECT 
@@ -316,26 +317,34 @@ export class KBService {
           chunk_index,
           ingest_batch,
           metadata,
-          ts_rank("contentTsvector", plainto_tsquery('simple', ${query})) as score
+          ts_rank("contentTsvector", plainto_tsquery('simple', ${query})) as ts_rank
         FROM memories
         WHERE kb_id = ${kbId} AND "contentTsvector" @@ plainto_tsquery('simple', ${query})
         ORDER BY ts_rank("contentTsvector", plainto_tsquery('simple', ${query})) DESC
-        LIMIT ${sparseTopK}
+        LIMIT ${denseLimit}
       `
     ])
 
     const rrfK = 60
-    const rrfScores = new Map<number, { score: number; source: SearchSource; data: typeof denseResults[0] }>()
+    interface RrfItem {
+      id: number
+      content: string
+      chunk_index: number
+      ingest_batch: string
+      metadata: any
+      ts_rank?: number
+    }
+    const rrfScores = new Map<number, { rrfScore: number; source: SearchSource; data: RrfItem; cosineSim: number; tsRank?: number }>()
 
     for (let i = 0; i < denseResults.length; i++) {
       const item = denseResults[i]
       const existing = rrfScores.get(item.id)
       const rrfContribution = 1 / (rrfK + i + 1)
       if (existing) {
-        existing.score += rrfContribution
+        existing.rrfScore += rrfContribution
         existing.source = 'hybrid'
       } else {
-        rrfScores.set(item.id, { score: rrfContribution, source: 'dense', data: item })
+        rrfScores.set(item.id, { rrfScore: rrfContribution, source: 'dense', data: item, cosineSim: 1 - item.cosine_distance })
       }
     }
 
@@ -344,22 +353,28 @@ export class KBService {
       const existing = rrfScores.get(item.id)
       const rrfContribution = 1 / (rrfK + i + 1)
       if (existing) {
-        existing.score += rrfContribution
+        existing.rrfScore += rrfContribution
         existing.source = 'hybrid'
+        existing.tsRank = item.ts_rank
       } else {
-        rrfScores.set(item.id, { score: rrfContribution, source: 'sparse', data: item })
+        rrfScores.set(item.id, { rrfScore: rrfContribution, source: 'sparse', data: item, cosineSim: 0, tsRank: item.ts_rank })
       }
     }
 
     const merged = [...rrfScores.values()]
-      .sort((a, b) => b.score - a.score)
+      .sort((a, b) => b.rrfScore - a.rrfScore)
       .slice(0, topK)
-
-    const maxScore = merged.length > 0 ? merged[0].score : 1
 
     const searchResults: SearchResult[] = []
     for (const item of merged) {
-      const normalizedScore = item.score / maxScore
+      let score: number
+      if (item.cosineSim > 0) {
+        score = item.cosineSim
+      } else if (item.tsRank !== undefined && item.tsRank > 0) {
+        score = Math.min(1, item.tsRank)
+      } else {
+        score = 0
+      }
       const context = contextWindow > 0
         ? await this.getContext(item.data.id, kbId, item.data.ingest_batch, contextWindow)
         : undefined
@@ -367,7 +382,7 @@ export class KBService {
       searchResults.push({
         id: item.data.id,
         content: item.data.content,
-        score: normalizedScore,
+        score,
         chunkIndex: item.data.chunk_index,
         metadata: item.data.metadata,
         source: item.source,

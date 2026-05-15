@@ -2,18 +2,15 @@ import type { Embeddings } from '@langchain/core/embeddings'
 import { Errors } from '@/src/lib/errors'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Model, Provider } from '@/src/types'
-import { SessionService } from '@/src/services/session.service'
 import { VendorService } from './vendor.service'
 
 export class EmbeddingService {
   private prisma: PrismaClient
-  private sessionService: SessionService
   private vendorService: VendorService
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map()
 
-  constructor({ prisma, sessionService }: { prisma: PrismaClient; sessionService: SessionService }) {
+  constructor({ prisma }: { prisma: PrismaClient }) {
     this.prisma = prisma
-    this.sessionService = sessionService
     this.vendorService = new VendorService({ prisma })
   }
 
@@ -42,12 +39,12 @@ export class EmbeddingService {
       throw Errors.embeddingError('未配置默认嵌入模型，请在 /admin/models 页面配置')
     }
 
-    const result = { model, provider: model.provider }
+    const result = { model: model as unknown as Model, provider: model.provider as unknown as Provider }
     this.modelCache.set(cacheKey, result)
     return result
   }
 
-  async generateEmbedding(text: string, kbId?: number): Promise<number[]> {
+  async generateEmbedding(text: string): Promise<number[]> {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
@@ -55,25 +52,6 @@ export class EmbeddingService {
     }
 
     const vendor = provider.vendor
-
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'embedding',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: vendor.id,
-        vendorName: vendor.name,
-      },
-    })
-
-    await this.sessionService.addMessage({
-      sessionId: session.id,
-      role: 'user',
-      content: text.substring(0, 500),
-      metadata: { textLength: text.length },
-    })
 
     const embeddingModel = this.vendorService.createModel(vendor, {
       model: model.name,
@@ -83,23 +61,13 @@ export class EmbeddingService {
       config: model.config,
     }) as Embeddings
 
-    const result = await embeddingModel.embedQuery(text)
-
-    await this.sessionService.addMessage({
-      sessionId: session.id,
-      role: 'assistant',
-      content: `[embedding vector: ${result.length} dimensions]`,
-      metadata: { model: model.name, dimensions: result.length },
-    })
-
-    await this.sessionService.complete(session.id)
-    return result
+    return embeddingModel.embedQuery(text)
   }
 
-  async generateEmbeddings(texts: string[], kbId?: number): Promise<number[][]> {
+  async generateEmbeddings(texts: string[]): Promise<number[][]> {
     const embeddings: number[][] = []
     for (const text of texts) {
-      const embedding = await this.generateEmbedding(text, kbId)
+      const embedding = await this.generateEmbedding(text)
       embeddings.push(embedding)
     }
     return embeddings
