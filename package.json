@@ -16,7 +16,9 @@
     "db:seed": "pnpm tsx prisma/seed.ts",
     "db:studio": "prisma studio",
     "db:push": "prisma db push",
-    "db:setup": "prisma generate && prisma migrate deploy && prisma db seed"
+    "db:setup": "prisma generate && prisma migrate deploy && prisma db seed",
+    "test": "vitest run",
+    "test:watch": "vitest"
   },
   "prisma": {
     "seed": "pnpm tsx prisma/seed.ts"
@@ -52,8 +54,10 @@
     "eslint-config-next": "^14.2.20",
     "prisma": "^7.8.0",
     "sass": "^1.99.0",
+    "supertest": "^7.2.2",
     "ts-node": "^10.9.2",
-    "tsx": "^4.21.0"
+    "tsx": "^4.21.0",
+    "vitest": "^4.1.6"
   },
   "engines": {
     "node": ">=18.0.0"
