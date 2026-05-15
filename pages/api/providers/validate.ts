@@ -11,13 +11,18 @@ export default createApiHandler<Deps>({
   handler: async (req, res, deps) => {
     await apiHandler(req, res, deps, {
       POST: async (deps) => {
-        const { apiKey, baseUrl } = req.body
+        const { vendorId, apiKey, baseUrl } = req.body
 
         if (!baseUrl) {
           return errorResponse(res, 'VALIDATION_ERROR', 'Base URL为必填项', 400)
         }
 
+        if (!vendorId) {
+          return errorResponse(res, 'VALIDATION_ERROR', '厂商ID为必填项', 400)
+        }
+
         const result = await deps.providerValidateService.validateProvider(
+          vendorId,
           apiKey,
           baseUrl
         )

@@ -187,21 +187,28 @@ export type ProviderType = 'openai' | 'anthropic' | 'local' | 'custom'
 export type ModelType = 'embedding' | 'chat'
 
 /**
- * 厂商识别结果
+ * 厂商工厂接口 - 创建 LangChain ChatModel
  */
-export interface VendorInfo {
-  id: string
+export interface VendorFactory {
+  createChatModel(params: {
+    model: string
+    apiKey?: string
+    baseUrl?: string
+    config?: Record<string, unknown>
+  }): unknown // BaseChatModel 实例
+}
+
+/**
+ * 厂商
+ */
+export interface Vendor {
+  id: number
   name: string
-  apiFormat: 'openai' | 'anthropic' | 'alibaba' | 'zhipu' | 'deepseek' | 'openrouter'
-  authType: 'bearer' | 'x-api-key' | 'custom'
-  requiredHeaders: Record<string, string>
-  defaultPath: string
-  features: {
-    thinking: boolean
-    streaming: boolean
-    tools: boolean
-    multimodal: boolean
-  }
+  chatModelClass?: string | null
+  factoryCode?: string | null
+  isActive: boolean
+  createdAt: Date
+  updatedAt: Date
 }
 
 /**
@@ -210,6 +217,8 @@ export interface VendorInfo {
 export interface Provider {
   id: number
   name: string
+  vendorId: number
+  vendor?: Vendor
   apiKey?: string
   baseUrl: string
   config: Record<string, unknown>
@@ -239,6 +248,7 @@ export interface Model {
  */
 export interface CreateProviderRequest {
   name: string
+  vendorId: number
   apiKey?: string
   baseUrl: string
   config?: Record<string, unknown>
@@ -250,9 +260,30 @@ export interface CreateProviderRequest {
  */
 export interface UpdateProviderRequest {
   name?: string
+  vendorId?: number
   apiKey?: string
   baseUrl?: string
   config?: Record<string, unknown>
+  isActive?: boolean
+}
+
+/**
+ * 创建厂商请求
+ */
+export interface CreateVendorRequest {
+  name: string
+  chatModelClass?: string
+  factoryCode?: string
+  isActive?: boolean
+}
+
+/**
+ * 更新厂商请求
+ */
+export interface UpdateVendorRequest {
+  name?: string
+  chatModelClass?: string
+  factoryCode?: string
   isActive?: boolean
 }
 

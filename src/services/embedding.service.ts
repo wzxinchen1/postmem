@@ -1,8 +1,8 @@
 import { Errors } from '@/src/lib/errors'
 import type { PrismaClient } from '@prisma/client'
-import type { Model, Provider } from '@/src/types'
+import type { Model, Provider, Vendor } from '@/src/types'
 import { SessionService } from '@/src/services/session.service'
-import { VendorRegistryService } from './vendor-registry.service'
+import { VendorService } from './vendor.service'
 
 /**
  * 嵌入服务 - 从数据库配置动态使用模型
@@ -10,13 +10,13 @@ import { VendorRegistryService } from './vendor-registry.service'
 export class EmbeddingService {
   private prisma: PrismaClient
   private sessionService: SessionService
-  private vendorRegistry: VendorRegistryService
+  private vendorService: VendorService
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map()
 
   constructor({ prisma, sessionService }: { prisma: PrismaClient; sessionService: SessionService }) {
     this.prisma = prisma
     this.sessionService = sessionService
-    this.vendorRegistry = new VendorRegistryService()
+    this.vendorService = new VendorService({ prisma })
   }
 
   /**
@@ -35,11 +35,15 @@ export class EmbeddingService {
         isActive: true,
       },
       include: {
-        provider: true,
+        provider: {
+          include: {
+            vendor: true,
+          },
+        },
       },
     })
 
-    if (!model || !model.provider) {
+    if (!model || !model.provider || !model.provider.vendor) {
       throw Errors.embeddingError('未配置默认嵌入模型，请在 /admin/models 页面配置')
     }
 
@@ -53,7 +57,12 @@ export class EmbeddingService {
    */
   async generateEmbedding(text: string, kbId?: number): Promise<number[]> {
     const { model, provider } = await this.getDefaultModel()
-    const vendor = this.vendorRegistry.identify(provider.baseUrl)
+
+    if (!provider.vendor) {
+      throw Errors.embeddingError('提供商缺少厂商信息')
+    }
+
+    const vendor = provider.vendor
 
     const session = await this.sessionService.create({
       kbId,
@@ -69,9 +78,9 @@ export class EmbeddingService {
 
     let result: number[]
 
-    if (provider.baseUrl.includes('localhost:11434') || vendor.id === 'ollama') {
+    if (provider.baseUrl.includes('localhost:11434') || vendor.name.toLowerCase() === 'ollama') {
       result = await this.generateWithOllama(text, model.name, provider.baseUrl, session.id)
-    } else if (vendor.id === 'openai') {
+    } else if (vendor.name.toLowerCase() === 'openai') {
       result = await this.generateWithOpenAI(text, model.name, provider.apiKey!, session.id)
     } else {
       result = await this.generateWithCustom(text, model.name, provider.baseUrl, provider.apiKey, session.id)

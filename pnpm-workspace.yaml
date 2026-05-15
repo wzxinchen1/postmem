@@ -1,0 +1,11 @@
+allowBuilds:
+  '@prisma/client': false
+  '@prisma/engines': false
+  '@scarf/scarf': false
+  '@tree-sitter-grammars/tree-sitter-yaml': false
+  core-js-pure: false
+  esbuild: false
+  prisma: false
+  tree-sitter: false
+  tree-sitter-json: false
+  unrs-resolver: false

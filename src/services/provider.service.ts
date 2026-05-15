@@ -3,20 +3,20 @@ import type {
   Provider,
   CreateProviderRequest,
   UpdateProviderRequest,
-  VendorInfo,
+  VendorFactory,
 } from '@/src/types'
-import { VendorRegistryService } from './vendor-registry.service'
+import { VendorService } from './vendor.service'
 
 /**
  * 提供商服务
  */
 export class ProviderService {
   private prisma: PrismaClient
-  private vendorRegistry: VendorRegistryService
+  private vendorService: VendorService
 
   constructor({ prisma }: { prisma: PrismaClient }) {
     this.prisma = prisma
-    this.vendorRegistry = new VendorRegistryService()
+    this.vendorService = new VendorService({ prisma })
   }
 
   /**
@@ -26,6 +26,7 @@ export class ProviderService {
     return this.prisma.provider.findMany({
       where: includeInactive ? {} : { isActive: true },
       include: {
+        vendor: true,
         models: {
           where: { isActive: true },
           orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
@@ -42,6 +43,7 @@ export class ProviderService {
     return this.prisma.provider.findUnique({
       where: { id },
       include: {
+        vendor: true,
         models: {
           orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
         },
@@ -50,10 +52,27 @@ export class ProviderService {
   }
 
   /**
-   * 获取提供商的厂商信息
+   * 创建 LangChain ChatModel 实例
    */
-  getVendorInfo(baseUrl: string): VendorInfo {
-    return this.vendorRegistry.identify(baseUrl)
+  async createChatModel(providerId: number, model: string, config?: Record<string, unknown>): Promise<unknown> {
+    const provider = await this.get(providerId)
+    if (!provider) {
+      throw new Error(`提供商不存在: ${providerId}`)
+    }
+    
+    if (!provider.vendor) {
+      throw new Error(`提供商未关联厂商: ${providerId}`)
+    }
+    
+    return this.vendorService.createChatModel(provider.vendor, {
+      model,
+      apiKey: provider.apiKey,
+      baseUrl: provider.baseUrl,
+      config: {
+        ...provider.config,
+        ...config,
+      },
+    })
   }
 
   /**
@@ -63,11 +82,13 @@ export class ProviderService {
     const provider = await this.prisma.provider.create({
       data: {
         name: data.name,
+        vendorId: data.vendorId,
         apiKey: data.apiKey ?? null,
         baseUrl: data.baseUrl,
         config: (data.config ?? {}) as any,
         isActive: data.isActive ?? true,
       } as any,
+      include: { vendor: true },
     })
     return provider as Provider
   }
@@ -78,6 +99,7 @@ export class ProviderService {
   async update(id: number, data: UpdateProviderRequest): Promise<Provider> {
     const updateData: Record<string, unknown> = {
       ...(data.name && { name: data.name }),
+      ...(data.vendorId !== undefined && { vendorId: data.vendorId }),
       ...(data.apiKey !== undefined && { apiKey: data.apiKey }),
       ...(data.baseUrl !== undefined && { baseUrl: data.baseUrl }),
       ...(data.config !== undefined && { config: data.config }),
@@ -86,6 +108,7 @@ export class ProviderService {
     return this.prisma.provider.update({
       where: { id },
       data: updateData as any,
+      include: { vendor: true },
     }) as Promise<Provider>
   }
 

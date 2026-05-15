@@ -6,10 +6,19 @@ import { PlusOutlined, EditOutlined, DeleteOutlined, CheckCircleOutlined, CloseC
 
 const { Title, Text } = Typography
 
+interface Vendor {
+  id: number
+  name: string
+  chatModelClass?: string | null
+  factoryCode?: string | null
+  isActive: boolean
+}
+
 interface Provider {
   id: number
   name: string
-  type: string
+  vendorId: number
+  vendor?: Vendor
   apiKey?: string
   baseUrl?: string
   config: Record<string, unknown>
@@ -30,21 +39,15 @@ interface Model {
   isDefault: boolean
 }
 
-const PROVIDER_TYPES = [
-  { value: 'openai', label: 'OpenAI' },
-  { value: 'anthropic', label: 'Anthropic' },
-  { value: 'local', label: '本地模型' },
-  { value: 'custom', label: '自定义' },
-]
-
 export default function ProvidersPage() {
   const [providers, setProviders] = useState<Provider[]>([])
+  const [vendors, setVendors] = useState<Vendor[]>([])
   const [loading, setLoading] = useState(false)
   const [showModal, setShowModal] = useState(false)
   const [editingProvider, setEditingProvider] = useState<Provider | null>(null)
   const [formData, setFormData] = useState({
     name: '',
-    type: 'openai',
+    vendorId: undefined as number | undefined,
     apiKey: '',
     baseUrl: '',
     isActive: true,
@@ -57,6 +60,7 @@ export default function ProvidersPage() {
 
   useEffect(() => {
     loadProviders()
+    loadVendors()
   }, [])
 
   const loadProviders = async () => {
@@ -83,24 +87,54 @@ export default function ProvidersPage() {
     }
   }
 
+  const loadVendors = async () => {
+    try {
+      const res = await fetch('/api/vendors?includeInactive=false')
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('加载厂商失败')
+        }
+        return
+      }
+      const data = await res.json()
+      if (data.success) {
+        setVendors(data.data.vendors)
+        if (data.data.vendors.length > 0 && !formData.vendorId) {
+          setFormData(prev => ({ ...prev, vendorId: data.data.vendors[0].id }))
+        }
+      }
+    } catch (err) {
+      msg.error('网络请求失败')
+    }
+  }
+
   const handleValidate = async () => {
-    if (!formData.type) {
-      msg.info('请选择提供商类型')
+    if (!formData.vendorId) {
+      msg.info('请选择厂商')
       return
     }
 
-    if (formData.type === 'openai' && !formData.apiKey) {
+    const selectedVendor = vendors.find(v => v.id === formData.vendorId)
+    if (!selectedVendor) {
+      msg.info('厂商不存在')
+      return
+    }
+
+    if (selectedVendor.chatModelClass === 'ChatOpenAI' && !formData.apiKey) {
       msg.info('OpenAI 需要 API Key')
       return
     }
 
-    if (formData.type === 'anthropic' && !formData.apiKey) {
+    if (selectedVendor.chatModelClass === 'ChatAnthropic' && !formData.apiKey) {
       msg.info('Anthropic 需要 API Key')
       return
     }
 
-    if (formData.type === 'custom' && !formData.baseUrl) {
-      msg.info('自定义提供商需要 Base URL')
+    if (!formData.baseUrl) {
+      msg.info('Base URL 为必填项')
       return
     }
 
@@ -112,9 +146,9 @@ export default function ProvidersPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          type: formData.type,
+          vendorId: formData.vendorId,
           apiKey: formData.apiKey || undefined,
-          baseUrl: formData.baseUrl || undefined,
+          baseUrl: formData.baseUrl,
         }),
       })
 
@@ -159,9 +193,9 @@ export default function ProvidersPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: formData.name,
-          type: formData.type,
+          vendorId: formData.vendorId,
           apiKey: formData.apiKey || undefined,
-          baseUrl: formData.baseUrl || undefined,
+          baseUrl: formData.baseUrl,
           isActive: formData.isActive,
         }),
       })
@@ -219,7 +253,7 @@ export default function ProvidersPage() {
     setEditingProvider(provider)
     setFormData({
       name: provider.name,
-      type: provider.type,
+      vendorId: provider.vendorId,
       apiKey: provider.apiKey || '',
       baseUrl: provider.baseUrl || '',
       isActive: provider.isActive,
@@ -231,7 +265,7 @@ export default function ProvidersPage() {
   const resetForm = () => {
     setFormData({
       name: '',
-      type: 'openai',
+      vendorId: vendors.length > 0 ? vendors[0].id : undefined,
       apiKey: '',
       baseUrl: '',
       isActive: true,
@@ -241,8 +275,9 @@ export default function ProvidersPage() {
     form.resetFields()
   }
 
-  const getProviderTypeLabel = (type: string) => {
-    return PROVIDER_TYPES.find(t => t.value === type)?.label || type
+  const getVendorLabel = (vendorId: number) => {
+    const vendor = vendors.find(v => v.id === vendorId)
+    return vendor?.name || '未知厂商'
   }
 
   return (
@@ -282,12 +317,12 @@ export default function ProvidersPage() {
                 <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                   <Space>
                     <Tag color="blue">
-                      {provider.type === 'openai' ? '🤖' : provider.type === 'anthropic' ? '🧠' : provider.type === 'local' ? '💻' : '⚙️'}
+                      {provider.vendor?.chatModelClass === 'ChatOpenAI' ? '🤖' : provider.vendor?.chatModelClass === 'ChatAnthropic' ? '🧠' : '⚙️'}
                     </Tag>
                     <Space direction="vertical" size={0}>
                       <Text strong>{provider.name}</Text>
                       <Text type="secondary" style={{ fontSize: 12 }}>
-                        {getProviderTypeLabel(provider.type)} {provider.baseUrl && `· ${provider.baseUrl}`}
+                        {getVendorLabel(provider.vendorId)} {provider.baseUrl && `· ${provider.baseUrl}`}
                       </Text>
                     </Space>
                   </Space>
@@ -349,25 +384,26 @@ export default function ProvidersPage() {
               onChange={(e) => { setFormData({ ...formData, name: e.target.value }); setValidationResult(null) }}
             />
           </Form.Item>
-          <Form.Item label="类型" required>
+          <Form.Item label="厂商" required>
             <Select
-              value={formData.type}
-              onChange={(value) => { setFormData({ ...formData, type: value }); setValidationResult(null) }}
-              options={PROVIDER_TYPES}
+              value={formData.vendorId}
+              onChange={(value) => { setFormData({ ...formData, vendorId: value }); setValidationResult(null) }}
+              options={vendors.map(v => ({ value: v.id, label: v.name }))}
+              placeholder="请选择厂商"
             />
           </Form.Item>
-          <Form.Item label="API Key" required={formData.type === 'openai' || formData.type === 'anthropic'}>
+          <Form.Item label="API Key">
             <Input.Password
               value={formData.apiKey}
               onChange={(e) => { setFormData({ ...formData, apiKey: e.target.value }); setValidationResult(null) }}
-              placeholder={formData.type === 'openai' || formData.type === 'anthropic' ? '必填' : '可选'}
+              placeholder="可选"
             />
           </Form.Item>
-          <Form.Item label="Base URL" required={formData.type === 'custom'}>
+          <Form.Item label="Base URL" required>
             <Input
               value={formData.baseUrl}
               onChange={(e) => { setFormData({ ...formData, baseUrl: e.target.value }); setValidationResult(null) }}
-              placeholder={formData.type === 'custom' ? '必填，如：http://localhost:8000' : '可选，用于自定义端点'}
+              placeholder="必填，如：https://api.openai.com/v1"
             />
           </Form.Item>
           <Form.Item>
