@@ -1,10 +1,11 @@
 'use client'
 
-import { useState, useEffect } from 'react'
+import { useState, useEffect, useRef, useCallback } from 'react'
 import { message, Card, Row, Col, Button, Empty, Space, Typography, Tag } from 'antd'
 import { PlusOutlined, ReloadOutlined, BookOutlined } from '@ant-design/icons'
-import { StatsResponse, IngestResponse } from '@/app/admin/types'
-import { post, RequestError } from '@/app/admin/lib/request'
+import { StatsResponse } from '@/app/admin/types'
+import type { IngestProgressEvent } from '@/app/admin/types'
+import { post, streamPost, RequestError } from '@/app/admin/lib/request'
 import { CreateKBModal } from '@/src/components/admin/modals/CreateKBModal'
 import { IngestModal } from '@/src/components/admin/modals/IngestModal'
 
@@ -19,12 +20,21 @@ export default function KBManagePage() {
   const [selectedKbId, setSelectedKbId] = useState<number | null>(null)
   const [selectedKbName, setSelectedKbName] = useState('')
   const [ingestContent, setIngestContent] = useState('')
-  const [ingestResult, setIngestResult] = useState<IngestResponse | null>(null)
-  
+  const [ingestProgress, setIngestProgress] = useState<IngestProgressEvent | null>(null)
+
+  const abortRef = useRef<AbortController | null>(null)
   const [msg, contextHolder] = message.useMessage()
 
   useEffect(() => {
     handleStats()
+  }, [])
+
+  useEffect(() => {
+    return () => {
+      if (abortRef.current) {
+        abortRef.current.abort()
+      }
+    }
   }, [])
 
   const handleStats = async () => {
@@ -39,31 +49,42 @@ export default function KBManagePage() {
     }
   }
 
-  const handleIngest = async () => {
+  const handleIngest = useCallback(async () => {
     if (!selectedKbId || !ingestContent) {
       msg.info('请填写内容')
       return
     }
 
+    setIngestProgress({ type: 'status', message: '正在提交...' })
+    const controller = new AbortController()
+    abortRef.current = controller
+
     try {
-      const data = await post<IngestResponse>('/api/kb/ingest', { kbId: selectedKbId, content: ingestContent })
-      setIngestResult(data)
-      if (data.success) {
-        setIngestContent('')
-        handleStats()
-        setTimeout(() => {
-          setShowIngestModal(false)
-          setIngestResult(null)
-        }, 2000)
-      }
+      await streamPost(
+        '/api/kb/ingest',
+        { kbId: selectedKbId, content: ingestContent },
+        (event) => {
+          setIngestProgress(event as IngestProgressEvent)
+        },
+        controller.signal
+      )
+
+      setIngestContent('')
+      handleStats()
+      setTimeout(() => {
+        setShowIngestModal(false)
+        setIngestProgress(null)
+      }, 2000)
     } catch (err) {
+      if ((err as Error).name === 'AbortError') return
       if (err instanceof RequestError) {
         msg.error(err.message)
       } else {
         msg.error('入库失败')
       }
+      setIngestProgress({ type: 'error', message: '入库失败' })
     }
-  }
+  }, [selectedKbId, ingestContent])
 
   const handleCreateKB = async () => {
     if (!newKbName.trim()) {
@@ -74,10 +95,10 @@ export default function KBManagePage() {
       msg.info('名称只能包含字母、数字、中划线和下划线')
       return
     }
-    
+
     try {
       const data = await post<{ success: boolean }>('/api/kb/create', { name: newKbName })
-      
+
       if (data.success) {
         msg.success(`知识库 "${newKbName}" 创建成功`)
         setShowCreateModal(false)
@@ -127,6 +148,7 @@ export default function KBManagePage() {
                 onClick={() => {
                   setSelectedKbId(kb.kbId)
                   setSelectedKbName(kb.kbName)
+                  setIngestProgress(null)
                   setShowIngestModal(true)
                 }}
               >
@@ -175,16 +197,20 @@ export default function KBManagePage() {
       <IngestModal
         show={showIngestModal}
         onClose={() => {
+          if (abortRef.current) {
+            abortRef.current.abort()
+            abortRef.current = null
+          }
           setShowIngestModal(false)
           setIngestContent('')
-          setIngestResult(null)
+          setIngestProgress(null)
           handleStats()
         }}
         selectedKb={selectedKbName}
         content={ingestContent}
         setContent={setIngestContent}
-        loading={loading}
-        result={ingestResult}
+        loading={false}
+        result={ingestProgress}
         onIngest={handleIngest}
       />
     </div>

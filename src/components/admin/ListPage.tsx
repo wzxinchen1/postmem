@@ -68,9 +68,9 @@ export default function ListPage() {
       width: 400,
     },
     {
-      title: '片段索引',
-      dataIndex: 'chunkIndex',
-      key: 'chunkIndex',
+      title: '所属主题',
+      dataIndex: 'topicId',
+      key: 'topicId',
       width: 100,
     },
     {

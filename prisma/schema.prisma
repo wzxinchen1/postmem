@@ -7,21 +7,39 @@ datasource db {
   provider = "postgresql"
 }
 
+model Topic {
+  id          Int           @id @default(autoincrement())
+  kbId        Int           @map("kb_id")
+  name        String        @db.VarChar(200)
+  description String        @db.VarChar(500)
+
+  kb       KnowledgeBase @relation(fields: [kbId], references: [id], onDelete: Cascade)
+  memories Memory[]
+
+  createdAt DateTime      @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt DateTime      @updatedAt @map("updated_at") @db.Timestamptz(6)
+
+  @@index([kbId])
+  @@unique([kbId, name])
+  @@map("topics")
+}
+
 model Memory {
-  id            Int                    @id @default(autoincrement())
-  kbId          Int                    @map("kb_id")
-  content       String
-  embedding     Unsupported("vector")?
+  id              Int                    @id @default(autoincrement())
+  kbId            Int                    @map("kb_id")
+  topicId         Int?                   @map("topic_id")
+  title           String                 @db.VarChar(200)
+  content         String
+  embedding       Unsupported("vector")?
   contentTsvector Unsupported("tsvector")?
-  chunkIndex    Int                    @map("chunk_index")
-  ingestBatch   String                 @map("ingest_batch")
-  metadata      Json                   @default("{}")
-  createdAt     DateTime               @default(now()) @map("created_at") @db.Timestamptz(6)
-  knowledgeBase KnowledgeBase          @relation(fields: [kbId], references: [id], onDelete: Cascade)
+  metadata        Json                    @default("{}")
+  createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
+  knowledgeBase   KnowledgeBase           @relation(fields: [kbId], references: [id], onDelete: Cascade)
+  topic           Topic?                  @relation(fields: [topicId], references: [id], onDelete: SetNull)
 
   @@index([kbId])
   @@index([createdAt])
-  @@index([ingestBatch])
+  @@index([topicId])
   @@map("memories")
 }
 
@@ -87,6 +105,7 @@ model KnowledgeBase {
   createdAt   DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt   DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
   memories    Memory[]
+  topics      Topic[]
   sessions    Session[]
 
   @@index([name])

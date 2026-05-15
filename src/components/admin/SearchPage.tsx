@@ -164,9 +164,8 @@ export default function SearchPage() {
                       
                       {result.metadata && (
                         <Space size="large">
-                          <Text type="secondary" style={{ fontSize: 12 }}>片段索引: {result.chunkIndex}</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>主题ID: {result.topicId ?? 'N/A'}</Text>
                           <Text type="secondary" style={{ fontSize: 12 }}>切割模型: {result.metadata.cutModel || 'N/A'}</Text>
-                          <Text type="secondary" style={{ fontSize: 12 }}>片段大小: {result.metadata.chunkSize || 'N/A'}</Text>
                         </Space>
                       )}
                     </Space>

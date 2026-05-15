@@ -51,6 +51,7 @@ export const AnyNull = runtime.AnyNull
 
 
 export const ModelName = {
+  Topic: 'Topic',
   Memory: 'Memory',
   Vendor: 'Vendor',
   Provider: 'Provider',
@@ -78,12 +79,24 @@ export const TransactionIsolationLevel = runtime.makeStrictEnum({
 export type TransactionIsolationLevel = (typeof TransactionIsolationLevel)[keyof typeof TransactionIsolationLevel]
 
 
+export const TopicScalarFieldEnum = {
+  id: 'id',
+  kbId: 'kbId',
+  name: 'name',
+  description: 'description',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type TopicScalarFieldEnum = (typeof TopicScalarFieldEnum)[keyof typeof TopicScalarFieldEnum]
+
+
 export const MemoryScalarFieldEnum = {
   id: 'id',
   kbId: 'kbId',
+  topicId: 'topicId',
+  title: 'title',
   content: 'content',
-  chunkIndex: 'chunkIndex',
-  ingestBatch: 'ingestBatch',
   metadata: 'metadata',
   createdAt: 'createdAt'
 } as const

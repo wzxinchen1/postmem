@@ -1,10 +1,48 @@
+export interface TopicMatchResult {
+  action: 'select' | 'create'
+  topicName?: string
+  reason: string
+}
+
+export interface TopicCreateInfo {
+  name: string
+  description: string
+}
+
+/**
+ * 批量主题规划结果 - 单个切片的主题分配
+ */
+export interface ChunkTopicPlan {
+  index: number
+  action: 'select' | 'create'
+  topicName?: string       // action=select 时，选中的已有主题名（必须完全一致）
+  newTopicName?: string    // action=create 时，要创建的新主题名
+  reason?: string
+}
+
+/**
+ * 带标题的切分片段
+ */
+export interface TitledChunk {
+  index: number
+  title: string
+  content: string
+}
+
+/**
+ * 批量主题规划完整结果
+ */
+export interface BatchTopicPlan {
+  plans: ChunkTopicPlan[]
+}
+
 /**
  * 内存片段元数据
  */
 export interface MemoryMetadata {
   cutModel?: string
-  chunkSize?: number
-  originalLength?: number
+  messageId?: string
+  role?: string
   [key: string]: unknown
 }
 
@@ -14,10 +52,10 @@ export interface MemoryMetadata {
 export interface Memory {
   id: number
   kbId: number
+  topicId: number | null
+  title: string
   content: string
   embedding: number[]
-  chunkIndex: number
-  ingestBatch: string
   metadata: MemoryMetadata
   createdAt: Date
 }
@@ -38,9 +76,10 @@ export type SearchSource = 'dense' | 'sparse' | 'hybrid'
 
 export interface SearchResult {
   id: number
+  title: string
   content: string
   score: number
-  chunkIndex: number
+  topicId: number | null
   metadata: MemoryMetadata
   source: SearchSource
   context?: {
@@ -54,8 +93,9 @@ export interface SearchResult {
  */
 export interface ListItem {
   id: number
+  title: string
   content: string
-  chunkIndex: number
+  topicId: number | null
   metadata: MemoryMetadata
   createdAt: Date
 }
@@ -101,6 +141,16 @@ export interface IngestMessagesRequest {
 export interface IngestTextResponse {
   count: number
   memoryIds: number[]
+  topicsInvolved?: string[]
+}
+
+export interface TopicInfo {
+  id: number
+  kbId: number
+  name: string
+  description: string
+  createdAt: Date
+  updatedAt: Date
 }
 
 /**

@@ -29,39 +29,39 @@ export type AggregateMemory = {
 export type MemoryAvgAggregateOutputType = {
   id: number | null
   kbId: number | null
-  chunkIndex: number | null
+  topicId: number | null
 }
 
 export type MemorySumAggregateOutputType = {
   id: number | null
   kbId: number | null
-  chunkIndex: number | null
+  topicId: number | null
 }
 
 export type MemoryMinAggregateOutputType = {
   id: number | null
   kbId: number | null
+  topicId: number | null
+  title: string | null
   content: string | null
-  chunkIndex: number | null
-  ingestBatch: string | null
   createdAt: Date | null
 }
 
 export type MemoryMaxAggregateOutputType = {
   id: number | null
   kbId: number | null
+  topicId: number | null
+  title: string | null
   content: string | null
-  chunkIndex: number | null
-  ingestBatch: string | null
   createdAt: Date | null
 }
 
 export type MemoryCountAggregateOutputType = {
   id: number
   kbId: number
+  topicId: number
+  title: number
   content: number
-  chunkIndex: number
-  ingestBatch: number
   metadata: number
   createdAt: number
   _all: number
@@ -71,39 +71,39 @@ export type MemoryCountAggregateOutputType = {
 export type MemoryAvgAggregateInputType = {
   id?: true
   kbId?: true
-  chunkIndex?: true
+  topicId?: true
 }
 
 export type MemorySumAggregateInputType = {
   id?: true
   kbId?: true
-  chunkIndex?: true
+  topicId?: true
 }
 
 export type MemoryMinAggregateInputType = {
   id?: true
   kbId?: true
+  topicId?: true
+  title?: true
   content?: true
-  chunkIndex?: true
-  ingestBatch?: true
   createdAt?: true
 }
 
 export type MemoryMaxAggregateInputType = {
   id?: true
   kbId?: true
+  topicId?: true
+  title?: true
   content?: true
-  chunkIndex?: true
-  ingestBatch?: true
   createdAt?: true
 }
 
 export type MemoryCountAggregateInputType = {
   id?: true
   kbId?: true
+  topicId?: true
+  title?: true
   content?: true
-  chunkIndex?: true
-  ingestBatch?: true
   metadata?: true
   createdAt?: true
   _all?: true
@@ -198,9 +198,9 @@ export type MemoryGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalA
 export type MemoryGroupByOutputType = {
   id: number
   kbId: number
+  topicId: number | null
+  title: string
   content: string
-  chunkIndex: number
-  ingestBatch: string
   metadata: runtime.JsonValue
   createdAt: Date
   _count: MemoryCountAggregateOutputType | null
@@ -231,23 +231,25 @@ export type MemoryWhereInput = {
   NOT?: Prisma.MemoryWhereInput | Prisma.MemoryWhereInput[]
   id?: Prisma.IntFilter<"Memory"> | number
   kbId?: Prisma.IntFilter<"Memory"> | number
+  topicId?: Prisma.IntNullableFilter<"Memory"> | number | null
+  title?: Prisma.StringFilter<"Memory"> | string
   content?: Prisma.StringFilter<"Memory"> | string
-  chunkIndex?: Prisma.IntFilter<"Memory"> | number
-  ingestBatch?: Prisma.StringFilter<"Memory"> | string
   metadata?: Prisma.JsonFilter<"Memory">
   createdAt?: Prisma.DateTimeFilter<"Memory"> | Date | string
   knowledgeBase?: Prisma.XOR<Prisma.KnowledgeBaseScalarRelationFilter, Prisma.KnowledgeBaseWhereInput>
+  topic?: Prisma.XOR<Prisma.TopicNullableScalarRelationFilter, Prisma.TopicWhereInput> | null
 }
 
 export type MemoryOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   kbId?: Prisma.SortOrder
+  topicId?: Prisma.SortOrderInput | Prisma.SortOrder
+  title?: Prisma.SortOrder
   content?: Prisma.SortOrder
-  chunkIndex?: Prisma.SortOrder
-  ingestBatch?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   knowledgeBase?: Prisma.KnowledgeBaseOrderByWithRelationInput
+  topic?: Prisma.TopicOrderByWithRelationInput
 }
 
 export type MemoryWhereUniqueInput = Prisma.AtLeast<{
@@ -256,20 +258,21 @@ export type MemoryWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.MemoryWhereInput[]
   NOT?: Prisma.MemoryWhereInput | Prisma.MemoryWhereInput[]
   kbId?: Prisma.IntFilter<"Memory"> | number
+  topicId?: Prisma.IntNullableFilter<"Memory"> | number | null
+  title?: Prisma.StringFilter<"Memory"> | string
   content?: Prisma.StringFilter<"Memory"> | string
-  chunkIndex?: Prisma.IntFilter<"Memory"> | number
-  ingestBatch?: Prisma.StringFilter<"Memory"> | string
   metadata?: Prisma.JsonFilter<"Memory">
   createdAt?: Prisma.DateTimeFilter<"Memory"> | Date | string
   knowledgeBase?: Prisma.XOR<Prisma.KnowledgeBaseScalarRelationFilter, Prisma.KnowledgeBaseWhereInput>
+  topic?: Prisma.XOR<Prisma.TopicNullableScalarRelationFilter, Prisma.TopicWhereInput> | null
 }, "id">
 
 export type MemoryOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   kbId?: Prisma.SortOrder
+  topicId?: Prisma.SortOrderInput | Prisma.SortOrder
+  title?: Prisma.SortOrder
   content?: Prisma.SortOrder
-  chunkIndex?: Prisma.SortOrder
-  ingestBatch?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.MemoryCountOrderByAggregateInput
@@ -285,47 +288,47 @@ export type MemoryScalarWhereWithAggregatesInput = {
   NOT?: Prisma.MemoryScalarWhereWithAggregatesInput | Prisma.MemoryScalarWhereWithAggregatesInput[]
   id?: Prisma.IntWithAggregatesFilter<"Memory"> | number
   kbId?: Prisma.IntWithAggregatesFilter<"Memory"> | number
+  topicId?: Prisma.IntNullableWithAggregatesFilter<"Memory"> | number | null
+  title?: Prisma.StringWithAggregatesFilter<"Memory"> | string
   content?: Prisma.StringWithAggregatesFilter<"Memory"> | string
-  chunkIndex?: Prisma.IntWithAggregatesFilter<"Memory"> | number
-  ingestBatch?: Prisma.StringWithAggregatesFilter<"Memory"> | string
   metadata?: Prisma.JsonWithAggregatesFilter<"Memory">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Memory"> | Date | string
 }
 
 export type MemoryCreateInput = {
+  title: string
   content: string
-  chunkIndex: number
-  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   knowledgeBase: Prisma.KnowledgeBaseCreateNestedOneWithoutMemoriesInput
+  topic?: Prisma.TopicCreateNestedOneWithoutMemoriesInput
 }
 
 export type MemoryUncheckedCreateInput = {
   id?: number
   kbId: number
+  topicId?: number | null
+  title: string
   content: string
-  chunkIndex: number
-  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type MemoryUpdateInput = {
+  title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
-  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   knowledgeBase?: Prisma.KnowledgeBaseUpdateOneRequiredWithoutMemoriesNestedInput
+  topic?: Prisma.TopicUpdateOneWithoutMemoriesNestedInput
 }
 
 export type MemoryUncheckedUpdateInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   kbId?: Prisma.IntFieldUpdateOperationsInput | number
+  topicId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
-  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -333,17 +336,16 @@ export type MemoryUncheckedUpdateInput = {
 export type MemoryCreateManyInput = {
   id?: number
   kbId: number
+  topicId?: number | null
+  title: string
   content: string
-  chunkIndex: number
-  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type MemoryUpdateManyMutationInput = {
+  title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
-  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -351,51 +353,11 @@ export type MemoryUpdateManyMutationInput = {
 export type MemoryUncheckedUpdateManyInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
   kbId?: Prisma.IntFieldUpdateOperationsInput | number
+  topicId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
-  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-}
-
-export type MemoryCountOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
-  content?: Prisma.SortOrder
-  chunkIndex?: Prisma.SortOrder
-  ingestBatch?: Prisma.SortOrder
-  metadata?: Prisma.SortOrder
-  createdAt?: Prisma.SortOrder
-}
-
-export type MemoryAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
-  chunkIndex?: Prisma.SortOrder
-}
-
-export type MemoryMaxOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
-  content?: Prisma.SortOrder
-  chunkIndex?: Prisma.SortOrder
-  ingestBatch?: Prisma.SortOrder
-  createdAt?: Prisma.SortOrder
-}
-
-export type MemoryMinOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
-  content?: Prisma.SortOrder
-  chunkIndex?: Prisma.SortOrder
-  ingestBatch?: Prisma.SortOrder
-  createdAt?: Prisma.SortOrder
-}
-
-export type MemorySumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
-  chunkIndex?: Prisma.SortOrder
 }
 
 export type MemoryListRelationFilter = {
@@ -408,20 +370,94 @@ export type MemoryOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
-export type StringFieldUpdateOperationsInput = {
-  set?: string
+export type MemoryCountOrderByAggregateInput = {
+  id?: Prisma.SortOrder
+  kbId?: Prisma.SortOrder
+  topicId?: Prisma.SortOrder
+  title?: Prisma.SortOrder
+  content?: Prisma.SortOrder
+  metadata?: Prisma.SortOrder
+  createdAt?: Prisma.SortOrder
 }
 
-export type IntFieldUpdateOperationsInput = {
-  set?: number
+export type MemoryAvgOrderByAggregateInput = {
+  id?: Prisma.SortOrder
+  kbId?: Prisma.SortOrder
+  topicId?: Prisma.SortOrder
+}
+
+export type MemoryMaxOrderByAggregateInput = {
+  id?: Prisma.SortOrder
+  kbId?: Prisma.SortOrder
+  topicId?: Prisma.SortOrder
+  title?: Prisma.SortOrder
+  content?: Prisma.SortOrder
+  createdAt?: Prisma.SortOrder
+}
+
+export type MemoryMinOrderByAggregateInput = {
+  id?: Prisma.SortOrder
+  kbId?: Prisma.SortOrder
+  topicId?: Prisma.SortOrder
+  title?: Prisma.SortOrder
+  content?: Prisma.SortOrder
+  createdAt?: Prisma.SortOrder
+}
+
+export type MemorySumOrderByAggregateInput = {
+  id?: Prisma.SortOrder
+  kbId?: Prisma.SortOrder
+  topicId?: Prisma.SortOrder
+}
+
+export type MemoryCreateNestedManyWithoutTopicInput = {
+  create?: Prisma.XOR<Prisma.MemoryCreateWithoutTopicInput, Prisma.MemoryUncheckedCreateWithoutTopicInput> | Prisma.MemoryCreateWithoutTopicInput[] | Prisma.MemoryUncheckedCreateWithoutTopicInput[]
+  connectOrCreate?: Prisma.MemoryCreateOrConnectWithoutTopicInput | Prisma.MemoryCreateOrConnectWithoutTopicInput[]
+  createMany?: Prisma.MemoryCreateManyTopicInputEnvelope
+  connect?: Prisma.MemoryWhereUniqueInput | Prisma.MemoryWhereUniqueInput[]
+}
+
+export type MemoryUncheckedCreateNestedManyWithoutTopicInput = {
+  create?: Prisma.XOR<Prisma.MemoryCreateWithoutTopicInput, Prisma.MemoryUncheckedCreateWithoutTopicInput> | Prisma.MemoryCreateWithoutTopicInput[] | Prisma.MemoryUncheckedCreateWithoutTopicInput[]
+  connectOrCreate?: Prisma.MemoryCreateOrConnectWithoutTopicInput | Prisma.MemoryCreateOrConnectWithoutTopicInput[]
+  createMany?: Prisma.MemoryCreateManyTopicInputEnvelope
+  connect?: Prisma.MemoryWhereUniqueInput | Prisma.MemoryWhereUniqueInput[]
+}
+
+export type MemoryUpdateManyWithoutTopicNestedInput = {
+  create?: Prisma.XOR<Prisma.MemoryCreateWithoutTopicInput, Prisma.MemoryUncheckedCreateWithoutTopicInput> | Prisma.MemoryCreateWithoutTopicInput[] | Prisma.MemoryUncheckedCreateWithoutTopicInput[]
+  connectOrCreate?: Prisma.MemoryCreateOrConnectWithoutTopicInput | Prisma.MemoryCreateOrConnectWithoutTopicInput[]
+  upsert?: Prisma.MemoryUpsertWithWhereUniqueWithoutTopicInput | Prisma.MemoryUpsertWithWhereUniqueWithoutTopicInput[]
+  createMany?: Prisma.MemoryCreateManyTopicInputEnvelope
+  set?: Prisma.MemoryWhereUniqueInput | Prisma.MemoryWhereUniqueInput[]
+  disconnect?: Prisma.MemoryWhereUniqueInput | Prisma.MemoryWhereUniqueInput[]
+  delete?: Prisma.MemoryWhereUniqueInput | Prisma.MemoryWhereUniqueInput[]
+  connect?: Prisma.MemoryWhereUniqueInput | Prisma.MemoryWhereUniqueInput[]
+  update?: Prisma.MemoryUpdateWithWhereUniqueWithoutTopicInput | Prisma.MemoryUpdateWithWhereUniqueWithoutTopicInput[]
+  updateMany?: Prisma.MemoryUpdateManyWithWhereWithoutTopicInput | Prisma.MemoryUpdateManyWithWhereWithoutTopicInput[]
+  deleteMany?: Prisma.MemoryScalarWhereInput | Prisma.MemoryScalarWhereInput[]
+}
+
+export type MemoryUncheckedUpdateManyWithoutTopicNestedInput = {
+  create?: Prisma.XOR<Prisma.MemoryCreateWithoutTopicInput, Prisma.MemoryUncheckedCreateWithoutTopicInput> | Prisma.MemoryCreateWithoutTopicInput[] | Prisma.MemoryUncheckedCreateWithoutTopicInput[]
+  connectOrCreate?: Prisma.MemoryCreateOrConnectWithoutTopicInput | Prisma.MemoryCreateOrConnectWithoutTopicInput[]
+  upsert?: Prisma.MemoryUpsertWithWhereUniqueWithoutTopicInput | Prisma.MemoryUpsertWithWhereUniqueWithoutTopicInput[]
+  createMany?: Prisma.MemoryCreateManyTopicInputEnvelope
+  set?: Prisma.MemoryWhereUniqueInput | Prisma.MemoryWhereUniqueInput[]
+  disconnect?: Prisma.MemoryWhereUniqueInput | Prisma.MemoryWhereUniqueInput[]
+  delete?: Prisma.MemoryWhereUniqueInput | Prisma.MemoryWhereUniqueInput[]
+  connect?: Prisma.MemoryWhereUniqueInput | Prisma.MemoryWhereUniqueInput[]
+  update?: Prisma.MemoryUpdateWithWhereUniqueWithoutTopicInput | Prisma.MemoryUpdateWithWhereUniqueWithoutTopicInput[]
+  updateMany?: Prisma.MemoryUpdateManyWithWhereWithoutTopicInput | Prisma.MemoryUpdateManyWithWhereWithoutTopicInput[]
+  deleteMany?: Prisma.MemoryScalarWhereInput | Prisma.MemoryScalarWhereInput[]
+}
+
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
   increment?: number
   decrement?: number
   multiply?: number
   divide?: number
-}
-
-export type DateTimeFieldUpdateOperationsInput = {
-  set?: Date | string
 }
 
 export type MemoryCreateNestedManyWithoutKnowledgeBaseInput = {
@@ -466,19 +502,75 @@ export type MemoryUncheckedUpdateManyWithoutKnowledgeBaseNestedInput = {
   deleteMany?: Prisma.MemoryScalarWhereInput | Prisma.MemoryScalarWhereInput[]
 }
 
-export type MemoryCreateWithoutKnowledgeBaseInput = {
+export type MemoryCreateWithoutTopicInput = {
+  title: string
   content: string
-  chunkIndex: number
-  ingestBatch: string
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  knowledgeBase: Prisma.KnowledgeBaseCreateNestedOneWithoutMemoriesInput
+}
+
+export type MemoryUncheckedCreateWithoutTopicInput = {
+  id?: number
+  kbId: number
+  title: string
+  content: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
+export type MemoryCreateOrConnectWithoutTopicInput = {
+  where: Prisma.MemoryWhereUniqueInput
+  create: Prisma.XOR<Prisma.MemoryCreateWithoutTopicInput, Prisma.MemoryUncheckedCreateWithoutTopicInput>
+}
+
+export type MemoryCreateManyTopicInputEnvelope = {
+  data: Prisma.MemoryCreateManyTopicInput | Prisma.MemoryCreateManyTopicInput[]
+  skipDuplicates?: boolean
+}
+
+export type MemoryUpsertWithWhereUniqueWithoutTopicInput = {
+  where: Prisma.MemoryWhereUniqueInput
+  update: Prisma.XOR<Prisma.MemoryUpdateWithoutTopicInput, Prisma.MemoryUncheckedUpdateWithoutTopicInput>
+  create: Prisma.XOR<Prisma.MemoryCreateWithoutTopicInput, Prisma.MemoryUncheckedCreateWithoutTopicInput>
+}
+
+export type MemoryUpdateWithWhereUniqueWithoutTopicInput = {
+  where: Prisma.MemoryWhereUniqueInput
+  data: Prisma.XOR<Prisma.MemoryUpdateWithoutTopicInput, Prisma.MemoryUncheckedUpdateWithoutTopicInput>
+}
+
+export type MemoryUpdateManyWithWhereWithoutTopicInput = {
+  where: Prisma.MemoryScalarWhereInput
+  data: Prisma.XOR<Prisma.MemoryUpdateManyMutationInput, Prisma.MemoryUncheckedUpdateManyWithoutTopicInput>
+}
+
+export type MemoryScalarWhereInput = {
+  AND?: Prisma.MemoryScalarWhereInput | Prisma.MemoryScalarWhereInput[]
+  OR?: Prisma.MemoryScalarWhereInput[]
+  NOT?: Prisma.MemoryScalarWhereInput | Prisma.MemoryScalarWhereInput[]
+  id?: Prisma.IntFilter<"Memory"> | number
+  kbId?: Prisma.IntFilter<"Memory"> | number
+  topicId?: Prisma.IntNullableFilter<"Memory"> | number | null
+  title?: Prisma.StringFilter<"Memory"> | string
+  content?: Prisma.StringFilter<"Memory"> | string
+  metadata?: Prisma.JsonFilter<"Memory">
+  createdAt?: Prisma.DateTimeFilter<"Memory"> | Date | string
+}
+
+export type MemoryCreateWithoutKnowledgeBaseInput = {
+  title: string
+  content: string
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+  topic?: Prisma.TopicCreateNestedOneWithoutMemoriesInput
+}
+
 export type MemoryUncheckedCreateWithoutKnowledgeBaseInput = {
   id?: number
+  topicId?: number | null
+  title: string
   content: string
-  chunkIndex: number
-  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -509,50 +601,72 @@ export type MemoryUpdateManyWithWhereWithoutKnowledgeBaseInput = {
   data: Prisma.XOR<Prisma.MemoryUpdateManyMutationInput, Prisma.MemoryUncheckedUpdateManyWithoutKnowledgeBaseInput>
 }
 
-export type MemoryScalarWhereInput = {
-  AND?: Prisma.MemoryScalarWhereInput | Prisma.MemoryScalarWhereInput[]
-  OR?: Prisma.MemoryScalarWhereInput[]
-  NOT?: Prisma.MemoryScalarWhereInput | Prisma.MemoryScalarWhereInput[]
-  id?: Prisma.IntFilter<"Memory"> | number
-  kbId?: Prisma.IntFilter<"Memory"> | number
-  content?: Prisma.StringFilter<"Memory"> | string
-  chunkIndex?: Prisma.IntFilter<"Memory"> | number
-  ingestBatch?: Prisma.StringFilter<"Memory"> | string
-  metadata?: Prisma.JsonFilter<"Memory">
-  createdAt?: Prisma.DateTimeFilter<"Memory"> | Date | string
+export type MemoryCreateManyTopicInput = {
+  id?: number
+  kbId: number
+  title: string
+  content: string
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Date | string
+}
+
+export type MemoryUpdateWithoutTopicInput = {
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  content?: Prisma.StringFieldUpdateOperationsInput | string
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  knowledgeBase?: Prisma.KnowledgeBaseUpdateOneRequiredWithoutMemoriesNestedInput
+}
+
+export type MemoryUncheckedUpdateWithoutTopicInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  kbId?: Prisma.IntFieldUpdateOperationsInput | number
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  content?: Prisma.StringFieldUpdateOperationsInput | string
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+}
+
+export type MemoryUncheckedUpdateManyWithoutTopicInput = {
+  id?: Prisma.IntFieldUpdateOperationsInput | number
+  kbId?: Prisma.IntFieldUpdateOperationsInput | number
+  title?: Prisma.StringFieldUpdateOperationsInput | string
+  content?: Prisma.StringFieldUpdateOperationsInput | string
+  metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
+  createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type MemoryCreateManyKnowledgeBaseInput = {
   id?: number
+  topicId?: number | null
+  title: string
   content: string
-  chunkIndex: number
-  ingestBatch: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type MemoryUpdateWithoutKnowledgeBaseInput = {
+  title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
-  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
+  topic?: Prisma.TopicUpdateOneWithoutMemoriesNestedInput
 }
 
 export type MemoryUncheckedUpdateWithoutKnowledgeBaseInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  topicId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
-  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type MemoryUncheckedUpdateManyWithoutKnowledgeBaseInput = {
   id?: Prisma.IntFieldUpdateOperationsInput | number
+  topicId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  chunkIndex?: Prisma.IntFieldUpdateOperationsInput | number
-  ingestBatch?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -562,68 +676,75 @@ export type MemoryUncheckedUpdateManyWithoutKnowledgeBaseInput = {
 export type MemorySelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   kbId?: boolean
+  topicId?: boolean
+  title?: boolean
   content?: boolean
-  chunkIndex?: boolean
-  ingestBatch?: boolean
   metadata?: boolean
   createdAt?: boolean
   knowledgeBase?: boolean | Prisma.KnowledgeBaseDefaultArgs<ExtArgs>
+  topic?: boolean | Prisma.Memory$topicArgs<ExtArgs>
 }, ExtArgs["result"]["memory"]>
 
 export type MemorySelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   kbId?: boolean
+  topicId?: boolean
+  title?: boolean
   content?: boolean
-  chunkIndex?: boolean
-  ingestBatch?: boolean
   metadata?: boolean
   createdAt?: boolean
   knowledgeBase?: boolean | Prisma.KnowledgeBaseDefaultArgs<ExtArgs>
+  topic?: boolean | Prisma.Memory$topicArgs<ExtArgs>
 }, ExtArgs["result"]["memory"]>
 
 export type MemorySelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   kbId?: boolean
+  topicId?: boolean
+  title?: boolean
   content?: boolean
-  chunkIndex?: boolean
-  ingestBatch?: boolean
   metadata?: boolean
   createdAt?: boolean
   knowledgeBase?: boolean | Prisma.KnowledgeBaseDefaultArgs<ExtArgs>
+  topic?: boolean | Prisma.Memory$topicArgs<ExtArgs>
 }, ExtArgs["result"]["memory"]>
 
 export type MemorySelectScalar = {
   id?: boolean
   kbId?: boolean
+  topicId?: boolean
+  title?: boolean
   content?: boolean
-  chunkIndex?: boolean
-  ingestBatch?: boolean
   metadata?: boolean
   createdAt?: boolean
 }
 
-export type MemoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "kbId" | "content" | "chunkIndex" | "ingestBatch" | "metadata" | "createdAt", ExtArgs["result"]["memory"]>
+export type MemoryOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "kbId" | "topicId" | "title" | "content" | "metadata" | "createdAt", ExtArgs["result"]["memory"]>
 export type MemoryInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   knowledgeBase?: boolean | Prisma.KnowledgeBaseDefaultArgs<ExtArgs>
+  topic?: boolean | Prisma.Memory$topicArgs<ExtArgs>
 }
 export type MemoryIncludeCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   knowledgeBase?: boolean | Prisma.KnowledgeBaseDefaultArgs<ExtArgs>
+  topic?: boolean | Prisma.Memory$topicArgs<ExtArgs>
 }
 export type MemoryIncludeUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   knowledgeBase?: boolean | Prisma.KnowledgeBaseDefaultArgs<ExtArgs>
+  topic?: boolean | Prisma.Memory$topicArgs<ExtArgs>
 }
 
 export type $MemoryPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "Memory"
   objects: {
     knowledgeBase: Prisma.$KnowledgeBasePayload<ExtArgs>
+    topic: Prisma.$TopicPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: number
     kbId: number
+    topicId: number | null
+    title: string
     content: string
-    chunkIndex: number
-    ingestBatch: string
     metadata: runtime.JsonValue
     createdAt: Date
   }, ExtArgs["result"]["memory"]>
@@ -1021,6 +1142,7 @@ readonly fields: MemoryFieldRefs;
 export interface Prisma__MemoryClient<T, Null = never, ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs, GlobalOmitOptions = {}> extends Prisma.PrismaPromise<T> {
   readonly [Symbol.toStringTag]: "PrismaPromise"
   knowledgeBase<T extends Prisma.KnowledgeBaseDefaultArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.KnowledgeBaseDefaultArgs<ExtArgs>>): Prisma.Prisma__KnowledgeBaseClient<runtime.Types.Result.GetResult<Prisma.$KnowledgeBasePayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | Null, Null, ExtArgs, GlobalOmitOptions>
+  topic<T extends Prisma.Memory$topicArgs<ExtArgs> = {}>(args?: Prisma.Subset<T, Prisma.Memory$topicArgs<ExtArgs>>): Prisma.Prisma__TopicClient<runtime.Types.Result.GetResult<Prisma.$TopicPayload<ExtArgs>, T, "findUniqueOrThrow", GlobalOmitOptions> | null, null, ExtArgs, GlobalOmitOptions>
   /**
    * Attaches callbacks for the resolution and/or rejection of the Promise.
    * @param onfulfilled The callback to execute when the Promise is resolved.
@@ -1052,9 +1174,9 @@ export interface Prisma__MemoryClient<T, Null = never, ExtArgs extends runtime.T
 export interface MemoryFieldRefs {
   readonly id: Prisma.FieldRef<"Memory", 'Int'>
   readonly kbId: Prisma.FieldRef<"Memory", 'Int'>
+  readonly topicId: Prisma.FieldRef<"Memory", 'Int'>
+  readonly title: Prisma.FieldRef<"Memory", 'String'>
   readonly content: Prisma.FieldRef<"Memory", 'String'>
-  readonly chunkIndex: Prisma.FieldRef<"Memory", 'Int'>
-  readonly ingestBatch: Prisma.FieldRef<"Memory", 'String'>
   readonly metadata: Prisma.FieldRef<"Memory", 'Json'>
   readonly createdAt: Prisma.FieldRef<"Memory", 'DateTime'>
 }
@@ -1455,6 +1577,25 @@ export type MemoryDeleteManyArgs<ExtArgs extends runtime.Types.Extensions.Intern
    * Limit how many Memories to delete.
    */
   limit?: number
+}
+
+/**
+ * Memory.topic
+ */
+export type Memory$topicArgs<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
+  /**
+   * Select specific fields to fetch from the Topic
+   */
+  select?: Prisma.TopicSelect<ExtArgs> | null
+  /**
+   * Omit specific fields from the Topic
+   */
+  omit?: Prisma.TopicOmit<ExtArgs> | null
+  /**
+   * Choose, which related nodes to fetch as well
+   */
+  include?: Prisma.TopicInclude<ExtArgs> | null
+  where?: Prisma.TopicWhereInput
 }
 
 /**

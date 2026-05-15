@@ -8,6 +8,7 @@
  *
  * 🟢 You can import this file directly.
  */
+export type * from './models/Topic'
 export type * from './models/Memory'
 export type * from './models/Vendor'
 export type * from './models/Provider'

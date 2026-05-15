@@ -215,107 +215,6 @@
         }
       }
     },
-    "/api/kb/ingest": {
-      "post": {
-        "summary": "POST /api/kb/ingest",
-        "description": "POST /api/kb/ingest",
-        "tags": [
-          "Knowledge Base"
-        ],
-        "responses": {
-          "200": {
-            "description": "成功响应",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "201": {
-            "description": "创建成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "400": {
-            "description": "请求参数错误",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
-                }
-              }
-            }
-          },
-          "409": {
-            "description": "冲突（重复）",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "object",
-                  "properties": {
-                    "success": {
-                      "type": "boolean",
-                      "example": true
-                    },
-                    "data": {
-                      "type": "object"
-                    }
-                  }
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/IngestTextRequest"
-              },
-              "example": {
-                "kbId": 1,
-                "content": "示例内容..."
-              }
-            }
-          }
-        }
-      }
-    },
     "/api/kb/list": {
       "post": {
         "summary": "POST /api/kb/list",
@@ -2186,13 +2085,13 @@
             "type": "string",
             "description": "cutModel"
           },
-          "chunkSize": {
-            "type": "number",
-            "description": "chunkSize"
+          "messageId": {
+            "type": "string",
+            "description": "messageId"
           },
-          "originalLength": {
-            "type": "number",
-            "description": "originalLength"
+          "role": {
+            "type": "string",
+            "description": "role"
           },
           "key": {
             "type": "string",
@@ -2204,9 +2103,10 @@
         "type": "object",
         "required": [
           "id",
+          "title",
           "content",
           "score",
-          "chunkIndex",
+          "topicId",
           "metadata",
           "source",
           "prev",
@@ -2217,6 +2117,10 @@
             "type": "number",
             "description": "id"
           },
+          "title": {
+            "type": "string",
+            "description": "title"
+          },
           "content": {
             "type": "string",
             "description": "content"
@@ -2225,9 +2129,13 @@
             "type": "number",
             "description": "score"
           },
-          "chunkIndex": {
-            "type": "number",
-            "description": "chunkIndex"
+          "topicId": {
+            "type": "string",
+            "enum": [
+              "number",
+              "null"
+            ],
+            "description": "topicId"
           },
           "metadata": {
             "type": "string",
@@ -2255,8 +2163,9 @@
         "type": "object",
         "required": [
           "id",
+          "title",
           "content",
-          "chunkIndex",
+          "topicId",
           "metadata",
           "createdAt"
         ],
@@ -2265,13 +2174,21 @@
             "type": "number",
             "description": "id"
           },
+          "title": {
+            "type": "string",
+            "description": "title"
+          },
           "content": {
             "type": "string",
             "description": "content"
           },
-          "chunkIndex": {
-            "type": "number",
-            "description": "chunkIndex"
+          "topicId": {
+            "type": "string",
+            "enum": [
+              "number",
+              "null"
+            ],
+            "description": "topicId"
           },
           "metadata": {
             "type": "string",
@@ -2304,40 +2221,6 @@
           "lastUpdated": {
             "type": "string",
             "description": "lastUpdated"
-          }
-        }
-      },
-      "IngestTextRequest": {
-        "type": "object",
-        "required": [
-          "kbId",
-          "content"
-        ],
-        "properties": {
-          "kbId": {
-            "type": "number",
-            "description": "kbId"
-          },
-          "content": {
-            "type": "string",
-            "description": "content"
-          }
-        }
-      },
-      "IngestTextResponse": {
-        "type": "object",
-        "required": [
-          "count",
-          "memoryIds"
-        ],
-        "properties": {
-          "count": {
-            "type": "number",
-            "description": "count"
-          },
-          "memoryIds": {
-            "type": "string",
-            "description": "memoryIds"
           }
         }
       },

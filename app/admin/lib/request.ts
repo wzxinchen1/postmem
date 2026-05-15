@@ -2,7 +2,7 @@ import axios, { AxiosInstance, AxiosRequestConfig, AxiosResponse, AxiosError } f
 
 const instance: AxiosInstance = axios.create({
   baseURL: '',
-  timeout: 30000,
+  timeout: 0,
   headers: {
     'Content-Type': 'application/json',
   },
@@ -70,6 +70,48 @@ export async function get<T = any>(url: string, params?: any): Promise<T> {
 
 export async function del<T = any>(url: string, params?: any): Promise<T> {
   return request<T>({ method: 'DELETE', url, params })
+}
+
+export async function streamPost(
+  url: string,
+  data: any,
+  onEvent: (event: any) => void,
+  signal?: AbortSignal
+): Promise<void> {
+  const response = await fetch(url, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(data),
+    signal,
+  })
+
+  if (!response.ok || !response.body) {
+    throw new RequestError('请求失败', String(response.status))
+  }
+
+  const reader = response.body.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  while (true) {
+    const { done, value } = await reader.read()
+    if (done) break
+
+    buffer += decoder.decode(value, { stream: true })
+    const lines = buffer.split('\n')
+    buffer = lines.pop() || ''
+
+    for (const line of lines) {
+      if (line.startsWith('data: ')) {
+        try {
+          const event = JSON.parse(line.slice(6))
+          onEvent(event)
+        } catch {
+          // ignore parse errors
+        }
+      }
+    }
+  }
 }
 
 export default instance

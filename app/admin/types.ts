@@ -12,18 +12,34 @@ export interface IngestResponse {
   }
 }
 
+export interface IngestProgressEvent {
+  type: 'status' | 'progress' | 'chunk_detail' | 'complete' | 'error'
+  message?: string
+  data?: {
+    current?: number
+    total?: number
+    title?: string
+    action?: 'insert' | 'skip' | 'merge' | 'new'
+    count?: number
+    memoryIds?: number[]
+    topicsInvolved?: string[]
+    message?: string
+    code?: string
+  }
+}
+
 export type SearchSource = 'dense' | 'sparse' | 'hybrid'
 
 export interface SearchResult {
   id: number
   content: string
   score: number
-  chunkIndex: number
+  topicId: number | null
   source: SearchSource
   metadata?: {
     cutModel?: string
-    chunkSize?: number
-    originalLength?: number
+    messageId?: string
+    role?: string
   }
   context?: {
     prev: string[]
@@ -45,7 +61,7 @@ export interface SearchResponse {
 export interface ListItem {
   id: number
   content: string
-  chunkIndex: number
+  topicId: number | null
   metadata: Record<string, unknown>
   createdAt: string
 }

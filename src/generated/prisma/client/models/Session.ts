@@ -500,14 +500,6 @@ export type SessionUncheckedUpdateManyWithoutKnowledgeBaseNestedInput = {
   deleteMany?: Prisma.SessionScalarWhereInput | Prisma.SessionScalarWhereInput[]
 }
 
-export type NullableIntFieldUpdateOperationsInput = {
-  set?: number | null
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
-}
-
 export type SessionCreateNestedOneWithoutMessagesInput = {
   create?: Prisma.XOR<Prisma.SessionCreateWithoutMessagesInput, Prisma.SessionUncheckedCreateWithoutMessagesInput>
   connectOrCreate?: Prisma.SessionCreateOrConnectWithoutMessagesInput

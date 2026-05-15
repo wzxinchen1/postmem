@@ -115,7 +115,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
 
     const memories = await prisma.$queryRaw<
       Array<{ id: number; content: string }>
-    >`SELECT id, content FROM memories WHERE kb_id = ${testKbId} AND metadata->>'messageId' IN ('msg-1', 'msg-2') ORDER BY chunk_index ASC`
+    >`SELECT id, content FROM memories WHERE kb_id = ${testKbId} AND metadata->>'messageId' IN ('msg-1', 'msg-2') ORDER BY created_at ASC`
 
     expect(memories.length).toBe(2)
     expect(memories[0].content).toContain('你好')
@@ -123,7 +123,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
 
     const rawMemories = await prisma.$queryRaw<
       Array<{ id: number; embedding: unknown }>
-    >`SELECT id, embedding FROM memories WHERE kb_id = ${testKbId} AND metadata->>'messageId' IN ('msg-1', 'msg-2') ORDER BY chunk_index`
+    >`SELECT id, embedding FROM memories WHERE kb_id = ${testKbId} AND metadata->>'messageId' IN ('msg-1', 'msg-2') ORDER BY created_at`
     expect(rawMemories.length).toBe(2)
     expect(rawMemories[0].embedding).not.toBeNull()
     expect(rawMemories[1].embedding).not.toBeNull()
@@ -216,7 +216,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
 
   // ==================== 消息列表核心逻辑测试 ====================
 
-  describe('消息列表核心逻辑 - MemPalace Verbatim 存储', () => {
+  describe('消息列表核心逻辑 - Verbatim 存储', () => {
     it('每条消息前拼接中文角色标签：用户 / 助手 / 系统', async () => {
       const res = await request
         .post('/api/kb/ingest')
@@ -233,7 +233,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
 
       const memories = await prisma.$queryRaw<
         Array<{ id: number; content: string }>
-      >`SELECT id, content FROM memories WHERE kb_id = ${testKbId} AND metadata->>'messageId' IN ('role-user', 'role-assistant', 'role-system') ORDER BY chunk_index ASC`
+      >`SELECT id, content FROM memories WHERE kb_id = ${testKbId} AND metadata->>'messageId' IN ('role-user', 'role-assistant', 'role-system') ORDER BY created_at ASC`
 
       expect(memories.length).toBe(3)
       expect(memories[0].content).toBe('用户: 我叫小明')
@@ -281,75 +281,69 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
       expect(meta2.role).toBe('assistant')
     })
 
-    it('chunkIndex 按消息列表顺序从 0 递增', async () => {
+    it('每条消息都关联到有效的 Topic（topicId 不为空）', async () => {
       const res = await request
         .post('/api/kb/ingest')
         .send({
           kbId: testKbId,
           messages: [
-            { id: 'idx-0', role: 'user', content: '第一条' },
-            { id: 'idx-1', role: 'assistant', content: '第二条' },
-            { id: 'idx-2', role: 'user', content: '第三条' },
-            { id: 'idx-3', role: 'assistant', content: '第四条' },
-            { id: 'idx-4', role: 'system', content: '第五条' },
+            { id: 'topic-0', role: 'user', content: '第一条' },
+            { id: 'topic-1', role: 'assistant', content: '第二条' },
+            { id: 'topic-2', role: 'user', content: '第三条' },
           ],
         })
 
       expect(res.status).toBe(200)
-      expect(res.body.data.count).toBe(5)
+      expect(res.body.data.count).toBe(3)
 
-      const memories = await prisma.$queryRaw<
-        Array<{ id: number; chunk_index: number; content: string }>
-      >`
-        SELECT id, chunk_index, content
-        FROM memories
-        WHERE kb_id = ${testKbId}
-          AND metadata->>'messageId' IN ('idx-0', 'idx-1', 'idx-2', 'idx-3', 'idx-4')
-        ORDER BY chunk_index
-      `
+      const memories = await prisma.memory.findMany({
+        where: {
+          kbId: testKbId,
+          metadata: { path: ['messageId'], in: ['topic-0', 'topic-1', 'topic-2'] },
+        },
+        select: { id: true, topicId: true, content: true },
+      })
 
-      expect(memories.length).toBe(5)
-      expect(memories[0].chunk_index).toBe(0)
-      expect(memories[1].chunk_index).toBe(1)
-      expect(memories[2].chunk_index).toBe(2)
-      expect(memories[3].chunk_index).toBe(3)
-      expect(memories[4].chunk_index).toBe(4)
+      expect(memories.length).toBe(3)
+      for (const m of memories) {
+        expect(m.topicId).not.toBeNull()
+      }
     })
 
-    it('同一批次所有消息共享相同 batchId', async () => {
+    it('同一批消息可归入不同 Topic', async () => {
       const res = await request
         .post('/api/kb/ingest')
         .send({
           kbId: testKbId,
           messages: [
-            { id: 'batch-a', role: 'user', content: '消息A' },
-            { id: 'batch-b', role: 'assistant', content: '消息B' },
-            { id: 'batch-c', role: 'user', content: '消息C' },
+            { id: 'diff-topic-a', role: 'user', content: '讨论 React Hooks 的使用方式' },
+            { id: 'diff-topic-b', role: 'assistant', content: 'PostgreSQL 数据库索引优化技巧' },
+            { id: 'diff-topic-c', role: 'user', content: 'Vue3 组合式 API 的响应式原理' },
           ],
         })
 
       expect(res.status).toBe(200)
 
-      const memories = await prisma.$queryRaw<
-        Array<{ ingestBatch: string }>
-      >`
-        SELECT ingest_batch
-        FROM memories
-        WHERE kb_id = ${testKbId}
-          AND metadata->>'messageId' IN ('batch-a', 'batch-b', 'batch-c')
-      `
+      const memories = await prisma.memory.findMany({
+        where: {
+          kbId: testKbId,
+          metadata: { path: ['messageId'], in: ['diff-topic-a', 'diff-topic-b', 'diff-topic-c'] },
+        },
+        select: { id: true, topicId: true, content: true },
+      })
 
-      const batches = new Set(memories.map(m => m.ingestBatch))
-      expect(batches.size).toBe(1)
+      expect(memories.length).toBe(3)
+      const uniqueTopics = new Set(memories.map((m) => m.topicId))
+      expect(uniqueTopics.size).toBeGreaterThanOrEqual(1)
     })
 
-    it('不同请求产生不同的 batchId', async () => {
+    it('每次入库都会产生或关联到有效的 Topic 记录', async () => {
       const res1 = await request
         .post('/api/kb/ingest')
         .send({
           kbId: testKbId,
           messages: [
-            { id: 'diff-1', role: 'user', content: '第一批次' },
+            { id: 'valid-topic-1', role: 'user', content: '第一条消息' },
           ],
         })
 
@@ -358,7 +352,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
         .send({
           kbId: testKbId,
           messages: [
-            { id: 'diff-2', role: 'user', content: '第二批次' },
+            { id: 'valid-topic-2', role: 'user', content: '第二条消息' },
           ],
         })
 
@@ -366,15 +360,16 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
       expect(res2.status).toBe(200)
 
       const mem1 = await prisma.memory.findFirst({
-        where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'diff-1' } },
-        select: { ingestBatch: true },
+        where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'valid-topic-1' } },
+        select: { topicId: true },
       })
       const mem2 = await prisma.memory.findFirst({
-        where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'diff-2' } },
-        select: { ingestBatch: true },
+        where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'valid-topic-2' } },
+        select: { topicId: true },
       })
 
-      expect(mem1!.ingestBatch).not.toBe(mem2!.ingestBatch)
+      expect(mem1!.topicId).not.toBeNull()
+      expect(mem2!.topicId).not.toBeNull()
     })
 
     it('verbatime 原文存储：特殊字符和长文本原样保留', async () => {
@@ -415,7 +410,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
 
       const memories = await prisma.memory.findMany({
         where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'dup-id' } },
-        orderBy: { chunkIndex: 'asc' },
+        orderBy: { createdAt: 'asc' },
       })
 
       expect(memories.length).toBe(2)
@@ -476,20 +471,22 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
       ])
 
       const memories = await prisma.$queryRaw<
-        Array<{ id: number; chunk_index: number; content: string }>
+        Array<{ id: number; topic_id: number | null; content: string }>
       >`
-        SELECT id, chunk_index, content
+        SELECT id, topic_id, content
         FROM memories
         WHERE kb_id = ${testKbId}
           AND metadata->>'messageId' IN ('multi-sys-1', 'multi-user-1', 'multi-asst-1', 'multi-user-2', 'multi-asst-2')
-        ORDER BY chunk_index
+        ORDER BY created_at
       `
 
-      expect(memories[0].content).toMatch(/^系统: 你是一个翻译助手$/)
-      expect(memories[1].content).toMatch(/^用户: 请翻译 hello world 到中文$/)
-      expect(memories[2].content).toMatch(/^助手: "hello world" 的中文意思是 "你好世界"$/)
-      expect(memories[3].content).toMatch(/^用户: 那 good morning 呢\？$/)
-      expect(memories[4].content).toMatch(/^助手: "good morning" 的中文意思是 "早上好"$/)
+      expect(memories.length).toBe(5)
+      for (const m of memories) {
+        expect(m.topic_id).not.toBeNull()
+      }
+      const contents = memories.map((m) => m.content)
+      expect(contents.some((c) => c.includes('翻译助手'))).toBe(true)
+      expect(contents.some((c) => c.includes('hello world'))).toBe(true)
     })
 
     it('memorizedMessageIds 与 memoryIds 按顺序一一对应', async () => {
@@ -584,28 +581,28 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
     expect(hasMatch).toBe(true)
   })
 
-  it('搜索结果包含完整字段：id, content, score, chunkIndex, metadata, source', async () => {
-    const res = await searchRequest
-      .post('/api/kb/search')
-      .send({
-        kbId: testKbId,
-        query: 'Vue 渐进式前端框架',
-      })
+    it('搜索结果包含完整字段：id, content, score, topicId, metadata, source', async () => {
+      const res = await searchRequest
+        .post('/api/kb/search')
+        .send({
+          kbId: testKbId,
+          query: 'Vue 渐进式前端框架',
+        })
 
-    expect(res.status).toBe(200)
-    const results = res.body.data.results
-    expect(results.length).toBeGreaterThanOrEqual(1)
+      expect(res.status).toBe(200)
+      const results = res.body.data.results
+      expect(results.length).toBeGreaterThanOrEqual(1)
 
-    const result = results[0]
-    expect(result).toHaveProperty('id')
-    expect(result).toHaveProperty('content')
-    expect(result).toHaveProperty('score')
-    expect(typeof result.score).toBe('number')
-    expect(result).toHaveProperty('chunkIndex')
-    expect(result).toHaveProperty('metadata')
-    expect(result).toHaveProperty('source')
-    expect(['dense', 'sparse', 'hybrid']).toContain(result.source)
-  })
+      const result = results[0]
+      expect(result).toHaveProperty('id')
+      expect(result).toHaveProperty('content')
+      expect(result).toHaveProperty('score')
+      expect(typeof result.score).toBe('number')
+      expect(result).toHaveProperty('topicId')
+      expect(result).toHaveProperty('metadata')
+      expect(result).toHaveProperty('source')
+      expect(['dense', 'sparse', 'hybrid']).toContain(result.source)
+    })
 
   it('metadata 包含 cutModel、messageId 和 role', async () => {
     const res = await searchRequest

@@ -38,23 +38,6 @@ Response Body:
   400: 请求参数错误 (ErrorResponse)
   409: 冲突（重复） (ErrorResponse)
 
-### POST /api/kb/ingest
-
-**Types:** IngestTextRequest (请求), IngestTextResponse (响应)
-
-Request Body:
-  type: IngestTextRequest
-  - `kbId`: number (required)
-  - `content`: string (required)
-
-Response Body:
-  200: 成功响应 (IngestTextResponse)
-    { success: boolean, data: IngestTextResponse }
-  201: 创建成功 (IngestTextResponse)
-    { success: boolean, data: IngestTextResponse }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
-
 ### POST /api/kb/list
 
 **Types:** ListRequest (请求), ListItem[] (响应)
@@ -508,18 +491,19 @@ Required:
 key
 
 - `cutModel`?: string
-- `chunkSize`?: number
-- `originalLength`?: number
+- `messageId`?: string
+- `role`?: string
 - `key`*: string]: unknown
 
 ### SearchResult
 Required:
-id, content, score, chunkIndex, metadata, source, prev, next
+id, title, content, score, topicId, metadata, source, prev, next
 
 - `id`*: number
+- `title`*: string
 - `content`*: string
 - `score`*: number
-- `chunkIndex`*: number
+- `topicId`*: number | null
 - `metadata`*: MemoryMetadata
 - `source`*: SearchSource
 - `context`?: {
@@ -528,11 +512,12 @@ id, content, score, chunkIndex, metadata, source, prev, next
 
 ### ListItem
 Required:
-id, content, chunkIndex, metadata, createdAt
+id, title, content, topicId, metadata, createdAt
 
 - `id`*: number
+- `title`*: string
 - `content`*: string
-- `chunkIndex`*: number
+- `topicId`*: number | null
 - `metadata`*: MemoryMetadata
 - `createdAt`*: Date
 
@@ -544,20 +529,6 @@ total
 - `kbName`?: string
 - `total`*: number
 - `lastUpdated`?: Date
-
-### IngestTextRequest
-Required:
-kbId, content
-
-- `kbId`*: number
-- `content`*: string
-
-### IngestTextResponse
-Required:
-count, memoryIds
-
-- `count`*: number
-- `memoryIds`*: number[]
 
 ### SearchRequest
 Required:
