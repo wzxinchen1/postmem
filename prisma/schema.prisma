@@ -30,7 +30,7 @@ model Memory {
   topicId         Int?                   @map("topic_id")
   title           String                 @db.VarChar(200)
   content         String
-  embedding       Unsupported("vector")?
+  embedding       Unsupported("vector(1024)")?
   metadata        Json                    @default("{}")
   createdAt       DateTime                @default(now()) @map("created_at") @db.Timestamptz(6)
   knowledgeBase   KnowledgeBase           @relation(fields: [kbId], references: [id], onDelete: Cascade)

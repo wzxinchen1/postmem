@@ -215,6 +215,135 @@
         }
       }
     },
+    "/api/kb/ingest": {
+      "post": {
+        "summary": "POST /api/kb/ingest",
+        "description": "POST /api/kb/ingest",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应（SSE 流式响应）",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "object",
+                  "description": "SSE 流式响应",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "事件类型",
+                      "enum": [
+                        "complete",
+                        "error"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "事件消息"
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "事件数据"
+                    }
+                  }
+                },
+                "x-sse-event-types": [
+                  {
+                    "event": "complete",
+                    "description": "complete"
+                  },
+                  {
+                    "event": "error",
+                    "description": "error"
+                  }
+                ]
+              }
+            }
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "冲突（重复）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "oneOf": [
+                  {
+                    "$ref": "#/components/schemas/IngestTextRequest"
+                  },
+                  {
+                    "$ref": "#/components/schemas/IngestMessagesRequest"
+                  }
+                ],
+                "description": "支持多种请求体格式: IngestTextRequest, IngestMessagesRequest"
+              },
+              "example": {
+                "kbId": 1,
+                "content": "示例内容..."
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/kb/list": {
       "post": {
         "summary": "POST /api/kb/list",
@@ -2221,6 +2350,83 @@
           "lastUpdated": {
             "type": "string",
             "description": "lastUpdated"
+          }
+        }
+      },
+      "IngestMessage": {
+        "type": "object",
+        "required": [
+          "id",
+          "role",
+          "content"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "id"
+          },
+          "role": {
+            "type": "string",
+            "description": "role"
+          },
+          "content": {
+            "type": "string",
+            "description": "content"
+          }
+        }
+      },
+      "IngestTextRequest": {
+        "type": "object",
+        "required": [
+          "kbId",
+          "content"
+        ],
+        "properties": {
+          "kbId": {
+            "type": "number",
+            "description": "kbId"
+          },
+          "content": {
+            "type": "string",
+            "description": "content"
+          }
+        }
+      },
+      "IngestMessagesRequest": {
+        "type": "object",
+        "required": [
+          "kbId",
+          "messages"
+        ],
+        "properties": {
+          "kbId": {
+            "type": "number",
+            "description": "kbId"
+          },
+          "messages": {
+            "type": "string",
+            "description": "messages"
+          }
+        }
+      },
+      "IngestTextResponse": {
+        "type": "object",
+        "required": [
+          "count",
+          "memoryIds"
+        ],
+        "properties": {
+          "count": {
+            "type": "number",
+            "description": "count"
+          },
+          "memoryIds": {
+            "type": "string",
+            "description": "memoryIds"
+          },
+          "topicsInvolved": {
+            "type": "string",
+            "description": "topicsInvolved"
           }
         }
       },

@@ -583,7 +583,6 @@ export class KBService {
           (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) as cosine_distance
         FROM memories
         WHERE kb_id = ${kbId}
-          AND (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) < 0.3
         ORDER BY embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector
         LIMIT ${denseLimit}
       `,
@@ -601,10 +600,10 @@ export class KBService {
           id, title, content,
           topic_id,
           metadata,
-          pgroonga_score(memories) as ts_rank
+          pgroonga_score(memories.tableoid, memories.ctid) as ts_rank
         FROM memories
         WHERE kb_id = ${kbId} AND content &@ ${query}
-        ORDER BY pgroonga_score(memories) DESC
+        ORDER BY pgroonga_score(memories.tableoid, memories.ctid) DESC
         LIMIT ${denseLimit}
       `
     ])

@@ -6,6 +6,12 @@ const OUTPUT_FILE = path.resolve(process.cwd(), 'public/swagger.json')
 const LLM_YAML_FILE = path.resolve(process.cwd(), 'public/api-reference.yaml')
 const TYPES_FILE = path.resolve(process.cwd(), 'src/types/index.ts')
 
+interface SSEEventType {
+  name: string
+  description: string
+  dataType?: string
+}
+
 interface ApiEndpoint {
   path: string
   method: string
@@ -20,6 +26,10 @@ interface ApiEndpoint {
   params?: { name: string; description: string; type: string }[]
   query?: { name: string; description: string; type: string; default?: unknown; enum?: string[] }[]
   responses: Record<number, { description: string; type?: string }>
+  sse?: {
+    description: string
+    eventTypes: SSEEventType[]
+  }
 }
 
 interface TypeSchema {
@@ -89,6 +99,18 @@ function parseApiFile(filePath: string): ApiEndpoint[] {
       for (const method of methods) {
         endpoints.push(parseEndpoint(apiPath, method.toUpperCase(), content, tag))
       }
+    } else if (content.match(/req\.method\s*!==?\s*['"](\w+)['"]/)) {
+      const methodMatch = content.match(/req\.method\s*!==?\s*['"](\w+)['"]/)
+      if (methodMatch) {
+        endpoints.push(parseEndpoint(apiPath, methodMatch[1], content, tag))
+      }
+    } else if (content.includes('export default async function handler')) {
+      const handlerMethods = ['GET', 'POST', 'PUT', 'DELETE']
+      for (const m of handlerMethods) {
+        if (new RegExp(`\\b${m}:\\s*async|if\\s*\\(req\\.method\\s*===?\\s*['"]${m}['"]\\)|req\\.method\\s*!==?\\s*['"]${m}['"]`).test(content)) {
+          endpoints.push(parseEndpoint(apiPath, m, content, tag))
+        }
+      }
     }
   }
 
@@ -127,10 +149,18 @@ function parseEndpoint(
   }
 
   if (['POST', 'PUT'].includes(method)) {
-    const reqBodyMatch = content.match(/as (\w+Request)/)
-    if (reqBodyMatch) {
-      endpoint.requestBody = { type: reqBodyMatch[1] }
-      
+    const reqBodyMatches = content.match(/as (\w+Request)/g)
+    if (reqBodyMatches && reqBodyMatches.length > 1) {
+      const typeNames = reqBodyMatches.map(m => m.replace('as ', ''))
+      endpoint.requestBody = { type: typeNames.join(' | ') }
+    } else {
+      const reqBodyMatch = content.match(/as (\w+Request)/)
+      if (reqBodyMatch) {
+        endpoint.requestBody = { type: reqBodyMatch[1] }
+      }
+    }
+
+    if (endpoint.requestBody) {
       const bodyDestructure = content.match(/const \{([^}]+)\}\s*=\s*req\.body/)
       if (bodyDestructure) {
         endpoint.requestBody.requiredFields = bodyDestructure[1]
@@ -199,7 +229,50 @@ function parseEndpoint(
     endpoint.responses[409] = { description: '冲突（重复）' }
   }
 
+  if (content.includes('text/event-stream') || (content.includes('Content-Type') && content.includes('event-stream'))) {
+    endpoint.sse = extractSSEEvents(content)
+  }
+
   return endpoint
+}
+
+function extractSSEEvents(content: string): ApiEndpoint['sse'] {
+  const sseConfig: Record<string, { description: string; eventTypes: SSEEventType[] }> = {
+    '/api/kb/ingest': {
+      description: '文本入库 SSE 流式响应，实时推送处理进度',
+      eventTypes: [
+        { name: 'status', description: '状态更新通知', dataType: '{ message: string }' },
+        { name: 'progress', description: '处理进度更新', dataType: '{ message: string, data: { current: number, total: number, title: string } }' },
+        { name: 'chunk_detail', description: '片段处理详情', dataType: '{ message: string, data: { title: string, action?: "insert"|"skip"|"merge"|"new" } }' },
+        { name: 'complete', description: '处理完成', dataType: 'IngestTextResponse' },
+        { name: 'error', description: '处理出错', dataType: '{ message: string, code: string }' },
+      ]
+    }
+  }
+
+  for (const [pathPrefix, config] of Object.entries(sseConfig)) {
+    if (content.includes(pathPrefix.replace('/api/', '')) || content.includes(`'${pathPrefix}'`) || content.includes(`"${pathPrefix}"`)) {
+      return config
+    }
+  }
+
+  const eventTypes: SSEEventType[] = []
+  const sendEventRegex = /sendEvent\(\s*\{\s*type:\s*['"](\w+)['"]/g
+  let match
+  const seenTypes = new Set<string>()
+  while ((match = sendEventRegex.exec(content)) !== null) {
+    const typeName = match[1]
+    if (!seenTypes.has(typeName)) {
+      seenTypes.add(typeName)
+      eventTypes.push({ name: typeName, description: typeName })
+    }
+  }
+
+  if (eventTypes.length > 0) {
+    return { description: 'SSE 流式响应', eventTypes }
+  }
+
+  return { description: 'SSE 流式响应', eventTypes: [{ name: 'message', description: '流式消息事件' }] }
 }
 
 function parseTypesFile(): TypeSchema[] {
@@ -256,7 +329,11 @@ function getUsedTypes(endpoints: ApiEndpoint[], allTypes: TypeSchema[]): TypeSch
 
   for (const ep of endpoints) {
     // 请求体类型
-    if (ep.requestBody?.type) directRefs.add(ep.requestBody.type)
+    if (ep.requestBody?.type) {
+      for (const typeName of ep.requestBody.type.split(' | ').filter(Boolean)) {
+        directRefs.add(typeName)
+      }
+    }
 
     // 响应类型
     for (const [code] of Object.entries(ep.responses).sort((a, b) => Number(a[0]) - Number(b[0]))) {
@@ -373,18 +450,30 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[]): object 
     }
 
     if (ep.requestBody && ['POST', 'PUT'].includes(ep.method)) {
-      const schemaType = types.find(t => t.name === ep.requestBody!.type)
+      const typeNames = ep.requestBody.type.split(' | ').filter(Boolean)
+      const matchedTypes = typeNames.map(name => types.find(t => t.name === name)).filter(Boolean) as TypeSchema[]
 
+      let schema: any
+      if (matchedTypes.length > 1) {
+        schema = {
+          oneOf: matchedTypes.map(t => ({ $ref: `#/components/schemas/${t.name}` })),
+          description: `支持多种请求体格式: ${typeNames.join(', ')}`
+        }
+      } else if (matchedTypes.length === 1) {
+        schema = { $ref: `#/components/schemas/${matchedTypes[0].name}` }
+      } else {
+        schema = { type: 'object' }
+      }
+
+      const exampleType = matchedTypes[0]
       operation.requestBody = {
         required: true,
         content: {
           'application/json': {
-            schema: schemaType
-              ? { $ref: `#/components/schemas/${schemaType.name}` }
-              : { type: 'object' },
-            ...(schemaType ? {
+            schema,
+            ...(exampleType ? {
               example: Object.fromEntries(
-                schemaType.properties
+                exampleType.properties
                   .filter(p => p.required)
                   .slice(0, 4)
                   .map(p => [p.name, getExampleValue(p.type, p.name)])
@@ -396,13 +485,37 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[]): object 
     }
 
     for (const [code, resp] of Object.entries(ep.responses)) {
-      operation.responses[code] = {
-        description: resp.description,
-        content: {
-          'application/json': {
-            schema: resp.type && types.find(t => t.name === resp.type)
-              ? { $ref: `#/components/schemas/${resp.type}` }
-              : generateSuccessResponseSchema(ep.path, ep.method, types)
+      if (ep.sse && (code === '200' || code === 200)) {
+        operation.responses[code] = {
+          description: resp.description + '（SSE 流式响应）',
+          content: {
+            'text/event-stream': {
+              schema: {
+                type: 'object',
+                description: ep.sse.description,
+                properties: {
+                  type: { type: 'string', description: '事件类型', enum: ep.sse.eventTypes.map(e => e.name) },
+                  message: { type: 'string', description: '事件消息' },
+                  data: { type: 'object', description: '事件数据' }
+                }
+              },
+              'x-sse-event-types': ep.sse.eventTypes.map(e => ({
+                event: e.name,
+                description: e.description,
+                ...(e.dataType ? { data: e.dataType } : {})
+              }))
+            }
+          }
+        }
+      } else {
+        operation.responses[code] = {
+          description: resp.description,
+          content: {
+            'application/json': {
+              schema: resp.type && types.find(t => t.name === resp.type)
+                ? { $ref: `#/components/schemas/${resp.type}` }
+                : generateSuccessResponseSchema(ep.path, ep.method, types)
+            }
           }
         }
       }
@@ -683,12 +796,22 @@ function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[]): string 
       }
 
       if (ep.requestBody && ['POST', 'PUT'].includes(ep.method)) {
-        const schemaType = types.find(t => t.name === ep.requestBody!.type)
+        const typeNames = ep.requestBody.type.split(' | ').filter(Boolean)
+        const matchedTypes = typeNames.map(name => types.find(t => t.name === name)).filter(Boolean) as TypeSchema[]
         lines.push('Request Body:')
         
-        if (schemaType) {
-          lines.push(`  type: ${ep.requestBody!.type}`)
-          for (const p of schemaType.properties) {
+        if (matchedTypes.length > 1) {
+          lines.push(`  支持多种请求体格式 (oneOf):`)
+          for (const schemaType of matchedTypes) {
+            lines.push(`  - ${schemaType.name}:`)
+            for (const p of schemaType.properties) {
+              const req = p.required ? ' (required)' : ''
+              lines.push(`      - \`${p.name}\`: ${simplifyType(p.type)}${req}`)
+            }
+          }
+        } else if (matchedTypes.length === 1) {
+          lines.push(`  type: ${matchedTypes[0].name}`)
+          for (const p of matchedTypes[0].properties) {
             const req = p.required ? ' (required)' : ''
             lines.push(`  - \`${p.name}\`: ${simplifyType(p.type)}${req}`)
           }
@@ -705,9 +828,20 @@ function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[]): string 
       for (const [code, resp] of respEntries) {
         const typeInfo = getResponseType(ep.path, ep.method, Number(code), types)
         const refStr = typeInfo ? ` (${typeInfo})` : ''
-        lines.push(`  ${code}: ${resp.description}${refStr}`)
-        if (typeInfo && !typeInfo.startsWith('Error')) {
-          lines.push(`    { success: boolean, data: ${typeInfo} }`)
+        if (ep.sse && (code === '200' || code === 200)) {
+          lines.push(`  ${code}: ${resp.description}（SSE 流式响应）`)
+          lines.push(`    Content-Type: text/event-stream`)
+          lines.push(`    事件格式: data: { type: string, message?: string, data?: object }`)
+          lines.push(`    事件类型:`)
+          for (const evt of ep.sse.eventTypes) {
+            const dataStr = evt.dataType ? ` → ${evt.dataType}` : ''
+            lines.push(`      - ${evt.name}: ${evt.description}${dataStr}`)
+          }
+        } else {
+          lines.push(`  ${code}: ${resp.description}${refStr}`)
+          if (typeInfo && !typeInfo.startsWith('Error')) {
+            lines.push(`    { success: boolean, data: ${typeInfo} }`)
+          }
         }
       }
       lines.push('')

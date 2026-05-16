@@ -38,6 +38,31 @@ Response Body:
   400: 请求参数错误 (ErrorResponse)
   409: 冲突（重复） (ErrorResponse)
 
+### POST /api/kb/ingest
+
+**Types:** IngestTextResponse (响应)
+
+Request Body:
+  支持多种请求体格式 (oneOf):
+  - IngestTextRequest:
+      - `kbId`: number (required)
+      - `content`: string (required)
+  - IngestMessagesRequest:
+      - `kbId`: number (required)
+      - `messages`: IngestMessage[] (required)
+
+Response Body:
+  200: 成功响应（SSE 流式响应）
+    Content-Type: text/event-stream
+    事件格式: data: { type: string, message?: string, data?: object }
+    事件类型:
+      - complete: complete
+      - error: error
+  201: 创建成功 (IngestTextResponse)
+    { success: boolean, data: IngestTextResponse }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
+
 ### POST /api/kb/list
 
 **Types:** ListRequest (请求), ListItem[] (响应)
@@ -529,6 +554,36 @@ total
 - `kbName`?: string
 - `total`*: number
 - `lastUpdated`?: Date
+
+### IngestMessage
+Required:
+id, role, content
+
+- `id`*: string
+- `role`*: MessageRole
+- `content`*: string
+
+### IngestTextRequest
+Required:
+kbId, content
+
+- `kbId`*: number
+- `content`*: string
+
+### IngestMessagesRequest
+Required:
+kbId, messages
+
+- `kbId`*: number
+- `messages`*: IngestMessage[]
+
+### IngestTextResponse
+Required:
+count, memoryIds
+
+- `count`*: number
+- `memoryIds`*: number[]
+- `topicsInvolved`?: string[]
 
 ### SearchRequest
 Required:
