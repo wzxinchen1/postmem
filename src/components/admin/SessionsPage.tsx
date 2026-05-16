@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { message, Card, Table, Tag, Space, Typography, Button, Modal, Descriptions, Empty, Select, Popconfirm } from 'antd'
 import { ReloadOutlined, DeleteOutlined, EyeOutlined, MessageOutlined } from '@ant-design/icons'
 
-const { Title, Text } = Typography
+const { Title, Text, Paragraph } = Typography
 
 interface SessionMessage {
   id: number
@@ -358,8 +358,21 @@ export default function SessionsPage() {
                           {new Date(msg.createdAt).toLocaleTimeString('zh-CN')}
                         </Text>
                       </Space>
+                      {msg.role === 'assistant' && msg.metadata?.reasoning_content && (
+                        <Card size="small" style={{ background: '#fffbe6', borderLeft: '4px solid #faad14', marginBottom: 8 }}>
+                          <Space direction="vertical" size={2} style={{ width: '100%' }}>
+                            <Tag color="warning" style={{ margin: 0 }}>深度思考</Tag>
+                            <Paragraph
+                              ellipsis={{ expandable: true, rows: 6, symbol: '展开全部' }}
+                              style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginBottom: 0 }}
+                            >
+                              {String(msg.metadata.reasoning_content)}
+                            </Paragraph>
+                          </Space>
+                        </Card>
+                      )}
                       <Text style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all' }}>
-                        {msg.content.length > 1000 ? msg.content.substring(0, 1000) + '...' : msg.content}
+                        {msg.content}
                       </Text>
                     </Space>
                   </Card>

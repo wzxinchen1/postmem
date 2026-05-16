@@ -254,10 +254,9 @@ export class KBService {
         const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
         const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
-          INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata, "contentTsvector")
+          INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
           VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
-                  ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb,
-                  to_tsvector('simple', ${chunk.content}))
+                  ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
           RETURNING id
         `
         memoryIds.push(inserted[0].id)
@@ -284,8 +283,7 @@ export class KBService {
         await this.prisma.$executeRaw`
           UPDATE memories SET
             content = ${result.mergedContent},
-            embedding = ${`[${mergeEmbedding.join(',')}]`}::vector,
-            "contentTsvector" = to_tsvector('simple', ${result.mergedContent})
+            embedding = ${`[${mergeEmbedding.join(',')}]`}::vector
           WHERE id = ${result.targetMemoryId}
         `
 
@@ -298,10 +296,9 @@ export class KBService {
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
       const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
-        INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata, "contentTsvector")
+        INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
         VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
-                ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb,
-                to_tsvector('simple', ${chunk.content}))
+                ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
         RETURNING id
       `
       memoryIds.push(inserted[0].id)
@@ -408,10 +405,9 @@ export class KBService {
         const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
         const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
-          INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata, "contentTsvector")
+          INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
           VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
-                  ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb,
-                  to_tsvector('simple', ${chunk.content}))
+                  ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
           RETURNING id
         `
         memoryIds.push(inserted[0].id)
@@ -434,8 +430,7 @@ export class KBService {
         await this.prisma.$executeRaw`
           UPDATE memories SET
             content = ${result.mergedContent},
-            embedding = ${`[${mergeEmbedding.join(',')}]`}::vector,
-            "contentTsvector" = to_tsvector('simple', ${result.mergedContent})
+            embedding = ${`[${mergeEmbedding.join(',')}]`}::vector
           WHERE id = ${result.targetMemoryId}
         `
 
@@ -446,10 +441,9 @@ export class KBService {
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
       const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
-        INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata, "contentTsvector")
+        INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
         VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
-                ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb,
-                to_tsvector('simple', ${chunk.content}))
+                ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
         RETURNING id
       `
       memoryIds.push(inserted[0].id)
@@ -499,10 +493,9 @@ export class KBService {
         const embedding = await this.embeddingService.generateEmbedding(content)
 
         const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
-          INSERT INTO memories (kb_id, topic_id, content, embedding, metadata, "contentTsvector")
+          INSERT INTO memories (kb_id, topic_id, content, embedding, metadata)
           VALUES (${kbId}, ${topicId}, ${content}, ${`[${embedding.join(',')}]`}::vector,
-                  ${JSON.stringify({ cutModel: 'verbatim', messageId: msg.id, role: msg.role })}::jsonb,
-                  to_tsvector('simple', ${content}))
+                  ${JSON.stringify({ cutModel: 'verbatim', messageId: msg.id, role: msg.role })}::jsonb)
           RETURNING id
         `
         memoryIds.push(inserted[0].id)
@@ -526,8 +519,7 @@ export class KBService {
         await this.prisma.$executeRaw`
           UPDATE memories SET
             content = ${result.mergedContent},
-            embedding = ${`[${mergeEmbedding.join(',')}]`}::vector,
-            "contentTsvector" = to_tsvector('simple', ${result.mergedContent})
+            embedding = ${`[${mergeEmbedding.join(',')}]`}::vector
           WHERE id = ${result.targetMemoryId}
         `
 
@@ -539,14 +531,13 @@ export class KBService {
       const embedding = await this.embeddingService.generateEmbedding(content)
 
       const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
-        INSERT INTO memories (kb_id, topic_id, content, embedding, metadata, "contentTsvector")
+        INSERT INTO memories (kb_id, topic_id, content, embedding, metadata)
         VALUES (${kbId}, ${topicId}, ${content}, ${`[${embedding.join(',')}]`}::vector,
-                ${JSON.stringify({ cutModel: 'verbatim', messageId: msg.id, role: msg.role })}::jsonb,
-                to_tsvector('simple', ${content}))
-        RETURNING id
-      `
-      memoryIds.push(inserted[0].id)
-      memorizedMessageIds.push(msg.id)
+                ${JSON.stringify({ cutModel: 'verbatim', messageId: msg.id, role: msg.role })}::jsonb)
+          RETURNING id
+        `
+        memoryIds.push(inserted[0].id)
+        memorizedMessageIds.push(msg.id)
     }
 
     return {
@@ -610,13 +601,18 @@ export class KBService {
           id, title, content,
           topic_id,
           metadata,
-          ts_rank("contentTsvector", plainto_tsquery('simple', ${query})) as ts_rank
+          pgroonga_score(memories) as ts_rank
         FROM memories
-        WHERE kb_id = ${kbId} AND "contentTsvector" @@ plainto_tsquery('simple', ${query})
-        ORDER BY ts_rank("contentTsvector", plainto_tsquery('simple', ${query})) DESC
+        WHERE kb_id = ${kbId} AND content &@ ${query}
+        ORDER BY pgroonga_score(memories) DESC
         LIMIT ${denseLimit}
       `
     ])
+
+    console.log('[Search Debug] Dense results count:', denseResults.length)
+    denseResults.forEach((r, i) => console.log(`  [Dense #${i}] id=${r.id} title=${r.title} dist=${r.cosine_distance}`))
+    console.log('[Search Debug] Sparse results count:', sparseResults.length)
+    sparseResults.forEach((r, i) => console.log(`  [Sparse #${i}] id=${r.id} title=${r.title} ts_rank=${r.ts_rank}`))
 
     const rrfK = 60
     interface RrfItem {
@@ -657,6 +653,9 @@ export class KBService {
     const merged = [...rrfScores.values()]
       .sort((a, b) => b.rrfScore - a.rrfScore)
       .slice(0, topK)
+
+    console.log('[Search Debug] RRF merged count:', merged.length)
+    merged.forEach((m, i) => console.log(`  [Merged #${i}] id=${m.data.id} source=${m.source} rrfScore=${m.rrfScore.toFixed(4)} cosSim=${m.cosineSim} tsRank=${m.tsRank}`))
 
     const searchResults: SearchResult[] = []
     for (const item of merged) {
@@ -781,12 +780,12 @@ export class KBService {
         SELECT
           id, title, content,
           metadata,
-          ts_rank("contentTsvector", plainto_tsquery('simple', ${query})) as ts_rank
+          pgroonga_score(memories) as ts_rank
         FROM memories
         WHERE kb_id = ${kbId}
           ${topicClause}
-          AND "contentTsvector" @@ plainto_tsquery('simple', ${query})
-        ORDER BY ts_rank("contentTsvector", plainto_tsquery('simple', ${query})) DESC
+          AND content &@ ${query}
+        ORDER BY pgroonga_score(memories) DESC
         LIMIT ${denseLimit}
       `
     ])

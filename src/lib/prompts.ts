@@ -328,7 +328,7 @@ ${chunksText}
 
 注意：
 - index 必须与上方片段编号一致
-- action 为 select 时必须提供 topicName（必须与已有主题名完全一致）
+- action 为 select 时，topicName **必须是已有主题列表中的短名称**（如"NLR"、"部署"），**绝不是描述文字**
 - action 为 create 时必须提供 newTopicName
 - 只返回 JSON，不要包含其他内容`
   }

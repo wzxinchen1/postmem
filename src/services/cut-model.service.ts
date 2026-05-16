@@ -13,6 +13,8 @@ export class CutModelService {
   private vendorService: VendorService
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map<string, { model: Model; provider: Provider }>()
 
+  private static readonly MAX_RETRIES = 5
+
   constructor({ prisma, sessionService }: { prisma: PrismaClient; sessionService: SessionService }) {
     this.prisma = prisma
     this.sessionService = sessionService
@@ -93,7 +95,11 @@ export class CutModelService {
       modelType: 'chat',
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
-      config: model.config,
+      config: {
+        ...model.config,
+        reasoning: true,
+        reasoningEffort: 'max',
+      },
     }) as BaseChatModel
   }
 
@@ -125,11 +131,17 @@ export class CutModelService {
 
     const content = response.content.toString()
 
+    const messageMetadata: Record<string, unknown> = { model: model.name }
+    const additionalKwargs = response.additional_kwargs || {}
+    if (additionalKwargs.reasoning_content) {
+      messageMetadata.reasoning_content = additionalKwargs.reasoning_content
+    }
+
     await this.sessionService.addMessage({
       sessionId,
       role: 'assistant',
       content,
-      metadata: { model: model.name },
+      metadata: messageMetadata,
     })
 
     return content
@@ -142,6 +154,35 @@ export class CutModelService {
       jsonStr = jsonMatch[1].trim()
     }
     return JSON.parse(jsonStr)
+  }
+
+  /**
+   * LLM 调用 + JSON 解析 + 格式校验，带自动重试
+   * 校验不通过或调用异常时自动重试，超过 MAX_RETRIES 次后抛出错误
+   */
+  private async callLLMAndValidate<T>(
+    prompt: string,
+    systemPrompt: string,
+    model: Model,
+    provider: Provider,
+    sessionId: number,
+    validator: (parsed: unknown) => T
+  ): Promise<T> {
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= CutModelService.MAX_RETRIES; attempt++) {
+      try {
+        const content = await this.callLLM(prompt, systemPrompt, model, provider, sessionId)
+        const parsed = this.parseJSON<unknown>(content)
+        return validator(parsed)
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+      }
+    }
+
+    throw Errors.cutModelError(
+      `LLM 调用失败，已重试 ${CutModelService.MAX_RETRIES} 次: ${lastError?.message}`
+    )
   }
 
   async analyzeCutPoints(text: string, kbId?: number): Promise<CutPoint[]> {
@@ -166,14 +207,18 @@ export class CutModelService {
     const systemPrompt = Prompts.textAnalysisExpert()
     const prompt = Prompts.cutPoints(text)
 
-    const content = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+      if (!raw || typeof raw !== 'object') {
+        throw Errors.cutModelError('响应格式无效: 缺少 cutPoints 数组')
+      }
+      const obj = raw as { cutPoints?: unknown }
+      if (!obj.cutPoints || !Array.isArray(obj.cutPoints)) {
+        throw Errors.cutModelError('响应格式无效: 缺少 cutPoints 数组')
+      }
+      return obj as { cutPoints: any[] }
+    })
 
     await this.sessionService.complete(session.id)
-
-    const parsed = this.parseJSON<{ cutPoints?: any[] }>(content)
-    if (!parsed.cutPoints || !Array.isArray(parsed.cutPoints)) {
-      throw Errors.cutModelError('响应格式无效: 缺少 cutPoints 数组')
-    }
 
     return parsed.cutPoints.map((point: any) => ({
       index: Number(point.index),
@@ -203,14 +248,18 @@ export class CutModelService {
     const systemPrompt = Prompts.conversationAnalysisExpert()
     const prompt = Prompts.messageAnalysis(messages)
 
-    const content = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+      if (!raw || typeof raw !== 'object') {
+        throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
+      }
+      const obj = raw as { groups?: unknown }
+      if (!obj.groups || !Array.isArray(obj.groups)) {
+        throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
+      }
+      return obj as { groups: any[] }
+    })
 
     await this.sessionService.complete(session.id)
-
-    const parsed = this.parseJSON<{ groups?: any[] }>(content)
-    if (!parsed.groups || !Array.isArray(parsed.groups)) {
-      throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
-    }
 
     return parsed.groups.map((group: any) => ({
       messageIds: group.messageIds || [],
@@ -241,14 +290,18 @@ export class CutModelService {
     const systemPrompt = Prompts.textAnalysisExpert()
     const prompt = Prompts.textAnalysis(text)
 
-    const content = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+      if (!raw || typeof raw !== 'object') {
+        throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
+      }
+      const obj = raw as { groups?: unknown }
+      if (!obj.groups || !Array.isArray(obj.groups)) {
+        throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
+      }
+      return obj as { groups: any[] }
+    })
 
     await this.sessionService.complete(session.id)
-
-    const parsed = this.parseJSON<{ groups?: any[] }>(content)
-    if (!parsed.groups || !Array.isArray(parsed.groups)) {
-      throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
-    }
 
     return parsed.groups.map((group: any) => ({
       messageIds: [],
@@ -280,16 +333,20 @@ export class CutModelService {
     const systemPrompt = Prompts.cutAndRewriteExpert()
     const prompt = Prompts.cutAndRewrite(text)
 
-    const content = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+      if (!raw || typeof raw !== 'object') {
+        throw Errors.cutModelError('响应格式无效: 缺少 chunks 数组或数组为空')
+      }
+      const obj = raw as { chunks?: unknown }
+      if (!obj.chunks || !Array.isArray(obj.chunks) || (obj.chunks as any[]).length === 0) {
+        throw Errors.cutModelError('响应格式无效: 缺少 chunks 数组或数组为空')
+      }
+      return obj as { chunks: any[] }
+    })
 
     await this.sessionService.complete(session.id)
 
-    const parsed = this.parseJSON<{ chunks?: Array<{ title?: string; content: string }> }>(content)
-    if (!parsed.chunks || !Array.isArray(parsed.chunks) || parsed.chunks.length === 0) {
-      throw Errors.cutModelError('响应格式无效: 缺少 chunks 数组或数组为空')
-    }
-
-    return parsed.chunks.map((chunk, i) => ({
+    return parsed.chunks.map((chunk: any, i: number) => ({
       index: i,
       title: (chunk.title || `片段${i}`).trim(),
       content: chunk.content.trim(),
@@ -332,35 +389,36 @@ export class CutModelService {
     const systemPrompt = Prompts.deduplicationExpert()
     const prompt = Prompts.deduplicateChunk(chunk, memoriesText)
 
-    const content = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+    const validActions = ['skip', 'merge', 'new']
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+      if (!raw || typeof raw !== 'object') {
+        throw Errors.cutModelError('响应格式无效: 缺少 action 或 action 值不合法')
+      }
+      const obj = raw as { action?: unknown; reason?: unknown; targetId?: unknown; mergedContent?: unknown }
+      if (!obj.action || !validActions.includes(obj.action as string)) {
+        throw Errors.cutModelError('响应格式无效: 缺少 action 或 action 值不合法')
+      }
+      const action = obj.action as 'skip' | 'merge' | 'new'
+      if (action === 'merge') {
+        if (obj.targetId == null || typeof obj.targetId !== 'number' || obj.targetId < 1 || obj.targetId > existingMemories.length) {
+          throw Errors.cutModelError('响应格式无效: merge 操作必须指定有效的 targetId')
+        }
+        if (!obj.mergedContent || typeof obj.mergedContent !== 'string' || obj.mergedContent.trim().length === 0) {
+          throw Errors.cutModelError('响应格式无效: merge 操作必须提供 mergedContent')
+        }
+      }
+      return obj as { action: string; reason?: string; targetId?: number | null; mergedContent?: string | null }
+    })
 
     await this.sessionService.complete(session.id)
-
-    const parsed = this.parseJSON<{
-      action?: string
-      reason?: string
-      targetId?: number | null
-      mergedContent?: string | null
-    }>(content)
-
-    const validActions = ['skip', 'merge', 'new']
-    if (!parsed.action || !validActions.includes(parsed.action)) {
-      throw Errors.cutModelError('响应格式无效: 缺少 action 或 action 值不合法')
-    }
 
     const action = parsed.action as 'skip' | 'merge' | 'new'
     let targetMemoryId: number | null = null
     let mergedContent: string | null = null
 
     if (action === 'merge') {
-      if (parsed.targetId == null || parsed.targetId < 1 || parsed.targetId > existingMemories.length) {
-        throw Errors.cutModelError('响应格式无效: merge 操作必须指定有效的 targetId')
-      }
-      if (!parsed.mergedContent || parsed.mergedContent.trim().length === 0) {
-        throw Errors.cutModelError('响应格式无效: merge 操作必须提供 mergedContent')
-      }
-      targetMemoryId = existingMemories[parsed.targetId - 1].id
-      mergedContent = parsed.mergedContent.trim()
+      targetMemoryId = existingMemories[parsed.targetId! - 1].id
+      mergedContent = parsed.mergedContent!.trim()
     }
 
     return { action, reason: parsed.reason || '', targetMemoryId, mergedContent }
@@ -401,23 +459,21 @@ export class CutModelService {
     const systemPrompt = Prompts.topicMatchExpert()
     const prompt = Prompts.topicMatch(content, existingTopics)
 
-    const response = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+      if (!raw || typeof raw !== 'object') {
+        throw Errors.cutModelError('响应格式无效: 缺少 action 或 action 值不合法')
+      }
+      const obj = raw as { action?: unknown; topicName?: unknown; reason?: unknown }
+      if (!obj.action || !['select', 'create'].includes(obj.action as string)) {
+        throw Errors.cutModelError('响应格式无效: 缺少 action 或 action 值不合法')
+      }
+      if (obj.action === 'select' && !obj.topicName) {
+        throw Errors.cutModelError('响应格式无效: select 操作必须指定 topicName')
+      }
+      return obj as { action: string; topicName?: string; reason?: string }
+    })
 
     await this.sessionService.complete(session.id)
-
-    const parsed = this.parseJSON<{
-      action?: string
-      topicName?: string
-      reason?: string
-    }>(response)
-
-    if (!parsed.action || !['select', 'create'].includes(parsed.action)) {
-      throw Errors.cutModelError('响应格式无效: 缺少 action 或 action 值不合法')
-    }
-
-    if (parsed.action === 'select' && !parsed.topicName) {
-      throw Errors.cutModelError('响应格式无效: select 操作必须指定 topicName')
-    }
 
     return {
       action: parsed.action as 'select' | 'create',
@@ -449,21 +505,21 @@ export class CutModelService {
     const systemPrompt = Prompts.topicMatchExpert()
     const prompt = Prompts.topicCreate(content)
 
-    const response = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+      if (!raw || typeof raw !== 'object') {
+        throw Errors.cutModelError('响应格式无效: 缺少 name')
+      }
+      const obj = raw as { name?: unknown; description?: unknown }
+      if (!obj.name || typeof obj.name !== 'string' || obj.name.trim().length === 0) {
+        throw Errors.cutModelError('响应格式无效: 缺少 name')
+      }
+      if (!obj.description || typeof obj.description !== 'string' || obj.description.trim().length === 0) {
+        throw Errors.cutModelError('响应格式无效: 缺少 description')
+      }
+      return obj as { name: string; description: string }
+    })
 
     await this.sessionService.complete(session.id)
-
-    const parsed = this.parseJSON<{
-      name?: string
-      description?: string
-    }>(response)
-
-    if (!parsed.name || parsed.name.trim().length === 0) {
-      throw Errors.cutModelError('响应格式无效: 缺少 name')
-    }
-    if (!parsed.description || parsed.description.trim().length === 0) {
-      throw Errors.cutModelError('响应格式无效: 缺少 description')
-    }
 
     return {
       name: parsed.name.trim(),
@@ -499,20 +555,23 @@ export class CutModelService {
     const systemPrompt = Prompts.topicMatchExpert()
     const prompt = Prompts.batchTopicCreate(proposedTopics)
 
-    const response = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+      if (!raw || typeof raw !== 'object') {
+        throw Errors.cutModelError('响应格式无效: 缺少 topics 数组')
+      }
+      const obj = raw as { topics?: unknown }
+      if (!obj.topics || !Array.isArray(obj.topics) || (obj.topics as any[]).length === 0) {
+        throw Errors.cutModelError('响应格式无效: 缺少 topics 数组')
+      }
+      return obj as { topics: any[] }
+    })
 
     await this.sessionService.complete(session.id)
 
-    const parsed = this.parseJSON<{ topics?: Array<{ name?: string; description?: string }> }>(response)
-
-    if (!parsed.topics || !Array.isArray(parsed.topics) || parsed.topics.length === 0) {
-      throw Errors.cutModelError('响应格式无效: 缺少 topics 数组')
-    }
-
     return parsed.topics
-      .filter((t) => t.name && t.name.trim().length > 0)
-      .map((t) => ({
-        name: t.name!.trim(),
+      .filter((t: any) => t.name && t.name.trim().length > 0)
+      .map((t: any) => ({
+        name: t.name.trim(),
         description: t.description?.trim() || '',
       }))
   }
@@ -550,37 +609,56 @@ export class CutModelService {
       existingTopics.map((t) => ({ name: t.name, description: t.description }))
     )
 
-    const response = await this.callLLM(prompt, systemPrompt, model, provider, session.id)
+    const parsed = await this.callLLMAndValidate(
+      prompt, systemPrompt, model, provider, session.id,
+      (raw) => {
+        if (!raw || typeof raw !== 'object') {
+          throw Errors.cutModelError('响应格式无效: 缺少 plans 数组或数组为空')
+        }
+        const obj = raw as { plans?: unknown }
+        if (!obj.plans || !Array.isArray(obj.plans) || obj.plans.length === 0) {
+          throw Errors.cutModelError('响应格式无效: 缺少 plans 数组或数组为空')
+        }
+
+        const validTopicNames = new Set(existingTopics.map((t) => t.name))
+
+        for (let i = 0; i < obj.plans.length; i++) {
+          const p = (obj.plans as any[])[i]
+          if (p == null || typeof p !== 'object') {
+            throw Errors.cutModelError(`响应格式无效: plans[${i}] 不是有效对象`)
+          }
+          if (p.index == null || p.index < 0) {
+            throw Errors.cutModelError(`响应格式无效: plans[${i}] 缺少有效的 index`)
+          }
+          if (!p.action || !['select', 'create'].includes(p.action)) {
+            throw Errors.cutModelError(`响应格式无效: plans[${i}] 的 action 值不合法`)
+          }
+          if (p.action === 'select' && !p.topicName) {
+            throw Errors.cutModelError(`响应格式无效: plans[${i}] select 操作必须指定 topicName`)
+          }
+          if (p.action === 'create' && !p.newTopicName) {
+            throw Errors.cutModelError(`响应格式无效: plans[${i}] create 操作必须指定 newTopicName`)
+          }
+          if (p.action === 'select' && !validTopicNames.has(p.topicName)) {
+            throw Errors.cutModelError(
+              `plans[${i}] 的 topicName "${p.topicName}" 不在已有主题列表中，必须是已有主题的短名称（如 ${Array.from(validTopicNames).slice(0, 3).join('、')} 等）`
+            )
+          }
+        }
+
+        return obj as { plans: Array<{ index: number; action: string; topicName?: string; newTopicName?: string; reason?: string }> }
+      }
+    )
 
     await this.sessionService.complete(session.id)
 
-    const parsed = this.parseJSON<{ plans?: Array<{ index?: number; action?: string; topicName?: string; newTopicName?: string; reason?: string }> }>(response)
-
-    if (!parsed.plans || !Array.isArray(parsed.plans) || parsed.plans.length === 0) {
-      throw Errors.cutModelError('响应格式无效: 缺少 plans 数组或数组为空')
-    }
-
-    const plans = parsed.plans.map((p, i) => {
-      if (p.index == null || p.index < 0) {
-        throw Errors.cutModelError(`响应格式无效: plans[${i}] 缺少有效的 index`)
-      }
-      if (!p.action || !['select', 'create'].includes(p.action)) {
-        throw Errors.cutModelError(`响应格式无效: plans[${i}] 的 action 值不合法`)
-      }
-      if (p.action === 'select' && !p.topicName) {
-        throw Errors.cutModelError(`响应格式无效: plans[${i}] select 操作必须指定 topicName`)
-      }
-      if (p.action === 'create' && !p.newTopicName) {
-        throw Errors.cutModelError(`响应格式无效: plans[${i}] create 操作必须指定 newTopicName`)
-      }
-      return {
-        index: p.index,
-        action: p.action as 'select' | 'create',
-        topicName: p.topicName,
-        newTopicName: p.newTopicName,
-        reason: p.reason || '',
-      }
-    })
+    const plans = parsed.plans.map((p) => ({
+      index: p.index,
+      action: p.action as 'select' | 'create',
+      topicName: p.topicName,
+      newTopicName: p.newTopicName,
+      reason: p.reason || '',
+    }))
 
     return { plans }
   }
