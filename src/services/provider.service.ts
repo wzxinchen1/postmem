@@ -1,6 +1,7 @@
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type {
   Provider,
+  ProviderTreeNode,
   CreateProviderRequest,
   UpdateProviderRequest,
 } from '@/src/types'
@@ -38,7 +39,7 @@ export class ProviderService {
   /**
    * 获取单个提供商
    */
-  async get(id: number): Promise<Provider | null> {
+  async get(id: string): Promise<Provider | null> {
     return this.prisma.provider.findUnique({
       where: { id },
       include: {
@@ -53,7 +54,7 @@ export class ProviderService {
   /**
    * 创建 LangChain ChatModel 实例
    */
-  async createModel(providerId: number, model: string, modelType: 'chat' | 'embedding', config?: Record<string, unknown>): Promise<unknown> {
+  async createModel(providerId: string, model: string, modelType: 'chat' | 'embedding', config?: Record<string, unknown>): Promise<unknown> {
     const provider = await this.get(providerId)
     if (!provider) {
       throw new Error(`提供商不存在: ${providerId}`)
@@ -96,7 +97,7 @@ export class ProviderService {
   /**
    * 更新提供商
    */
-  async update(id: number, data: UpdateProviderRequest): Promise<Provider> {
+  async update(id: string, data: UpdateProviderRequest): Promise<Provider> {
     const updateData: Record<string, unknown> = {
       ...(data.name && { name: data.name }),
       ...(data.vendorId !== undefined && { vendorId: data.vendorId }),
@@ -115,16 +116,49 @@ export class ProviderService {
   /**
    * 删除提供商
    */
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     await this.prisma.provider.delete({
       where: { id },
     })
   }
 
   /**
+   * 获取提供商-模型树形结构
+   */
+  async getTree(includeInactive = false): Promise<ProviderTreeNode[]> {
+    const providers = await this.prisma.provider.findMany({
+      where: includeInactive ? {} : { isActive: true },
+      include: {
+        vendor: true,
+        models: {
+          where: includeInactive ? {} : { isActive: true },
+          orderBy: [{ isDefault: 'desc' }, { name: 'asc' }],
+        },
+      },
+      orderBy: { createdAt: 'desc' },
+    })
+
+    return providers.map((provider) => ({
+      id: provider.id,
+      name: provider.name,
+      vendorName: provider.vendor.name,
+      baseUrl: provider.baseUrl,
+      isActive: provider.isActive,
+      models: provider.models.map((model) => ({
+        id: model.id,
+        name: model.name,
+        displayName: model.displayName,
+        modelType: model.modelType,
+        isDefault: model.isDefault,
+        isActive: model.isActive,
+      })),
+    }))
+  }
+
+  /**
    * 检查提供商名称是否存在
    */
-  async exists(name: string, excludeId?: number): Promise<boolean> {
+  async exists(name: string, excludeId?: string): Promise<boolean> {
     const count = await this.prisma.provider.count({
       where: {
         name,

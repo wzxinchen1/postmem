@@ -20,22 +20,12 @@ export type SettingModel = runtime.Types.Result.DefaultSelection<Prisma.$Setting
 
 export type AggregateSetting = {
   _count: SettingCountAggregateOutputType | null
-  _avg: SettingAvgAggregateOutputType | null
-  _sum: SettingSumAggregateOutputType | null
   _min: SettingMinAggregateOutputType | null
   _max: SettingMaxAggregateOutputType | null
 }
 
-export type SettingAvgAggregateOutputType = {
-  id: number | null
-}
-
-export type SettingSumAggregateOutputType = {
-  id: number | null
-}
-
 export type SettingMinAggregateOutputType = {
-  id: number | null
+  id: string | null
   key: string | null
   description: string | null
   createdAt: Date | null
@@ -43,7 +33,7 @@ export type SettingMinAggregateOutputType = {
 }
 
 export type SettingMaxAggregateOutputType = {
-  id: number | null
+  id: string | null
   key: string | null
   description: string | null
   createdAt: Date | null
@@ -60,14 +50,6 @@ export type SettingCountAggregateOutputType = {
   _all: number
 }
 
-
-export type SettingAvgAggregateInputType = {
-  id?: true
-}
-
-export type SettingSumAggregateInputType = {
-  id?: true
-}
 
 export type SettingMinAggregateInputType = {
   id?: true
@@ -133,18 +115,6 @@ export type SettingAggregateArgs<ExtArgs extends runtime.Types.Extensions.Intern
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: SettingAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: SettingSumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: SettingMinAggregateInputType
@@ -175,22 +145,18 @@ export type SettingGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
   take?: number
   skip?: number
   _count?: SettingCountAggregateInputType | true
-  _avg?: SettingAvgAggregateInputType
-  _sum?: SettingSumAggregateInputType
   _min?: SettingMinAggregateInputType
   _max?: SettingMaxAggregateInputType
 }
 
 export type SettingGroupByOutputType = {
-  id: number
+  id: string
   key: string
   value: runtime.JsonValue
   description: string | null
   createdAt: Date
   updatedAt: Date
   _count: SettingCountAggregateOutputType | null
-  _avg: SettingAvgAggregateOutputType | null
-  _sum: SettingSumAggregateOutputType | null
   _min: SettingMinAggregateOutputType | null
   _max: SettingMaxAggregateOutputType | null
 }
@@ -214,7 +180,7 @@ export type SettingWhereInput = {
   AND?: Prisma.SettingWhereInput | Prisma.SettingWhereInput[]
   OR?: Prisma.SettingWhereInput[]
   NOT?: Prisma.SettingWhereInput | Prisma.SettingWhereInput[]
-  id?: Prisma.IntFilter<"Setting"> | number
+  id?: Prisma.StringFilter<"Setting"> | string
   key?: Prisma.StringFilter<"Setting"> | string
   value?: Prisma.JsonFilter<"Setting">
   description?: Prisma.StringNullableFilter<"Setting"> | string | null
@@ -232,7 +198,7 @@ export type SettingOrderByWithRelationInput = {
 }
 
 export type SettingWhereUniqueInput = Prisma.AtLeast<{
-  id?: number
+  id?: string
   key?: string
   AND?: Prisma.SettingWhereInput | Prisma.SettingWhereInput[]
   OR?: Prisma.SettingWhereInput[]
@@ -251,17 +217,15 @@ export type SettingOrderByWithAggregationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.SettingCountOrderByAggregateInput
-  _avg?: Prisma.SettingAvgOrderByAggregateInput
   _max?: Prisma.SettingMaxOrderByAggregateInput
   _min?: Prisma.SettingMinOrderByAggregateInput
-  _sum?: Prisma.SettingSumOrderByAggregateInput
 }
 
 export type SettingScalarWhereWithAggregatesInput = {
   AND?: Prisma.SettingScalarWhereWithAggregatesInput | Prisma.SettingScalarWhereWithAggregatesInput[]
   OR?: Prisma.SettingScalarWhereWithAggregatesInput[]
   NOT?: Prisma.SettingScalarWhereWithAggregatesInput | Prisma.SettingScalarWhereWithAggregatesInput[]
-  id?: Prisma.IntWithAggregatesFilter<"Setting"> | number
+  id?: Prisma.StringWithAggregatesFilter<"Setting"> | string
   key?: Prisma.StringWithAggregatesFilter<"Setting"> | string
   value?: Prisma.JsonWithAggregatesFilter<"Setting">
   description?: Prisma.StringNullableWithAggregatesFilter<"Setting"> | string | null
@@ -270,6 +234,7 @@ export type SettingScalarWhereWithAggregatesInput = {
 }
 
 export type SettingCreateInput = {
+  id?: string
   key: string
   value: Prisma.JsonNullValueInput | runtime.InputJsonValue
   description?: string | null
@@ -278,7 +243,7 @@ export type SettingCreateInput = {
 }
 
 export type SettingUncheckedCreateInput = {
-  id?: number
+  id?: string
   key: string
   value: Prisma.JsonNullValueInput | runtime.InputJsonValue
   description?: string | null
@@ -287,6 +252,7 @@ export type SettingUncheckedCreateInput = {
 }
 
 export type SettingUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   key?: Prisma.StringFieldUpdateOperationsInput | string
   value?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -295,7 +261,7 @@ export type SettingUpdateInput = {
 }
 
 export type SettingUncheckedUpdateInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   key?: Prisma.StringFieldUpdateOperationsInput | string
   value?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -304,7 +270,7 @@ export type SettingUncheckedUpdateInput = {
 }
 
 export type SettingCreateManyInput = {
-  id?: number
+  id?: string
   key: string
   value: Prisma.JsonNullValueInput | runtime.InputJsonValue
   description?: string | null
@@ -313,6 +279,7 @@ export type SettingCreateManyInput = {
 }
 
 export type SettingUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   key?: Prisma.StringFieldUpdateOperationsInput | string
   value?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -321,7 +288,7 @@ export type SettingUpdateManyMutationInput = {
 }
 
 export type SettingUncheckedUpdateManyInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   key?: Prisma.StringFieldUpdateOperationsInput | string
   value?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -338,10 +305,6 @@ export type SettingCountOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
 }
 
-export type SettingAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-}
-
 export type SettingMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   key?: Prisma.SortOrder
@@ -356,10 +319,6 @@ export type SettingMinOrderByAggregateInput = {
   description?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-}
-
-export type SettingSumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
 }
 
 
@@ -406,7 +365,7 @@ export type $SettingPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
   name: "Setting"
   objects: {}
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: number
+    id: string
     key: string
     value: runtime.JsonValue
     description: string | null
@@ -835,7 +794,7 @@ export interface Prisma__SettingClient<T, Null = never, ExtArgs extends runtime.
  * Fields of the Setting model
  */
 export interface SettingFieldRefs {
-  readonly id: Prisma.FieldRef<"Setting", 'Int'>
+  readonly id: Prisma.FieldRef<"Setting", 'String'>
   readonly key: Prisma.FieldRef<"Setting", 'String'>
   readonly value: Prisma.FieldRef<"Setting", 'Json'>
   readonly description: Prisma.FieldRef<"Setting", 'String'>

@@ -20,25 +20,13 @@ export type SessionModel = runtime.Types.Result.DefaultSelection<Prisma.$Session
 
 export type AggregateSession = {
   _count: SessionCountAggregateOutputType | null
-  _avg: SessionAvgAggregateOutputType | null
-  _sum: SessionSumAggregateOutputType | null
   _min: SessionMinAggregateOutputType | null
   _max: SessionMaxAggregateOutputType | null
 }
 
-export type SessionAvgAggregateOutputType = {
-  id: number | null
-  kbId: number | null
-}
-
-export type SessionSumAggregateOutputType = {
-  id: number | null
-  kbId: number | null
-}
-
 export type SessionMinAggregateOutputType = {
-  id: number | null
-  kbId: number | null
+  id: string | null
+  kbId: string | null
   modelType: string | null
   modelName: string | null
   provider: string | null
@@ -48,8 +36,8 @@ export type SessionMinAggregateOutputType = {
 }
 
 export type SessionMaxAggregateOutputType = {
-  id: number | null
-  kbId: number | null
+  id: string | null
+  kbId: string | null
   modelType: string | null
   modelName: string | null
   provider: string | null
@@ -71,16 +59,6 @@ export type SessionCountAggregateOutputType = {
   _all: number
 }
 
-
-export type SessionAvgAggregateInputType = {
-  id?: true
-  kbId?: true
-}
-
-export type SessionSumAggregateInputType = {
-  id?: true
-  kbId?: true
-}
 
 export type SessionMinAggregateInputType = {
   id?: true
@@ -155,18 +133,6 @@ export type SessionAggregateArgs<ExtArgs extends runtime.Types.Extensions.Intern
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: SessionAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: SessionSumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: SessionMinAggregateInputType
@@ -197,15 +163,13 @@ export type SessionGroupByArgs<ExtArgs extends runtime.Types.Extensions.Internal
   take?: number
   skip?: number
   _count?: SessionCountAggregateInputType | true
-  _avg?: SessionAvgAggregateInputType
-  _sum?: SessionSumAggregateInputType
   _min?: SessionMinAggregateInputType
   _max?: SessionMaxAggregateInputType
 }
 
 export type SessionGroupByOutputType = {
-  id: number
-  kbId: number | null
+  id: string
+  kbId: string | null
   modelType: string
   modelName: string
   provider: string
@@ -214,8 +178,6 @@ export type SessionGroupByOutputType = {
   metadata: runtime.JsonValue
   createdAt: Date
   _count: SessionCountAggregateOutputType | null
-  _avg: SessionAvgAggregateOutputType | null
-  _sum: SessionSumAggregateOutputType | null
   _min: SessionMinAggregateOutputType | null
   _max: SessionMaxAggregateOutputType | null
 }
@@ -239,8 +201,8 @@ export type SessionWhereInput = {
   AND?: Prisma.SessionWhereInput | Prisma.SessionWhereInput[]
   OR?: Prisma.SessionWhereInput[]
   NOT?: Prisma.SessionWhereInput | Prisma.SessionWhereInput[]
-  id?: Prisma.IntFilter<"Session"> | number
-  kbId?: Prisma.IntNullableFilter<"Session"> | number | null
+  id?: Prisma.StringFilter<"Session"> | string
+  kbId?: Prisma.StringNullableFilter<"Session"> | string | null
   modelType?: Prisma.StringFilter<"Session"> | string
   modelName?: Prisma.StringFilter<"Session"> | string
   provider?: Prisma.StringFilter<"Session"> | string
@@ -267,11 +229,11 @@ export type SessionOrderByWithRelationInput = {
 }
 
 export type SessionWhereUniqueInput = Prisma.AtLeast<{
-  id?: number
+  id?: string
   AND?: Prisma.SessionWhereInput | Prisma.SessionWhereInput[]
   OR?: Prisma.SessionWhereInput[]
   NOT?: Prisma.SessionWhereInput | Prisma.SessionWhereInput[]
-  kbId?: Prisma.IntNullableFilter<"Session"> | number | null
+  kbId?: Prisma.StringNullableFilter<"Session"> | string | null
   modelType?: Prisma.StringFilter<"Session"> | string
   modelName?: Prisma.StringFilter<"Session"> | string
   provider?: Prisma.StringFilter<"Session"> | string
@@ -294,18 +256,16 @@ export type SessionOrderByWithAggregationInput = {
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.SessionCountOrderByAggregateInput
-  _avg?: Prisma.SessionAvgOrderByAggregateInput
   _max?: Prisma.SessionMaxOrderByAggregateInput
   _min?: Prisma.SessionMinOrderByAggregateInput
-  _sum?: Prisma.SessionSumOrderByAggregateInput
 }
 
 export type SessionScalarWhereWithAggregatesInput = {
   AND?: Prisma.SessionScalarWhereWithAggregatesInput | Prisma.SessionScalarWhereWithAggregatesInput[]
   OR?: Prisma.SessionScalarWhereWithAggregatesInput[]
   NOT?: Prisma.SessionScalarWhereWithAggregatesInput | Prisma.SessionScalarWhereWithAggregatesInput[]
-  id?: Prisma.IntWithAggregatesFilter<"Session"> | number
-  kbId?: Prisma.IntNullableWithAggregatesFilter<"Session"> | number | null
+  id?: Prisma.StringWithAggregatesFilter<"Session"> | string
+  kbId?: Prisma.StringNullableWithAggregatesFilter<"Session"> | string | null
   modelType?: Prisma.StringWithAggregatesFilter<"Session"> | string
   modelName?: Prisma.StringWithAggregatesFilter<"Session"> | string
   provider?: Prisma.StringWithAggregatesFilter<"Session"> | string
@@ -316,6 +276,7 @@ export type SessionScalarWhereWithAggregatesInput = {
 }
 
 export type SessionCreateInput = {
+  id?: string
   modelType: string
   modelName: string
   provider: string
@@ -328,8 +289,8 @@ export type SessionCreateInput = {
 }
 
 export type SessionUncheckedCreateInput = {
-  id?: number
-  kbId?: number | null
+  id?: string
+  kbId?: string | null
   modelType: string
   modelName: string
   provider: string
@@ -341,6 +302,7 @@ export type SessionUncheckedCreateInput = {
 }
 
 export type SessionUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
   modelName?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
@@ -353,8 +315,8 @@ export type SessionUpdateInput = {
 }
 
 export type SessionUncheckedUpdateInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  kbId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kbId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
   modelName?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
@@ -366,8 +328,8 @@ export type SessionUncheckedUpdateInput = {
 }
 
 export type SessionCreateManyInput = {
-  id?: number
-  kbId?: number | null
+  id?: string
+  kbId?: string | null
   modelType: string
   modelName: string
   provider: string
@@ -378,6 +340,7 @@ export type SessionCreateManyInput = {
 }
 
 export type SessionUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
   modelName?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
@@ -388,8 +351,8 @@ export type SessionUpdateManyMutationInput = {
 }
 
 export type SessionUncheckedUpdateManyInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  kbId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kbId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
   modelName?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
@@ -421,11 +384,6 @@ export type SessionCountOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
 }
 
-export type SessionAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
-}
-
 export type SessionMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   kbId?: Prisma.SortOrder
@@ -446,11 +404,6 @@ export type SessionMinOrderByAggregateInput = {
   status?: Prisma.SortOrder
   error?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
-}
-
-export type SessionSumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
 }
 
 export type SessionScalarRelationFilter = {
@@ -515,6 +468,7 @@ export type SessionUpdateOneRequiredWithoutMessagesNestedInput = {
 }
 
 export type SessionCreateWithoutKnowledgeBaseInput = {
+  id?: string
   modelType: string
   modelName: string
   provider: string
@@ -526,7 +480,7 @@ export type SessionCreateWithoutKnowledgeBaseInput = {
 }
 
 export type SessionUncheckedCreateWithoutKnowledgeBaseInput = {
-  id?: number
+  id?: string
   modelType: string
   modelName: string
   provider: string
@@ -567,8 +521,8 @@ export type SessionScalarWhereInput = {
   AND?: Prisma.SessionScalarWhereInput | Prisma.SessionScalarWhereInput[]
   OR?: Prisma.SessionScalarWhereInput[]
   NOT?: Prisma.SessionScalarWhereInput | Prisma.SessionScalarWhereInput[]
-  id?: Prisma.IntFilter<"Session"> | number
-  kbId?: Prisma.IntNullableFilter<"Session"> | number | null
+  id?: Prisma.StringFilter<"Session"> | string
+  kbId?: Prisma.StringNullableFilter<"Session"> | string | null
   modelType?: Prisma.StringFilter<"Session"> | string
   modelName?: Prisma.StringFilter<"Session"> | string
   provider?: Prisma.StringFilter<"Session"> | string
@@ -579,6 +533,7 @@ export type SessionScalarWhereInput = {
 }
 
 export type SessionCreateWithoutMessagesInput = {
+  id?: string
   modelType: string
   modelName: string
   provider: string
@@ -590,8 +545,8 @@ export type SessionCreateWithoutMessagesInput = {
 }
 
 export type SessionUncheckedCreateWithoutMessagesInput = {
-  id?: number
-  kbId?: number | null
+  id?: string
+  kbId?: string | null
   modelType: string
   modelName: string
   provider: string
@@ -618,6 +573,7 @@ export type SessionUpdateToOneWithWhereWithoutMessagesInput = {
 }
 
 export type SessionUpdateWithoutMessagesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
   modelName?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
@@ -629,8 +585,8 @@ export type SessionUpdateWithoutMessagesInput = {
 }
 
 export type SessionUncheckedUpdateWithoutMessagesInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  kbId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kbId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
   modelName?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
@@ -641,7 +597,7 @@ export type SessionUncheckedUpdateWithoutMessagesInput = {
 }
 
 export type SessionCreateManyKnowledgeBaseInput = {
-  id?: number
+  id?: string
   modelType: string
   modelName: string
   provider: string
@@ -652,6 +608,7 @@ export type SessionCreateManyKnowledgeBaseInput = {
 }
 
 export type SessionUpdateWithoutKnowledgeBaseInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
   modelName?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
@@ -663,7 +620,7 @@ export type SessionUpdateWithoutKnowledgeBaseInput = {
 }
 
 export type SessionUncheckedUpdateWithoutKnowledgeBaseInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
   modelName?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
@@ -675,7 +632,7 @@ export type SessionUncheckedUpdateWithoutKnowledgeBaseInput = {
 }
 
 export type SessionUncheckedUpdateManyWithoutKnowledgeBaseInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
   modelName?: Prisma.StringFieldUpdateOperationsInput | string
   provider?: Prisma.StringFieldUpdateOperationsInput | string
@@ -789,8 +746,8 @@ export type $SessionPayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     knowledgeBase: Prisma.$KnowledgeBasePayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: number
-    kbId: number | null
+    id: string
+    kbId: string | null
     modelType: string
     modelName: string
     provider: string
@@ -1223,8 +1180,8 @@ export interface Prisma__SessionClient<T, Null = never, ExtArgs extends runtime.
  * Fields of the Session model
  */
 export interface SessionFieldRefs {
-  readonly id: Prisma.FieldRef<"Session", 'Int'>
-  readonly kbId: Prisma.FieldRef<"Session", 'Int'>
+  readonly id: Prisma.FieldRef<"Session", 'String'>
+  readonly kbId: Prisma.FieldRef<"Session", 'String'>
   readonly modelType: Prisma.FieldRef<"Session", 'String'>
   readonly modelName: Prisma.FieldRef<"Session", 'String'>
   readonly provider: Prisma.FieldRef<"Session", 'String'>

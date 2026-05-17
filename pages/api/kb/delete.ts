@@ -14,8 +14,8 @@ export default createApiHandler<Deps>({
   handler: async (req, res, deps) => {
     const body = req.body as DeleteRequest
 
-    if (!body.id || typeof body.id !== 'number') {
-      throw Errors.badRequest('缺少必需字段: id (number)')
+    if (!body.id || typeof body.id !== 'string') {
+      throw Errors.badRequest('缺少必需字段: id (string)')
     }
 
     await deps.kbService.delete(body.id)

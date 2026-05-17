@@ -15,8 +15,8 @@ export interface TopicCreateInfo {
 export interface ChunkTopicPlan {
   index: number
   action: 'select' | 'create'
-  topicName?: string       // action=select 时，选中的已有主题名（必须完全一致）
-  newTopicName?: string    // action=create 时，要创建的新主题名
+  topicName?: string
+  newTopicName?: string
   reason?: string
 }
 
@@ -50,9 +50,9 @@ export interface MemoryMetadata {
  * 内存片段
  */
 export interface Memory {
-  id: number
-  kbId: number
-  topicId: number | null
+  id: string
+  kbId: string
+  topicId: string | null
   title: string
   content: string
   embedding: number[]
@@ -75,11 +75,11 @@ export interface ChunkResult {
 export type SearchSource = 'dense' | 'sparse' | 'hybrid'
 
 export interface SearchResult {
-  id: number
+  id: string
   title: string
   content: string
   score: number
-  topicId: number | null
+  topicId: string | null
   metadata: MemoryMetadata
   source: SearchSource
   context?: {
@@ -92,10 +92,10 @@ export interface SearchResult {
  * 列表项
  */
 export interface ListItem {
-  id: number
+  id: string
   title: string
   content: string
-  topicId: number | null
+  topicId: string | null
   metadata: MemoryMetadata
   createdAt: Date
 }
@@ -104,7 +104,7 @@ export interface ListItem {
  * 统计信息
  */
 export interface Stats {
-  kbId?: number
+  kbId?: string
   kbName?: string
   total: number
   lastUpdated?: Date
@@ -123,7 +123,7 @@ export interface IngestMessage {
  * 纯文本入库请求
  */
 export interface IngestTextRequest {
-  kbId: number
+  kbId: string
   content: string
 }
 
@@ -131,7 +131,7 @@ export interface IngestTextRequest {
  * 消息列表入库请求
  */
 export interface IngestMessagesRequest {
-  kbId: number
+  kbId: string
   messages: IngestMessage[]
 }
 
@@ -140,13 +140,13 @@ export interface IngestMessagesRequest {
  */
 export interface IngestTextResponse {
   count: number
-  memoryIds: number[]
+  memoryIds: string[]
   topicsInvolved?: string[]
 }
 
 export interface TopicInfo {
-  id: number
-  kbId: number
+  id: string
+  kbId: string
   name: string
   description: string
   createdAt: Date
@@ -158,7 +158,7 @@ export interface TopicInfo {
  */
 export interface IngestMessagesResponse {
   count: number
-  memoryIds: number[]
+  memoryIds: string[]
   memorizedMessageIds: string[]
 }
 
@@ -166,7 +166,7 @@ export interface IngestMessagesResponse {
  * 检索请求
  */
 export interface SearchRequest {
-  kbId: number
+  kbId: string
   query: string
   top_k?: number
   context_window?: number
@@ -176,7 +176,7 @@ export interface SearchRequest {
  * 列表请求
  */
 export interface ListRequest {
-  kbId: number
+  kbId: string
   page?: number
   limit?: number
 }
@@ -185,14 +185,14 @@ export interface ListRequest {
  * 删除请求
  */
 export interface DeleteRequest {
-  id: number
+  id: string
 }
 
 /**
  * 统计请求
  */
 export interface StatsRequest {
-  kbId?: number
+  kbId?: string
 }
 
 /**
@@ -250,14 +250,14 @@ export interface VendorFactory {
     apiKey?: string
     baseUrl?: string
     config?: Record<string, unknown>
-  }): unknown // BaseChatModel 或 Embeddings 实例
+  }): unknown
 }
 
 /**
  * 厂商
  */
 export interface Vendor {
-  id: number
+  id: string
   name: string
   url: string
   chatModelClass?: string | null
@@ -272,9 +272,9 @@ export interface Vendor {
  * 提供商
  */
 export interface Provider {
-  id: number
+  id: string
   name: string
-  vendorId: number
+  vendorId: string
   vendor?: Vendor
   apiKey?: string
   baseUrl: string
@@ -288,8 +288,8 @@ export interface Provider {
  * 模型
  */
 export interface Model {
-  id: number
-  providerId: number
+  id: string
+  providerId: string
   name: string
   displayName?: string
   modelType: ModelType
@@ -305,7 +305,7 @@ export interface Model {
  */
 export interface CreateProviderRequest {
   name: string
-  vendorId: number
+  vendorId: string
   apiKey?: string
   baseUrl: string
   config?: Record<string, unknown>
@@ -317,7 +317,7 @@ export interface CreateProviderRequest {
  */
 export interface UpdateProviderRequest {
   name?: string
-  vendorId?: number
+  vendorId?: string
   apiKey?: string
   baseUrl?: string
   config?: Record<string, unknown>
@@ -350,7 +350,7 @@ export interface UpdateVendorRequest {
  * 创建模型请求
  */
 export interface CreateModelRequest {
-  providerId: number
+  providerId: string
   name: string
   displayName?: string
   modelType: ModelType
@@ -375,7 +375,7 @@ export interface UpdateModelRequest {
  * 应用设置
  */
 export interface Setting {
-  id: number
+  id: string
   key: string
   value: Record<string, unknown>
   description?: string
@@ -405,7 +405,7 @@ export interface CreateKBRequest {
  * 知识库信息
  */
 export interface KnowledgeBaseInfo {
-  id: number
+  id: string
   name: string
   description?: string
   createdAt: Date
@@ -415,60 +415,207 @@ export interface KnowledgeBaseInfo {
 /**
  * 会话状态
  */
-export type SessionStatus = 'pending' | 'completed' | 'failed'
-
-/**
- * 消息角色
- */
 export type MessageRole = 'system' | 'user' | 'assistant'
 
 /**
- * 会话消息
+ * 聊天消息
  */
-export interface SessionMessage {
-  id: number
-  sessionId: number
+export interface ChatMessage {
+  id: string
+  conversationId: string
   role: MessageRole
   content: string
-  tokens?: number
+  tokens: number
+  totalTokens: number
+  memoried: boolean
   metadata: Record<string, unknown>
   createdAt: Date
 }
 
 /**
- * 会话
+ * 聊天消息列表结果
  */
+export interface ChatMessageListResult {
+  messages: ChatMessage[]
+  total: number
+  page: number
+  limit: number
+  conversationId: string
+}
+
+/**
+ * 对话
+ */
+export interface Conversation {
+  id: string
+  metadata: Record<string, unknown>
+  createdAt: Date
+  updatedAt: Date
+  messages?: ChatMessage[]
+}
+
+/**
+ * 创建对话请求
+ */
+export interface CreateConversationRequest {
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * 添加聊天消息请求
+ */
+export interface AddChatMessageRequest {
+  conversationId: string
+  role: MessageRole
+  content: string
+  tokens?: number
+  totalTokens?: number
+  memoried?: boolean
+  metadata?: Record<string, unknown>
+}
+
+/**
+ * 聊天完成请求
+ */
+export interface ChatCompletionRequest {
+  messages: ChatMessageInput[]
+  conversationId?: string
+  newConversation?: boolean
+  regenerateMessageId?: string
+  modelId: string
+  kbId: string
+}
+
+/**
+ * 聊天消息输入
+ */
+export interface ChatMessageInput {
+  id: string
+  content: string
+}
+
+/**
+ * 聊天完成响应
+ */
+export interface ChatCompletionResponse {
+  success: boolean
+  conversationId?: string
+}
+
+/**
+ * 搜索需求分析结果
+ */
+export interface SearchNeedsResult {
+  searchWebReason: string
+  searchWebMemoryReason: string
+  needSearchWeb: boolean
+  webKeywords: string[]
+  needSearchMemory: boolean
+  memoryQuery: string | null
+}
+
+/**
+ * SSE 流状态
+ */
+export type StreamStatus =
+  | 'searchingWeb'
+  | 'searchingMemory'
+  | 'summarizing'
+  | 'memoryProgress'
+
+/**
+ * SSE 流事件
+ */
+export type StreamEvent =
+  | { type: 'chunk'; content: string; model: { id: string; name: string } }
+  | { type: 'status'; status: StreamStatus }
+  | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
+  | { type: 'usage'; promptTokens: number; completionTokens: number }
+  | { type: 'error'; message: string }
+  | { type: 'done' }
+
+/**
+ * 网页缓存
+ */
+export interface WebPageInfo {
+  id: string
+  url: string
+  title?: string
+  content: string
+  keywords: string[]
+  createdAt: Date
+  updatedAt: Date
+}
+
+/**
+ * 聊天设置
+ */
+export interface ChatSettingInfo {
+  id: string
+  memoryContextThreshold: number
+  createdAt: Date
+  updatedAt: Date
+}
+
 export interface Session {
-  id: number
-  kbId?: number
-  modelType: ModelType
+  id: string
+  kbId?: string
+  modelType: string
   modelName: string
   provider: string
-  status: SessionStatus
+  status: string
   error?: string
   metadata: Record<string, unknown>
   createdAt: Date
   messages?: SessionMessage[]
 }
 
-/**
- * 创建会话请求
- */
+export interface SessionMessage {
+  id: string
+  sessionId: string
+  role: string
+  content: string
+  tokens: number
+  metadata: Record<string, unknown>
+  createdAt: Date
+}
+
 export interface CreateSessionRequest {
-  kbId?: number
-  modelType: ModelType
+  kbId?: string
+  modelType: string
   modelName: string
   provider: string
   metadata?: Record<string, unknown>
 }
 
-/**
- * 添加消息请求
- */
-export interface AddMessageRequest {
-  sessionId: number
-  role: MessageRole
+export interface AddSessionMessageRequest {
+  sessionId: string
+  role: string
   content: string
   tokens?: number
   metadata?: Record<string, unknown>
+}
+
+/**
+ * 提供商树节点 - 提供商及其下属模型的树形结构
+ */
+export interface ProviderTreeNode {
+  id: string
+  name: string
+  vendorName: string
+  baseUrl: string
+  isActive: boolean
+  models: ModelTreeNode[]
+}
+
+/**
+ * 模型树节点 - 提供商树中的模型信息
+ */
+export interface ModelTreeNode {
+  id: string
+  name: string
+  displayName: string
+  modelType: ModelType
+  isDefault: boolean
+  isActive: boolean
 }

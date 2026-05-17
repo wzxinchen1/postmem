@@ -20,25 +20,13 @@ export type TopicModel = runtime.Types.Result.DefaultSelection<Prisma.$TopicPayl
 
 export type AggregateTopic = {
   _count: TopicCountAggregateOutputType | null
-  _avg: TopicAvgAggregateOutputType | null
-  _sum: TopicSumAggregateOutputType | null
   _min: TopicMinAggregateOutputType | null
   _max: TopicMaxAggregateOutputType | null
 }
 
-export type TopicAvgAggregateOutputType = {
-  id: number | null
-  kbId: number | null
-}
-
-export type TopicSumAggregateOutputType = {
-  id: number | null
-  kbId: number | null
-}
-
 export type TopicMinAggregateOutputType = {
-  id: number | null
-  kbId: number | null
+  id: string | null
+  kbId: string | null
   name: string | null
   description: string | null
   createdAt: Date | null
@@ -46,8 +34,8 @@ export type TopicMinAggregateOutputType = {
 }
 
 export type TopicMaxAggregateOutputType = {
-  id: number | null
-  kbId: number | null
+  id: string | null
+  kbId: string | null
   name: string | null
   description: string | null
   createdAt: Date | null
@@ -64,16 +52,6 @@ export type TopicCountAggregateOutputType = {
   _all: number
 }
 
-
-export type TopicAvgAggregateInputType = {
-  id?: true
-  kbId?: true
-}
-
-export type TopicSumAggregateInputType = {
-  id?: true
-  kbId?: true
-}
 
 export type TopicMinAggregateInputType = {
   id?: true
@@ -141,18 +119,6 @@ export type TopicAggregateArgs<ExtArgs extends runtime.Types.Extensions.Internal
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: TopicAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: TopicSumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: TopicMinAggregateInputType
@@ -183,22 +149,18 @@ export type TopicGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
   take?: number
   skip?: number
   _count?: TopicCountAggregateInputType | true
-  _avg?: TopicAvgAggregateInputType
-  _sum?: TopicSumAggregateInputType
   _min?: TopicMinAggregateInputType
   _max?: TopicMaxAggregateInputType
 }
 
 export type TopicGroupByOutputType = {
-  id: number
-  kbId: number
+  id: string
+  kbId: string
   name: string
   description: string
   createdAt: Date
   updatedAt: Date
   _count: TopicCountAggregateOutputType | null
-  _avg: TopicAvgAggregateOutputType | null
-  _sum: TopicSumAggregateOutputType | null
   _min: TopicMinAggregateOutputType | null
   _max: TopicMaxAggregateOutputType | null
 }
@@ -222,8 +184,8 @@ export type TopicWhereInput = {
   AND?: Prisma.TopicWhereInput | Prisma.TopicWhereInput[]
   OR?: Prisma.TopicWhereInput[]
   NOT?: Prisma.TopicWhereInput | Prisma.TopicWhereInput[]
-  id?: Prisma.IntFilter<"Topic"> | number
-  kbId?: Prisma.IntFilter<"Topic"> | number
+  id?: Prisma.StringFilter<"Topic"> | string
+  kbId?: Prisma.StringFilter<"Topic"> | string
   name?: Prisma.StringFilter<"Topic"> | string
   description?: Prisma.StringFilter<"Topic"> | string
   createdAt?: Prisma.DateTimeFilter<"Topic"> | Date | string
@@ -244,12 +206,12 @@ export type TopicOrderByWithRelationInput = {
 }
 
 export type TopicWhereUniqueInput = Prisma.AtLeast<{
-  id?: number
+  id?: string
   kbId_name?: Prisma.TopicKbIdNameCompoundUniqueInput
   AND?: Prisma.TopicWhereInput | Prisma.TopicWhereInput[]
   OR?: Prisma.TopicWhereInput[]
   NOT?: Prisma.TopicWhereInput | Prisma.TopicWhereInput[]
-  kbId?: Prisma.IntFilter<"Topic"> | number
+  kbId?: Prisma.StringFilter<"Topic"> | string
   name?: Prisma.StringFilter<"Topic"> | string
   description?: Prisma.StringFilter<"Topic"> | string
   createdAt?: Prisma.DateTimeFilter<"Topic"> | Date | string
@@ -266,18 +228,16 @@ export type TopicOrderByWithAggregationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.TopicCountOrderByAggregateInput
-  _avg?: Prisma.TopicAvgOrderByAggregateInput
   _max?: Prisma.TopicMaxOrderByAggregateInput
   _min?: Prisma.TopicMinOrderByAggregateInput
-  _sum?: Prisma.TopicSumOrderByAggregateInput
 }
 
 export type TopicScalarWhereWithAggregatesInput = {
   AND?: Prisma.TopicScalarWhereWithAggregatesInput | Prisma.TopicScalarWhereWithAggregatesInput[]
   OR?: Prisma.TopicScalarWhereWithAggregatesInput[]
   NOT?: Prisma.TopicScalarWhereWithAggregatesInput | Prisma.TopicScalarWhereWithAggregatesInput[]
-  id?: Prisma.IntWithAggregatesFilter<"Topic"> | number
-  kbId?: Prisma.IntWithAggregatesFilter<"Topic"> | number
+  id?: Prisma.StringWithAggregatesFilter<"Topic"> | string
+  kbId?: Prisma.StringWithAggregatesFilter<"Topic"> | string
   name?: Prisma.StringWithAggregatesFilter<"Topic"> | string
   description?: Prisma.StringWithAggregatesFilter<"Topic"> | string
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Topic"> | Date | string
@@ -285,6 +245,7 @@ export type TopicScalarWhereWithAggregatesInput = {
 }
 
 export type TopicCreateInput = {
+  id?: string
   name: string
   description: string
   createdAt?: Date | string
@@ -294,8 +255,8 @@ export type TopicCreateInput = {
 }
 
 export type TopicUncheckedCreateInput = {
-  id?: number
-  kbId: number
+  id?: string
+  kbId: string
   name: string
   description: string
   createdAt?: Date | string
@@ -304,6 +265,7 @@ export type TopicUncheckedCreateInput = {
 }
 
 export type TopicUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -313,8 +275,8 @@ export type TopicUpdateInput = {
 }
 
 export type TopicUncheckedUpdateInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  kbId?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kbId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -323,8 +285,8 @@ export type TopicUncheckedUpdateInput = {
 }
 
 export type TopicCreateManyInput = {
-  id?: number
-  kbId: number
+  id?: string
+  kbId: string
   name: string
   description: string
   createdAt?: Date | string
@@ -332,6 +294,7 @@ export type TopicCreateManyInput = {
 }
 
 export type TopicUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -339,8 +302,8 @@ export type TopicUpdateManyMutationInput = {
 }
 
 export type TopicUncheckedUpdateManyInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  kbId?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kbId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -348,7 +311,7 @@ export type TopicUncheckedUpdateManyInput = {
 }
 
 export type TopicKbIdNameCompoundUniqueInput = {
-  kbId: number
+  kbId: string
   name: string
 }
 
@@ -359,11 +322,6 @@ export type TopicCountOrderByAggregateInput = {
   description?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-}
-
-export type TopicAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
 }
 
 export type TopicMaxOrderByAggregateInput = {
@@ -382,11 +340,6 @@ export type TopicMinOrderByAggregateInput = {
   description?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-}
-
-export type TopicSumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
 }
 
 export type TopicNullableScalarRelationFilter = {
@@ -410,14 +363,6 @@ export type StringFieldUpdateOperationsInput = {
 
 export type DateTimeFieldUpdateOperationsInput = {
   set?: Date | string
-}
-
-export type IntFieldUpdateOperationsInput = {
-  set?: number
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
 }
 
 export type TopicCreateNestedOneWithoutMemoriesInput = {
@@ -479,6 +424,7 @@ export type TopicUncheckedUpdateManyWithoutKbNestedInput = {
 }
 
 export type TopicCreateWithoutMemoriesInput = {
+  id?: string
   name: string
   description: string
   createdAt?: Date | string
@@ -487,8 +433,8 @@ export type TopicCreateWithoutMemoriesInput = {
 }
 
 export type TopicUncheckedCreateWithoutMemoriesInput = {
-  id?: number
-  kbId: number
+  id?: string
+  kbId: string
   name: string
   description: string
   createdAt?: Date | string
@@ -512,6 +458,7 @@ export type TopicUpdateToOneWithWhereWithoutMemoriesInput = {
 }
 
 export type TopicUpdateWithoutMemoriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -520,8 +467,8 @@ export type TopicUpdateWithoutMemoriesInput = {
 }
 
 export type TopicUncheckedUpdateWithoutMemoriesInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  kbId?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kbId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -529,6 +476,7 @@ export type TopicUncheckedUpdateWithoutMemoriesInput = {
 }
 
 export type TopicCreateWithoutKbInput = {
+  id?: string
   name: string
   description: string
   createdAt?: Date | string
@@ -537,7 +485,7 @@ export type TopicCreateWithoutKbInput = {
 }
 
 export type TopicUncheckedCreateWithoutKbInput = {
-  id?: number
+  id?: string
   name: string
   description: string
   createdAt?: Date | string
@@ -575,8 +523,8 @@ export type TopicScalarWhereInput = {
   AND?: Prisma.TopicScalarWhereInput | Prisma.TopicScalarWhereInput[]
   OR?: Prisma.TopicScalarWhereInput[]
   NOT?: Prisma.TopicScalarWhereInput | Prisma.TopicScalarWhereInput[]
-  id?: Prisma.IntFilter<"Topic"> | number
-  kbId?: Prisma.IntFilter<"Topic"> | number
+  id?: Prisma.StringFilter<"Topic"> | string
+  kbId?: Prisma.StringFilter<"Topic"> | string
   name?: Prisma.StringFilter<"Topic"> | string
   description?: Prisma.StringFilter<"Topic"> | string
   createdAt?: Prisma.DateTimeFilter<"Topic"> | Date | string
@@ -584,7 +532,7 @@ export type TopicScalarWhereInput = {
 }
 
 export type TopicCreateManyKbInput = {
-  id?: number
+  id?: string
   name: string
   description: string
   createdAt?: Date | string
@@ -592,6 +540,7 @@ export type TopicCreateManyKbInput = {
 }
 
 export type TopicUpdateWithoutKbInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -600,7 +549,7 @@ export type TopicUpdateWithoutKbInput = {
 }
 
 export type TopicUncheckedUpdateWithoutKbInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -609,7 +558,7 @@ export type TopicUncheckedUpdateWithoutKbInput = {
 }
 
 export type TopicUncheckedUpdateManyWithoutKbInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.StringFieldUpdateOperationsInput | string
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -708,8 +657,8 @@ export type $TopicPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     memories: Prisma.$MemoryPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: number
-    kbId: number
+    id: string
+    kbId: string
     name: string
     description: string
     createdAt: Date
@@ -1139,8 +1088,8 @@ export interface Prisma__TopicClient<T, Null = never, ExtArgs extends runtime.Ty
  * Fields of the Topic model
  */
 export interface TopicFieldRefs {
-  readonly id: Prisma.FieldRef<"Topic", 'Int'>
-  readonly kbId: Prisma.FieldRef<"Topic", 'Int'>
+  readonly id: Prisma.FieldRef<"Topic", 'String'>
+  readonly kbId: Prisma.FieldRef<"Topic", 'String'>
   readonly name: Prisma.FieldRef<"Topic", 'String'>
   readonly description: Prisma.FieldRef<"Topic", 'String'>
   readonly createdAt: Prisma.FieldRef<"Topic", 'DateTime'>

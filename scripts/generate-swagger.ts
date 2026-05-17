@@ -68,7 +68,8 @@ function parseApiFile(filePath: string): ApiEndpoint[] {
     providers: 'Providers',
     sessions: 'Sessions',
     settings: 'Settings',
-    vendors: 'Vendors'
+    vendors: 'Vendors',
+    chat: 'Chat',
   }
   
   const tagKey = Object.keys(tagMap).find(k => apiPath.includes(`/api/${k}`)) || ''
@@ -145,7 +146,7 @@ function parseEndpoint(
            apiPath.includes('/vendors/') ? '厂商ID' :
            apiPath.includes('/sessions/') ? '会话ID' : 'ID'
     }
-    endpoint.params = [{ name: idName, description: descMap[idName] || 'ID', type: 'integer' }]
+    endpoint.params = [{ name: idName, description: descMap[idName] || 'ID', type: 'string' }]
   }
 
   if (['POST', 'PUT'].includes(method)) {
@@ -193,9 +194,9 @@ function parseEndpoint(
     
     const descMap: Record<string, { description: string; type: string; default?: unknown }> = {
       includeInactive: { description: '是否包含已禁用的项', type: 'boolean', default: false },
-      providerId: { description: '按提供商ID筛选', type: 'integer' },
+      providerId: { description: '按提供商ID筛选', type: 'string' },
       modelType: { description: '模型类型', type: 'string', enum: ['chat', 'embedding'] },
-      kbId: { description: '按知识库筛选', type: 'integer' },
+      kbId: { description: '按知识库筛选', type: 'string' },
       status: { description: '按状态筛选', type: 'string', enum: ['pending', 'completed', 'failed'] },
       page: { description: '页码', type: 'integer', default: 1 },
       limit: { description: '每页数量', type: 'integer', default: 20 }
@@ -386,7 +387,7 @@ function isCustomType(typeName: string, allTypes: TypeSchema[]): boolean {
   return allTypes.some(t => t.name === typeName)
 }
 
-function typeToSwaggerType(typeStr: string): { type: string; items?: any; enum?: string[] } {
+function typeToSwaggerType(typeStr: string, types?: TypeSchema[]): { type: string; items?: any; enum?: string[]; $ref?: string } {
   const baseMap: Record<string, string> = {
     'string': 'string',
     'number': 'number',
@@ -398,12 +399,21 @@ function typeToSwaggerType(typeStr: string): { type: string; items?: any; enum?:
 
   if (typeStr.startsWith('array[')) {
     const itemType = typeStr.slice(6, -1)
-    return { type: 'array', items: typeToSwaggerType(itemType) }
+    return { type: 'array', items: typeToSwaggerType(itemType, types) }
+  }
+
+  if (typeStr.endsWith('[]')) {
+    const itemType = typeStr.slice(0, -2)
+    return { type: 'array', items: typeToSwaggerType(itemType, types) }
   }
 
   if (typeStr.includes('|')) {
     const enumValues = typeStr.split('|').map(v => v.trim().replace(/'/g, ''))
     return { type: 'string', enum: enumValues.filter(v => !v.match(/^[A-Z][a-z]/)) || undefined }
+  }
+
+  if (types && isCustomType(typeStr, types)) {
+    return { $ref: `#/components/schemas/${typeStr}` }
   }
 
   return { type: baseMap[typeStr] || 'string' }
@@ -535,7 +545,7 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[]): object 
       properties: Object.fromEntries(
         t.properties.map(p => [
           p.name,
-          { ...typeToSwaggerType(p.type), description: p.description || p.name }
+          { ...typeToSwaggerType(p.type, types), description: p.description || p.name }
         ])
       )
     }
@@ -597,6 +607,7 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[]): object 
       { name: 'Models', description: 'AI 模型管理接口' },
       { name: 'Providers', description: 'AI 提供商管理接口' },
       { name: 'Sessions', description: '对话会话管理接口' },
+      { name: 'Chat', description: '聊天消息接口' },
       { name: 'Settings', description: '应用设置接口' },
       { name: 'Vendors', description: 'AI 厂商管理接口' }
     ]
@@ -605,12 +616,12 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[]): object 
 
 function getExampleValue(type: string, name: string): unknown {
   const examples: Record<string, unknown> = {
-    kbId: 1,
+    kbId: 'clxabc123def456',
     name: '示例名称',
     content: '示例内容...',
     query: '查询语句',
-    providerId: 1,
-    vendorId: 1,
+    providerId: 'clxabc123def456',
+    vendorId: 'clxabc123def456',
     baseUrl: 'https://api.example.com/v1',
     apiKey: 'sk-xxx',
     modelName: 'gpt-4',
@@ -623,7 +634,7 @@ function getExampleValue(type: string, name: string): unknown {
     defaultTopK: 5,
     defaultContextWindow: 1,
     defaultPageSize: 20,
-    id: 123,
+    id: 'clxabc123def456',
     page: 1,
     limit: 20,
     top_k: 5,
@@ -639,42 +650,38 @@ function getExampleValue(type: string, name: string): unknown {
 }
 
 function generateSuccessResponseSchema(apiPath: string, method: string, types: TypeSchema[]): any {
-  const dataKeyMap: Record<string, string> = {
-    '/api/kb/create': 'KnowledgeBaseInfo',
-    '/api/models': 'Model',
-    '/api/providers': 'Provider',
-    '/api/vendors': 'Vendor',
-    '/api/settings': 'AppSettings',
-    '/api/sessions': 'Session'
-  }
-
-  let dataRef = undefined
-  for (const [key, typeName] of Object.entries(dataKeyMap)) {
-    if (apiPath.startsWith(key)) {
-      if (apiPath.includes('{id}') || apiPath.match(/\[id\]/)) {
-        dataRef = typeName.toLowerCase()
-      } else {
-        const isList = method === 'GET' && (typeName !== 'AppSettings')
-        if (isList) {
-          dataRef = typeName.toLowerCase() + 's'
-        } else {
-          dataRef = typeName.toLowerCase()
-        }
+  const responseType = getResponseType(apiPath, method, 200, types)
+  if (!responseType || responseType === 'object') {
+    return {
+      type: 'object',
+      properties: {
+        success: { type: 'boolean', example: true },
+        data: { type: 'object' }
       }
     }
   }
 
-  if (dataRef && types.find(t => t.name.toLowerCase() === dataRef)) {
-    dataRef = types.find(t => t.name.toLowerCase() === dataRef)?.name
+  const isArray = responseType.endsWith('[]')
+  const baseType = isArray ? responseType.slice(0, -2) : responseType
+  const matchedType = types.find(t => t.name === baseType)
+
+  let dataSchema: any
+  if (matchedType) {
+    const ref = { $ref: `#/components/schemas/${matchedType.name}` }
+    dataSchema = isArray ? { type: 'array', items: ref } : ref
+  } else if (baseType === 'boolean') {
+    dataSchema = { type: 'boolean' }
+  } else if (baseType === 'void') {
+    dataSchema = { type: 'object' }
+  } else {
+    dataSchema = { type: 'object' }
   }
 
   return {
     type: 'object',
     properties: {
       success: { type: 'boolean', example: true },
-      data: dataRef
-        ? { $ref: `#/components/schemas/${dataRef}` }
-        : { type: 'object' }
+      data: dataSchema
     }
   }
 }
@@ -902,6 +909,7 @@ function getResponseType(apiPath: string, method: string, code: number, types: T
     '/api/kb/search': 'SearchResult[]',
     '/api/kb/stats': 'Stats',
     '/api/settings/index': 'AppSettings',
+    '/api/chat/messages': 'ChatMessageListResult',
   }
 
   if (exactMap[apiPath]) return exactMap[apiPath]
@@ -914,7 +922,7 @@ function getResponseType(apiPath: string, method: string, code: number, types: T
       subPaths: { '/default': 'Model' }
     },
     { prefix: '/api/providers/', type: 'Provider', isListForGET: true,
-      subPaths: { '/models': 'Model[]', '/validate': 'boolean' }
+      subPaths: { '/models': 'Model[]', '/validate': 'boolean', '/tree': 'ProviderTreeNode[]' }
     },
     { prefix: '/api/vendors/', type: 'Vendor', isListForGET: true },
     { prefix: '/api/sessions/', type: 'Session', isListForGET: true,

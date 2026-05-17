@@ -20,25 +20,13 @@ export type ModelModel = runtime.Types.Result.DefaultSelection<Prisma.$ModelPayl
 
 export type AggregateModel = {
   _count: ModelCountAggregateOutputType | null
-  _avg: ModelAvgAggregateOutputType | null
-  _sum: ModelSumAggregateOutputType | null
   _min: ModelMinAggregateOutputType | null
   _max: ModelMaxAggregateOutputType | null
 }
 
-export type ModelAvgAggregateOutputType = {
-  id: number | null
-  providerId: number | null
-}
-
-export type ModelSumAggregateOutputType = {
-  id: number | null
-  providerId: number | null
-}
-
 export type ModelMinAggregateOutputType = {
-  id: number | null
-  providerId: number | null
+  id: string | null
+  providerId: string | null
   name: string | null
   displayName: string | null
   modelType: string | null
@@ -49,8 +37,8 @@ export type ModelMinAggregateOutputType = {
 }
 
 export type ModelMaxAggregateOutputType = {
-  id: number | null
-  providerId: number | null
+  id: string | null
+  providerId: string | null
   name: string | null
   displayName: string | null
   modelType: string | null
@@ -74,16 +62,6 @@ export type ModelCountAggregateOutputType = {
   _all: number
 }
 
-
-export type ModelAvgAggregateInputType = {
-  id?: true
-  providerId?: true
-}
-
-export type ModelSumAggregateInputType = {
-  id?: true
-  providerId?: true
-}
 
 export type ModelMinAggregateInputType = {
   id?: true
@@ -161,18 +139,6 @@ export type ModelAggregateArgs<ExtArgs extends runtime.Types.Extensions.Internal
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: ModelAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: ModelSumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: ModelMinAggregateInputType
@@ -203,15 +169,13 @@ export type ModelGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalAr
   take?: number
   skip?: number
   _count?: ModelCountAggregateInputType | true
-  _avg?: ModelAvgAggregateInputType
-  _sum?: ModelSumAggregateInputType
   _min?: ModelMinAggregateInputType
   _max?: ModelMaxAggregateInputType
 }
 
 export type ModelGroupByOutputType = {
-  id: number
-  providerId: number
+  id: string
+  providerId: string
   name: string
   displayName: string | null
   modelType: string
@@ -221,8 +185,6 @@ export type ModelGroupByOutputType = {
   createdAt: Date
   updatedAt: Date
   _count: ModelCountAggregateOutputType | null
-  _avg: ModelAvgAggregateOutputType | null
-  _sum: ModelSumAggregateOutputType | null
   _min: ModelMinAggregateOutputType | null
   _max: ModelMaxAggregateOutputType | null
 }
@@ -246,8 +208,8 @@ export type ModelWhereInput = {
   AND?: Prisma.ModelWhereInput | Prisma.ModelWhereInput[]
   OR?: Prisma.ModelWhereInput[]
   NOT?: Prisma.ModelWhereInput | Prisma.ModelWhereInput[]
-  id?: Prisma.IntFilter<"Model"> | number
-  providerId?: Prisma.IntFilter<"Model"> | number
+  id?: Prisma.StringFilter<"Model"> | string
+  providerId?: Prisma.StringFilter<"Model"> | string
   name?: Prisma.StringFilter<"Model"> | string
   displayName?: Prisma.StringNullableFilter<"Model"> | string | null
   modelType?: Prisma.StringFilter<"Model"> | string
@@ -274,12 +236,12 @@ export type ModelOrderByWithRelationInput = {
 }
 
 export type ModelWhereUniqueInput = Prisma.AtLeast<{
-  id?: number
+  id?: string
   providerId_name?: Prisma.ModelProviderIdNameCompoundUniqueInput
   AND?: Prisma.ModelWhereInput | Prisma.ModelWhereInput[]
   OR?: Prisma.ModelWhereInput[]
   NOT?: Prisma.ModelWhereInput | Prisma.ModelWhereInput[]
-  providerId?: Prisma.IntFilter<"Model"> | number
+  providerId?: Prisma.StringFilter<"Model"> | string
   name?: Prisma.StringFilter<"Model"> | string
   displayName?: Prisma.StringNullableFilter<"Model"> | string | null
   modelType?: Prisma.StringFilter<"Model"> | string
@@ -303,18 +265,16 @@ export type ModelOrderByWithAggregationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ModelCountOrderByAggregateInput
-  _avg?: Prisma.ModelAvgOrderByAggregateInput
   _max?: Prisma.ModelMaxOrderByAggregateInput
   _min?: Prisma.ModelMinOrderByAggregateInput
-  _sum?: Prisma.ModelSumOrderByAggregateInput
 }
 
 export type ModelScalarWhereWithAggregatesInput = {
   AND?: Prisma.ModelScalarWhereWithAggregatesInput | Prisma.ModelScalarWhereWithAggregatesInput[]
   OR?: Prisma.ModelScalarWhereWithAggregatesInput[]
   NOT?: Prisma.ModelScalarWhereWithAggregatesInput | Prisma.ModelScalarWhereWithAggregatesInput[]
-  id?: Prisma.IntWithAggregatesFilter<"Model"> | number
-  providerId?: Prisma.IntWithAggregatesFilter<"Model"> | number
+  id?: Prisma.StringWithAggregatesFilter<"Model"> | string
+  providerId?: Prisma.StringWithAggregatesFilter<"Model"> | string
   name?: Prisma.StringWithAggregatesFilter<"Model"> | string
   displayName?: Prisma.StringNullableWithAggregatesFilter<"Model"> | string | null
   modelType?: Prisma.StringWithAggregatesFilter<"Model"> | string
@@ -326,6 +286,7 @@ export type ModelScalarWhereWithAggregatesInput = {
 }
 
 export type ModelCreateInput = {
+  id?: string
   name: string
   displayName?: string | null
   modelType: string
@@ -338,8 +299,8 @@ export type ModelCreateInput = {
 }
 
 export type ModelUncheckedCreateInput = {
-  id?: number
-  providerId: number
+  id?: string
+  providerId: string
   name: string
   displayName?: string | null
   modelType: string
@@ -351,6 +312,7 @@ export type ModelUncheckedCreateInput = {
 }
 
 export type ModelUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -363,8 +325,8 @@ export type ModelUpdateInput = {
 }
 
 export type ModelUncheckedUpdateInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  providerId?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  providerId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -376,8 +338,8 @@ export type ModelUncheckedUpdateInput = {
 }
 
 export type ModelCreateManyInput = {
-  id?: number
-  providerId: number
+  id?: string
+  providerId: string
   name: string
   displayName?: string | null
   modelType: string
@@ -389,6 +351,7 @@ export type ModelCreateManyInput = {
 }
 
 export type ModelUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -400,8 +363,8 @@ export type ModelUpdateManyMutationInput = {
 }
 
 export type ModelUncheckedUpdateManyInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  providerId?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  providerId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -423,7 +386,7 @@ export type ModelOrderByRelationAggregateInput = {
 }
 
 export type ModelProviderIdNameCompoundUniqueInput = {
-  providerId: number
+  providerId: string
   name: string
 }
 
@@ -438,11 +401,6 @@ export type ModelCountOrderByAggregateInput = {
   isDefault?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-}
-
-export type ModelAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  providerId?: Prisma.SortOrder
 }
 
 export type ModelMaxOrderByAggregateInput = {
@@ -467,11 +425,6 @@ export type ModelMinOrderByAggregateInput = {
   isDefault?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-}
-
-export type ModelSumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  providerId?: Prisma.SortOrder
 }
 
 export type ModelCreateNestedManyWithoutProviderInput = {
@@ -517,6 +470,7 @@ export type ModelUncheckedUpdateManyWithoutProviderNestedInput = {
 }
 
 export type ModelCreateWithoutProviderInput = {
+  id?: string
   name: string
   displayName?: string | null
   modelType: string
@@ -528,7 +482,7 @@ export type ModelCreateWithoutProviderInput = {
 }
 
 export type ModelUncheckedCreateWithoutProviderInput = {
-  id?: number
+  id?: string
   name: string
   displayName?: string | null
   modelType: string
@@ -569,8 +523,8 @@ export type ModelScalarWhereInput = {
   AND?: Prisma.ModelScalarWhereInput | Prisma.ModelScalarWhereInput[]
   OR?: Prisma.ModelScalarWhereInput[]
   NOT?: Prisma.ModelScalarWhereInput | Prisma.ModelScalarWhereInput[]
-  id?: Prisma.IntFilter<"Model"> | number
-  providerId?: Prisma.IntFilter<"Model"> | number
+  id?: Prisma.StringFilter<"Model"> | string
+  providerId?: Prisma.StringFilter<"Model"> | string
   name?: Prisma.StringFilter<"Model"> | string
   displayName?: Prisma.StringNullableFilter<"Model"> | string | null
   modelType?: Prisma.StringFilter<"Model"> | string
@@ -582,7 +536,7 @@ export type ModelScalarWhereInput = {
 }
 
 export type ModelCreateManyProviderInput = {
-  id?: number
+  id?: string
   name: string
   displayName?: string | null
   modelType: string
@@ -594,6 +548,7 @@ export type ModelCreateManyProviderInput = {
 }
 
 export type ModelUpdateWithoutProviderInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -605,7 +560,7 @@ export type ModelUpdateWithoutProviderInput = {
 }
 
 export type ModelUncheckedUpdateWithoutProviderInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -617,7 +572,7 @@ export type ModelUncheckedUpdateWithoutProviderInput = {
 }
 
 export type ModelUncheckedUpdateManyWithoutProviderInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   modelType?: Prisma.StringFieldUpdateOperationsInput | string
@@ -702,8 +657,8 @@ export type $ModelPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     provider: Prisma.$ProviderPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: number
-    providerId: number
+    id: string
+    providerId: string
     name: string
     displayName: string | null
     modelType: string
@@ -1136,8 +1091,8 @@ export interface Prisma__ModelClient<T, Null = never, ExtArgs extends runtime.Ty
  * Fields of the Model model
  */
 export interface ModelFieldRefs {
-  readonly id: Prisma.FieldRef<"Model", 'Int'>
-  readonly providerId: Prisma.FieldRef<"Model", 'Int'>
+  readonly id: Prisma.FieldRef<"Model", 'String'>
+  readonly providerId: Prisma.FieldRef<"Model", 'String'>
   readonly name: Prisma.FieldRef<"Model", 'String'>
   readonly displayName: Prisma.FieldRef<"Model", 'String'>
   readonly modelType: Prisma.FieldRef<"Model", 'String'>

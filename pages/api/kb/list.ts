@@ -16,7 +16,7 @@ export default createApiHandler<Deps>({
   handler: async (req, res, deps) => {
     const body = req.body as ListRequest
 
-    if (!body.kbId || typeof body.kbId !== 'number') {
+    if (!body.kbId || typeof body.kbId !== 'string') {
       throw Errors.badRequest('缺少必需字段: kbId')
     }
 

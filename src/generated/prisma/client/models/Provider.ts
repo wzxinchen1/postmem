@@ -20,42 +20,30 @@ export type ProviderModel = runtime.Types.Result.DefaultSelection<Prisma.$Provid
 
 export type AggregateProvider = {
   _count: ProviderCountAggregateOutputType | null
-  _avg: ProviderAvgAggregateOutputType | null
-  _sum: ProviderSumAggregateOutputType | null
   _min: ProviderMinAggregateOutputType | null
   _max: ProviderMaxAggregateOutputType | null
 }
 
-export type ProviderAvgAggregateOutputType = {
-  id: number | null
-  vendorId: number | null
-}
-
-export type ProviderSumAggregateOutputType = {
-  id: number | null
-  vendorId: number | null
-}
-
 export type ProviderMinAggregateOutputType = {
-  id: number | null
+  id: string | null
   name: string | null
   apiKey: string | null
   baseUrl: string | null
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
-  vendorId: number | null
+  vendorId: string | null
 }
 
 export type ProviderMaxAggregateOutputType = {
-  id: number | null
+  id: string | null
   name: string | null
   apiKey: string | null
   baseUrl: string | null
   isActive: boolean | null
   createdAt: Date | null
   updatedAt: Date | null
-  vendorId: number | null
+  vendorId: string | null
 }
 
 export type ProviderCountAggregateOutputType = {
@@ -71,16 +59,6 @@ export type ProviderCountAggregateOutputType = {
   _all: number
 }
 
-
-export type ProviderAvgAggregateInputType = {
-  id?: true
-  vendorId?: true
-}
-
-export type ProviderSumAggregateInputType = {
-  id?: true
-  vendorId?: true
-}
 
 export type ProviderMinAggregateInputType = {
   id?: true
@@ -155,18 +133,6 @@ export type ProviderAggregateArgs<ExtArgs extends runtime.Types.Extensions.Inter
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: ProviderAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: ProviderSumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: ProviderMinAggregateInputType
@@ -197,14 +163,12 @@ export type ProviderGroupByArgs<ExtArgs extends runtime.Types.Extensions.Interna
   take?: number
   skip?: number
   _count?: ProviderCountAggregateInputType | true
-  _avg?: ProviderAvgAggregateInputType
-  _sum?: ProviderSumAggregateInputType
   _min?: ProviderMinAggregateInputType
   _max?: ProviderMaxAggregateInputType
 }
 
 export type ProviderGroupByOutputType = {
-  id: number
+  id: string
   name: string
   apiKey: string | null
   baseUrl: string
@@ -212,10 +176,8 @@ export type ProviderGroupByOutputType = {
   isActive: boolean
   createdAt: Date
   updatedAt: Date
-  vendorId: number
+  vendorId: string
   _count: ProviderCountAggregateOutputType | null
-  _avg: ProviderAvgAggregateOutputType | null
-  _sum: ProviderSumAggregateOutputType | null
   _min: ProviderMinAggregateOutputType | null
   _max: ProviderMaxAggregateOutputType | null
 }
@@ -239,7 +201,7 @@ export type ProviderWhereInput = {
   AND?: Prisma.ProviderWhereInput | Prisma.ProviderWhereInput[]
   OR?: Prisma.ProviderWhereInput[]
   NOT?: Prisma.ProviderWhereInput | Prisma.ProviderWhereInput[]
-  id?: Prisma.IntFilter<"Provider"> | number
+  id?: Prisma.StringFilter<"Provider"> | string
   name?: Prisma.StringFilter<"Provider"> | string
   apiKey?: Prisma.StringNullableFilter<"Provider"> | string | null
   baseUrl?: Prisma.StringFilter<"Provider"> | string
@@ -247,7 +209,7 @@ export type ProviderWhereInput = {
   isActive?: Prisma.BoolFilter<"Provider"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
-  vendorId?: Prisma.IntFilter<"Provider"> | number
+  vendorId?: Prisma.StringFilter<"Provider"> | string
   models?: Prisma.ModelListRelationFilter
   vendor?: Prisma.XOR<Prisma.VendorScalarRelationFilter, Prisma.VendorWhereInput>
 }
@@ -267,7 +229,7 @@ export type ProviderOrderByWithRelationInput = {
 }
 
 export type ProviderWhereUniqueInput = Prisma.AtLeast<{
-  id?: number
+  id?: string
   name?: string
   AND?: Prisma.ProviderWhereInput | Prisma.ProviderWhereInput[]
   OR?: Prisma.ProviderWhereInput[]
@@ -278,7 +240,7 @@ export type ProviderWhereUniqueInput = Prisma.AtLeast<{
   isActive?: Prisma.BoolFilter<"Provider"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
-  vendorId?: Prisma.IntFilter<"Provider"> | number
+  vendorId?: Prisma.StringFilter<"Provider"> | string
   models?: Prisma.ModelListRelationFilter
   vendor?: Prisma.XOR<Prisma.VendorScalarRelationFilter, Prisma.VendorWhereInput>
 }, "id" | "name">
@@ -294,17 +256,15 @@ export type ProviderOrderByWithAggregationInput = {
   updatedAt?: Prisma.SortOrder
   vendorId?: Prisma.SortOrder
   _count?: Prisma.ProviderCountOrderByAggregateInput
-  _avg?: Prisma.ProviderAvgOrderByAggregateInput
   _max?: Prisma.ProviderMaxOrderByAggregateInput
   _min?: Prisma.ProviderMinOrderByAggregateInput
-  _sum?: Prisma.ProviderSumOrderByAggregateInput
 }
 
 export type ProviderScalarWhereWithAggregatesInput = {
   AND?: Prisma.ProviderScalarWhereWithAggregatesInput | Prisma.ProviderScalarWhereWithAggregatesInput[]
   OR?: Prisma.ProviderScalarWhereWithAggregatesInput[]
   NOT?: Prisma.ProviderScalarWhereWithAggregatesInput | Prisma.ProviderScalarWhereWithAggregatesInput[]
-  id?: Prisma.IntWithAggregatesFilter<"Provider"> | number
+  id?: Prisma.StringWithAggregatesFilter<"Provider"> | string
   name?: Prisma.StringWithAggregatesFilter<"Provider"> | string
   apiKey?: Prisma.StringNullableWithAggregatesFilter<"Provider"> | string | null
   baseUrl?: Prisma.StringWithAggregatesFilter<"Provider"> | string
@@ -312,10 +272,11 @@ export type ProviderScalarWhereWithAggregatesInput = {
   isActive?: Prisma.BoolWithAggregatesFilter<"Provider"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Provider"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Provider"> | Date | string
-  vendorId?: Prisma.IntWithAggregatesFilter<"Provider"> | number
+  vendorId?: Prisma.StringWithAggregatesFilter<"Provider"> | string
 }
 
 export type ProviderCreateInput = {
+  id?: string
   name: string
   apiKey?: string | null
   baseUrl: string
@@ -328,7 +289,7 @@ export type ProviderCreateInput = {
 }
 
 export type ProviderUncheckedCreateInput = {
-  id?: number
+  id?: string
   name: string
   apiKey?: string | null
   baseUrl: string
@@ -336,11 +297,12 @@ export type ProviderUncheckedCreateInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
-  vendorId: number
+  vendorId: string
   models?: Prisma.ModelUncheckedCreateNestedManyWithoutProviderInput
 }
 
 export type ProviderUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
@@ -353,7 +315,7 @@ export type ProviderUpdateInput = {
 }
 
 export type ProviderUncheckedUpdateInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
@@ -361,12 +323,12 @@ export type ProviderUncheckedUpdateInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  vendorId?: Prisma.IntFieldUpdateOperationsInput | number
+  vendorId?: Prisma.StringFieldUpdateOperationsInput | string
   models?: Prisma.ModelUncheckedUpdateManyWithoutProviderNestedInput
 }
 
 export type ProviderCreateManyInput = {
-  id?: number
+  id?: string
   name: string
   apiKey?: string | null
   baseUrl: string
@@ -374,10 +336,11 @@ export type ProviderCreateManyInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
-  vendorId: number
+  vendorId: string
 }
 
 export type ProviderUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
@@ -388,7 +351,7 @@ export type ProviderUpdateManyMutationInput = {
 }
 
 export type ProviderUncheckedUpdateManyInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
@@ -396,7 +359,7 @@ export type ProviderUncheckedUpdateManyInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  vendorId?: Prisma.IntFieldUpdateOperationsInput | number
+  vendorId?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type ProviderListRelationFilter = {
@@ -421,11 +384,6 @@ export type ProviderCountOrderByAggregateInput = {
   vendorId?: Prisma.SortOrder
 }
 
-export type ProviderAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  vendorId?: Prisma.SortOrder
-}
-
 export type ProviderMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
@@ -445,11 +403,6 @@ export type ProviderMinOrderByAggregateInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-  vendorId?: Prisma.SortOrder
-}
-
-export type ProviderSumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
   vendorId?: Prisma.SortOrder
 }
 
@@ -515,6 +468,7 @@ export type ProviderUpdateOneRequiredWithoutModelsNestedInput = {
 }
 
 export type ProviderCreateWithoutVendorInput = {
+  id?: string
   name: string
   apiKey?: string | null
   baseUrl: string
@@ -526,7 +480,7 @@ export type ProviderCreateWithoutVendorInput = {
 }
 
 export type ProviderUncheckedCreateWithoutVendorInput = {
-  id?: number
+  id?: string
   name: string
   apiKey?: string | null
   baseUrl: string
@@ -567,7 +521,7 @@ export type ProviderScalarWhereInput = {
   AND?: Prisma.ProviderScalarWhereInput | Prisma.ProviderScalarWhereInput[]
   OR?: Prisma.ProviderScalarWhereInput[]
   NOT?: Prisma.ProviderScalarWhereInput | Prisma.ProviderScalarWhereInput[]
-  id?: Prisma.IntFilter<"Provider"> | number
+  id?: Prisma.StringFilter<"Provider"> | string
   name?: Prisma.StringFilter<"Provider"> | string
   apiKey?: Prisma.StringNullableFilter<"Provider"> | string | null
   baseUrl?: Prisma.StringFilter<"Provider"> | string
@@ -575,10 +529,11 @@ export type ProviderScalarWhereInput = {
   isActive?: Prisma.BoolFilter<"Provider"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
-  vendorId?: Prisma.IntFilter<"Provider"> | number
+  vendorId?: Prisma.StringFilter<"Provider"> | string
 }
 
 export type ProviderCreateWithoutModelsInput = {
+  id?: string
   name: string
   apiKey?: string | null
   baseUrl: string
@@ -590,7 +545,7 @@ export type ProviderCreateWithoutModelsInput = {
 }
 
 export type ProviderUncheckedCreateWithoutModelsInput = {
-  id?: number
+  id?: string
   name: string
   apiKey?: string | null
   baseUrl: string
@@ -598,7 +553,7 @@ export type ProviderUncheckedCreateWithoutModelsInput = {
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
-  vendorId: number
+  vendorId: string
 }
 
 export type ProviderCreateOrConnectWithoutModelsInput = {
@@ -618,6 +573,7 @@ export type ProviderUpdateToOneWithWhereWithoutModelsInput = {
 }
 
 export type ProviderUpdateWithoutModelsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
@@ -629,7 +585,7 @@ export type ProviderUpdateWithoutModelsInput = {
 }
 
 export type ProviderUncheckedUpdateWithoutModelsInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
@@ -637,11 +593,11 @@ export type ProviderUncheckedUpdateWithoutModelsInput = {
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
-  vendorId?: Prisma.IntFieldUpdateOperationsInput | number
+  vendorId?: Prisma.StringFieldUpdateOperationsInput | string
 }
 
 export type ProviderCreateManyVendorInput = {
-  id?: number
+  id?: string
   name: string
   apiKey?: string | null
   baseUrl: string
@@ -652,6 +608,7 @@ export type ProviderCreateManyVendorInput = {
 }
 
 export type ProviderUpdateWithoutVendorInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
@@ -663,7 +620,7 @@ export type ProviderUpdateWithoutVendorInput = {
 }
 
 export type ProviderUncheckedUpdateWithoutVendorInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
@@ -675,7 +632,7 @@ export type ProviderUncheckedUpdateWithoutVendorInput = {
 }
 
 export type ProviderUncheckedUpdateManyWithoutVendorInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
@@ -789,7 +746,7 @@ export type $ProviderPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     vendor: Prisma.$VendorPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: number
+    id: string
     name: string
     apiKey: string | null
     baseUrl: string
@@ -797,7 +754,7 @@ export type $ProviderPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     isActive: boolean
     createdAt: Date
     updatedAt: Date
-    vendorId: number
+    vendorId: string
   }, ExtArgs["result"]["provider"]>
   composites: {}
 }
@@ -1223,7 +1180,7 @@ export interface Prisma__ProviderClient<T, Null = never, ExtArgs extends runtime
  * Fields of the Provider model
  */
 export interface ProviderFieldRefs {
-  readonly id: Prisma.FieldRef<"Provider", 'Int'>
+  readonly id: Prisma.FieldRef<"Provider", 'String'>
   readonly name: Prisma.FieldRef<"Provider", 'String'>
   readonly apiKey: Prisma.FieldRef<"Provider", 'String'>
   readonly baseUrl: Prisma.FieldRef<"Provider", 'String'>
@@ -1231,7 +1188,7 @@ export interface ProviderFieldRefs {
   readonly isActive: Prisma.FieldRef<"Provider", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Provider", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Provider", 'DateTime'>
-  readonly vendorId: Prisma.FieldRef<"Provider", 'Int'>
+  readonly vendorId: Prisma.FieldRef<"Provider", 'String'>
 }
     
 

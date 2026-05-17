@@ -20,37 +20,23 @@ export type MemoryModel = runtime.Types.Result.DefaultSelection<Prisma.$MemoryPa
 
 export type AggregateMemory = {
   _count: MemoryCountAggregateOutputType | null
-  _avg: MemoryAvgAggregateOutputType | null
-  _sum: MemorySumAggregateOutputType | null
   _min: MemoryMinAggregateOutputType | null
   _max: MemoryMaxAggregateOutputType | null
 }
 
-export type MemoryAvgAggregateOutputType = {
-  id: number | null
-  kbId: number | null
-  topicId: number | null
-}
-
-export type MemorySumAggregateOutputType = {
-  id: number | null
-  kbId: number | null
-  topicId: number | null
-}
-
 export type MemoryMinAggregateOutputType = {
-  id: number | null
-  kbId: number | null
-  topicId: number | null
+  id: string | null
+  kbId: string | null
+  topicId: string | null
   title: string | null
   content: string | null
   createdAt: Date | null
 }
 
 export type MemoryMaxAggregateOutputType = {
-  id: number | null
-  kbId: number | null
-  topicId: number | null
+  id: string | null
+  kbId: string | null
+  topicId: string | null
   title: string | null
   content: string | null
   createdAt: Date | null
@@ -67,18 +53,6 @@ export type MemoryCountAggregateOutputType = {
   _all: number
 }
 
-
-export type MemoryAvgAggregateInputType = {
-  id?: true
-  kbId?: true
-  topicId?: true
-}
-
-export type MemorySumAggregateInputType = {
-  id?: true
-  kbId?: true
-  topicId?: true
-}
 
 export type MemoryMinAggregateInputType = {
   id?: true
@@ -147,18 +121,6 @@ export type MemoryAggregateArgs<ExtArgs extends runtime.Types.Extensions.Interna
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: MemoryAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: MemorySumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: MemoryMinAggregateInputType
@@ -189,23 +151,19 @@ export type MemoryGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   _count?: MemoryCountAggregateInputType | true
-  _avg?: MemoryAvgAggregateInputType
-  _sum?: MemorySumAggregateInputType
   _min?: MemoryMinAggregateInputType
   _max?: MemoryMaxAggregateInputType
 }
 
 export type MemoryGroupByOutputType = {
-  id: number
-  kbId: number
-  topicId: number | null
+  id: string
+  kbId: string
+  topicId: string | null
   title: string
   content: string
   metadata: runtime.JsonValue
   createdAt: Date
   _count: MemoryCountAggregateOutputType | null
-  _avg: MemoryAvgAggregateOutputType | null
-  _sum: MemorySumAggregateOutputType | null
   _min: MemoryMinAggregateOutputType | null
   _max: MemoryMaxAggregateOutputType | null
 }
@@ -229,9 +187,9 @@ export type MemoryWhereInput = {
   AND?: Prisma.MemoryWhereInput | Prisma.MemoryWhereInput[]
   OR?: Prisma.MemoryWhereInput[]
   NOT?: Prisma.MemoryWhereInput | Prisma.MemoryWhereInput[]
-  id?: Prisma.IntFilter<"Memory"> | number
-  kbId?: Prisma.IntFilter<"Memory"> | number
-  topicId?: Prisma.IntNullableFilter<"Memory"> | number | null
+  id?: Prisma.StringFilter<"Memory"> | string
+  kbId?: Prisma.StringFilter<"Memory"> | string
+  topicId?: Prisma.StringNullableFilter<"Memory"> | string | null
   title?: Prisma.StringFilter<"Memory"> | string
   content?: Prisma.StringFilter<"Memory"> | string
   metadata?: Prisma.JsonFilter<"Memory">
@@ -253,12 +211,12 @@ export type MemoryOrderByWithRelationInput = {
 }
 
 export type MemoryWhereUniqueInput = Prisma.AtLeast<{
-  id?: number
+  id?: string
   AND?: Prisma.MemoryWhereInput | Prisma.MemoryWhereInput[]
   OR?: Prisma.MemoryWhereInput[]
   NOT?: Prisma.MemoryWhereInput | Prisma.MemoryWhereInput[]
-  kbId?: Prisma.IntFilter<"Memory"> | number
-  topicId?: Prisma.IntNullableFilter<"Memory"> | number | null
+  kbId?: Prisma.StringFilter<"Memory"> | string
+  topicId?: Prisma.StringNullableFilter<"Memory"> | string | null
   title?: Prisma.StringFilter<"Memory"> | string
   content?: Prisma.StringFilter<"Memory"> | string
   metadata?: Prisma.JsonFilter<"Memory">
@@ -276,19 +234,17 @@ export type MemoryOrderByWithAggregationInput = {
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.MemoryCountOrderByAggregateInput
-  _avg?: Prisma.MemoryAvgOrderByAggregateInput
   _max?: Prisma.MemoryMaxOrderByAggregateInput
   _min?: Prisma.MemoryMinOrderByAggregateInput
-  _sum?: Prisma.MemorySumOrderByAggregateInput
 }
 
 export type MemoryScalarWhereWithAggregatesInput = {
   AND?: Prisma.MemoryScalarWhereWithAggregatesInput | Prisma.MemoryScalarWhereWithAggregatesInput[]
   OR?: Prisma.MemoryScalarWhereWithAggregatesInput[]
   NOT?: Prisma.MemoryScalarWhereWithAggregatesInput | Prisma.MemoryScalarWhereWithAggregatesInput[]
-  id?: Prisma.IntWithAggregatesFilter<"Memory"> | number
-  kbId?: Prisma.IntWithAggregatesFilter<"Memory"> | number
-  topicId?: Prisma.IntNullableWithAggregatesFilter<"Memory"> | number | null
+  id?: Prisma.StringWithAggregatesFilter<"Memory"> | string
+  kbId?: Prisma.StringWithAggregatesFilter<"Memory"> | string
+  topicId?: Prisma.StringNullableWithAggregatesFilter<"Memory"> | string | null
   title?: Prisma.StringWithAggregatesFilter<"Memory"> | string
   content?: Prisma.StringWithAggregatesFilter<"Memory"> | string
   metadata?: Prisma.JsonWithAggregatesFilter<"Memory">
@@ -296,6 +252,7 @@ export type MemoryScalarWhereWithAggregatesInput = {
 }
 
 export type MemoryCreateInput = {
+  id?: string
   title: string
   content: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -305,9 +262,9 @@ export type MemoryCreateInput = {
 }
 
 export type MemoryUncheckedCreateInput = {
-  id?: number
-  kbId: number
-  topicId?: number | null
+  id?: string
+  kbId: string
+  topicId?: string | null
   title: string
   content: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -315,6 +272,7 @@ export type MemoryUncheckedCreateInput = {
 }
 
 export type MemoryUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -324,9 +282,9 @@ export type MemoryUpdateInput = {
 }
 
 export type MemoryUncheckedUpdateInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  kbId?: Prisma.IntFieldUpdateOperationsInput | number
-  topicId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kbId?: Prisma.StringFieldUpdateOperationsInput | string
+  topicId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -334,9 +292,9 @@ export type MemoryUncheckedUpdateInput = {
 }
 
 export type MemoryCreateManyInput = {
-  id?: number
-  kbId: number
-  topicId?: number | null
+  id?: string
+  kbId: string
+  topicId?: string | null
   title: string
   content: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -344,6 +302,7 @@ export type MemoryCreateManyInput = {
 }
 
 export type MemoryUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -351,9 +310,9 @@ export type MemoryUpdateManyMutationInput = {
 }
 
 export type MemoryUncheckedUpdateManyInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  kbId?: Prisma.IntFieldUpdateOperationsInput | number
-  topicId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kbId?: Prisma.StringFieldUpdateOperationsInput | string
+  topicId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -380,12 +339,6 @@ export type MemoryCountOrderByAggregateInput = {
   createdAt?: Prisma.SortOrder
 }
 
-export type MemoryAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
-  topicId?: Prisma.SortOrder
-}
-
 export type MemoryMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   kbId?: Prisma.SortOrder
@@ -402,12 +355,6 @@ export type MemoryMinOrderByAggregateInput = {
   title?: Prisma.SortOrder
   content?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
-}
-
-export type MemorySumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  kbId?: Prisma.SortOrder
-  topicId?: Prisma.SortOrder
 }
 
 export type MemoryCreateNestedManyWithoutTopicInput = {
@@ -452,12 +399,8 @@ export type MemoryUncheckedUpdateManyWithoutTopicNestedInput = {
   deleteMany?: Prisma.MemoryScalarWhereInput | Prisma.MemoryScalarWhereInput[]
 }
 
-export type NullableIntFieldUpdateOperationsInput = {
-  set?: number | null
-  increment?: number
-  decrement?: number
-  multiply?: number
-  divide?: number
+export type NullableStringFieldUpdateOperationsInput = {
+  set?: string | null
 }
 
 export type MemoryCreateNestedManyWithoutKnowledgeBaseInput = {
@@ -503,6 +446,7 @@ export type MemoryUncheckedUpdateManyWithoutKnowledgeBaseNestedInput = {
 }
 
 export type MemoryCreateWithoutTopicInput = {
+  id?: string
   title: string
   content: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -511,8 +455,8 @@ export type MemoryCreateWithoutTopicInput = {
 }
 
 export type MemoryUncheckedCreateWithoutTopicInput = {
-  id?: number
-  kbId: number
+  id?: string
+  kbId: string
   title: string
   content: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -549,9 +493,9 @@ export type MemoryScalarWhereInput = {
   AND?: Prisma.MemoryScalarWhereInput | Prisma.MemoryScalarWhereInput[]
   OR?: Prisma.MemoryScalarWhereInput[]
   NOT?: Prisma.MemoryScalarWhereInput | Prisma.MemoryScalarWhereInput[]
-  id?: Prisma.IntFilter<"Memory"> | number
-  kbId?: Prisma.IntFilter<"Memory"> | number
-  topicId?: Prisma.IntNullableFilter<"Memory"> | number | null
+  id?: Prisma.StringFilter<"Memory"> | string
+  kbId?: Prisma.StringFilter<"Memory"> | string
+  topicId?: Prisma.StringNullableFilter<"Memory"> | string | null
   title?: Prisma.StringFilter<"Memory"> | string
   content?: Prisma.StringFilter<"Memory"> | string
   metadata?: Prisma.JsonFilter<"Memory">
@@ -559,6 +503,7 @@ export type MemoryScalarWhereInput = {
 }
 
 export type MemoryCreateWithoutKnowledgeBaseInput = {
+  id?: string
   title: string
   content: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -567,8 +512,8 @@ export type MemoryCreateWithoutKnowledgeBaseInput = {
 }
 
 export type MemoryUncheckedCreateWithoutKnowledgeBaseInput = {
-  id?: number
-  topicId?: number | null
+  id?: string
+  topicId?: string | null
   title: string
   content: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -602,8 +547,8 @@ export type MemoryUpdateManyWithWhereWithoutKnowledgeBaseInput = {
 }
 
 export type MemoryCreateManyTopicInput = {
-  id?: number
-  kbId: number
+  id?: string
+  kbId: string
   title: string
   content: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -611,6 +556,7 @@ export type MemoryCreateManyTopicInput = {
 }
 
 export type MemoryUpdateWithoutTopicInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -619,8 +565,8 @@ export type MemoryUpdateWithoutTopicInput = {
 }
 
 export type MemoryUncheckedUpdateWithoutTopicInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  kbId?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kbId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -628,8 +574,8 @@ export type MemoryUncheckedUpdateWithoutTopicInput = {
 }
 
 export type MemoryUncheckedUpdateManyWithoutTopicInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  kbId?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  kbId?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -637,8 +583,8 @@ export type MemoryUncheckedUpdateManyWithoutTopicInput = {
 }
 
 export type MemoryCreateManyKnowledgeBaseInput = {
-  id?: number
-  topicId?: number | null
+  id?: string
+  topicId?: string | null
   title: string
   content: string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -646,6 +592,7 @@ export type MemoryCreateManyKnowledgeBaseInput = {
 }
 
 export type MemoryUpdateWithoutKnowledgeBaseInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -654,8 +601,8 @@ export type MemoryUpdateWithoutKnowledgeBaseInput = {
 }
 
 export type MemoryUncheckedUpdateWithoutKnowledgeBaseInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  topicId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  topicId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -663,8 +610,8 @@ export type MemoryUncheckedUpdateWithoutKnowledgeBaseInput = {
 }
 
 export type MemoryUncheckedUpdateManyWithoutKnowledgeBaseInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  topicId?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  topicId?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   title?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
@@ -740,9 +687,9 @@ export type $MemoryPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     topic: Prisma.$TopicPayload<ExtArgs> | null
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: number
-    kbId: number
-    topicId: number | null
+    id: string
+    kbId: string
+    topicId: string | null
     title: string
     content: string
     metadata: runtime.JsonValue
@@ -1172,9 +1119,9 @@ export interface Prisma__MemoryClient<T, Null = never, ExtArgs extends runtime.T
  * Fields of the Memory model
  */
 export interface MemoryFieldRefs {
-  readonly id: Prisma.FieldRef<"Memory", 'Int'>
-  readonly kbId: Prisma.FieldRef<"Memory", 'Int'>
-  readonly topicId: Prisma.FieldRef<"Memory", 'Int'>
+  readonly id: Prisma.FieldRef<"Memory", 'String'>
+  readonly kbId: Prisma.FieldRef<"Memory", 'String'>
+  readonly topicId: Prisma.FieldRef<"Memory", 'String'>
   readonly title: Prisma.FieldRef<"Memory", 'String'>
   readonly content: Prisma.FieldRef<"Memory", 'String'>
   readonly metadata: Prisma.FieldRef<"Memory", 'Json'>

@@ -1,0 +1,30 @@
+import type { PrismaClient } from '@/src/generated/prisma/client/client'
+import type { ChatSettingInfo } from '@/src/types'
+
+export class ChatSettingService {
+  private prisma: PrismaClient
+
+  constructor({ prisma }: { prisma: PrismaClient }) {
+    this.prisma = prisma
+  }
+
+  async get(): Promise<ChatSettingInfo> {
+    const setting = await this.prisma.chatSetting.findFirst()
+    if (!setting) {
+      return this.prisma.chatSetting.create({
+        data: {
+          memoryContextThreshold: 50,
+        },
+      }) as Promise<ChatSettingInfo>
+    }
+    return setting as ChatSettingInfo
+  }
+
+  async update(data: { memoryContextThreshold?: number }): Promise<ChatSettingInfo> {
+    const setting = await this.get()
+    return this.prisma.chatSetting.update({
+      where: { id: setting.id },
+      data,
+    }) as Promise<ChatSettingInfo>
+  }
+}

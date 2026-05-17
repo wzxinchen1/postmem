@@ -27,21 +27,17 @@ export type AggregateProvider_options = {
 }
 
 export type Provider_optionsAvgAggregateOutputType = {
-  id: number | null
-  vendor_id: number | null
   sort_order: number | null
 }
 
 export type Provider_optionsSumAggregateOutputType = {
-  id: number | null
-  vendor_id: number | null
   sort_order: number | null
 }
 
 export type Provider_optionsMinAggregateOutputType = {
-  id: number | null
+  id: string | null
   name: string | null
-  vendor_id: number | null
+  vendor_id: string | null
   is_active: boolean | null
   sort_order: number | null
   created_at: Date | null
@@ -49,9 +45,9 @@ export type Provider_optionsMinAggregateOutputType = {
 }
 
 export type Provider_optionsMaxAggregateOutputType = {
-  id: number | null
+  id: string | null
   name: string | null
-  vendor_id: number | null
+  vendor_id: string | null
   is_active: boolean | null
   sort_order: number | null
   created_at: Date | null
@@ -71,14 +67,10 @@ export type Provider_optionsCountAggregateOutputType = {
 
 
 export type Provider_optionsAvgAggregateInputType = {
-  id?: true
-  vendor_id?: true
   sort_order?: true
 }
 
 export type Provider_optionsSumAggregateInputType = {
-  id?: true
-  vendor_id?: true
   sort_order?: true
 }
 
@@ -200,9 +192,9 @@ export type provider_optionsGroupByArgs<ExtArgs extends runtime.Types.Extensions
 }
 
 export type Provider_optionsGroupByOutputType = {
-  id: number
+  id: string
   name: string
-  vendor_id: number
+  vendor_id: string
   is_active: boolean
   sort_order: number
   created_at: Date
@@ -233,9 +225,9 @@ export type provider_optionsWhereInput = {
   AND?: Prisma.provider_optionsWhereInput | Prisma.provider_optionsWhereInput[]
   OR?: Prisma.provider_optionsWhereInput[]
   NOT?: Prisma.provider_optionsWhereInput | Prisma.provider_optionsWhereInput[]
-  id?: Prisma.IntFilter<"provider_options"> | number
+  id?: Prisma.StringFilter<"provider_options"> | string
   name?: Prisma.StringFilter<"provider_options"> | string
-  vendor_id?: Prisma.IntFilter<"provider_options"> | number
+  vendor_id?: Prisma.StringFilter<"provider_options"> | string
   is_active?: Prisma.BoolFilter<"provider_options"> | boolean
   sort_order?: Prisma.IntFilter<"provider_options"> | number
   created_at?: Prisma.DateTimeFilter<"provider_options"> | Date | string
@@ -255,12 +247,12 @@ export type provider_optionsOrderByWithRelationInput = {
 }
 
 export type provider_optionsWhereUniqueInput = Prisma.AtLeast<{
-  id?: number
+  id?: string
   name?: string
   AND?: Prisma.provider_optionsWhereInput | Prisma.provider_optionsWhereInput[]
   OR?: Prisma.provider_optionsWhereInput[]
   NOT?: Prisma.provider_optionsWhereInput | Prisma.provider_optionsWhereInput[]
-  vendor_id?: Prisma.IntFilter<"provider_options"> | number
+  vendor_id?: Prisma.StringFilter<"provider_options"> | string
   is_active?: Prisma.BoolFilter<"provider_options"> | boolean
   sort_order?: Prisma.IntFilter<"provider_options"> | number
   created_at?: Prisma.DateTimeFilter<"provider_options"> | Date | string
@@ -287,9 +279,9 @@ export type provider_optionsScalarWhereWithAggregatesInput = {
   AND?: Prisma.provider_optionsScalarWhereWithAggregatesInput | Prisma.provider_optionsScalarWhereWithAggregatesInput[]
   OR?: Prisma.provider_optionsScalarWhereWithAggregatesInput[]
   NOT?: Prisma.provider_optionsScalarWhereWithAggregatesInput | Prisma.provider_optionsScalarWhereWithAggregatesInput[]
-  id?: Prisma.IntWithAggregatesFilter<"provider_options"> | number
+  id?: Prisma.StringWithAggregatesFilter<"provider_options"> | string
   name?: Prisma.StringWithAggregatesFilter<"provider_options"> | string
-  vendor_id?: Prisma.IntWithAggregatesFilter<"provider_options"> | number
+  vendor_id?: Prisma.StringWithAggregatesFilter<"provider_options"> | string
   is_active?: Prisma.BoolWithAggregatesFilter<"provider_options"> | boolean
   sort_order?: Prisma.IntWithAggregatesFilter<"provider_options"> | number
   created_at?: Prisma.DateTimeWithAggregatesFilter<"provider_options"> | Date | string
@@ -297,6 +289,7 @@ export type provider_optionsScalarWhereWithAggregatesInput = {
 }
 
 export type provider_optionsCreateInput = {
+  id?: string
   name: string
   is_active?: boolean
   sort_order?: number
@@ -306,9 +299,9 @@ export type provider_optionsCreateInput = {
 }
 
 export type provider_optionsUncheckedCreateInput = {
-  id?: number
+  id?: string
   name: string
-  vendor_id: number
+  vendor_id: string
   is_active?: boolean
   sort_order?: number
   created_at?: Date | string
@@ -316,6 +309,7 @@ export type provider_optionsUncheckedCreateInput = {
 }
 
 export type provider_optionsUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sort_order?: Prisma.IntFieldUpdateOperationsInput | number
@@ -325,9 +319,9 @@ export type provider_optionsUpdateInput = {
 }
 
 export type provider_optionsUncheckedUpdateInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  vendor_id?: Prisma.IntFieldUpdateOperationsInput | number
+  vendor_id?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sort_order?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -335,9 +329,9 @@ export type provider_optionsUncheckedUpdateInput = {
 }
 
 export type provider_optionsCreateManyInput = {
-  id?: number
+  id?: string
   name: string
-  vendor_id: number
+  vendor_id: string
   is_active?: boolean
   sort_order?: number
   created_at?: Date | string
@@ -345,6 +339,7 @@ export type provider_optionsCreateManyInput = {
 }
 
 export type provider_optionsUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sort_order?: Prisma.IntFieldUpdateOperationsInput | number
@@ -353,9 +348,9 @@ export type provider_optionsUpdateManyMutationInput = {
 }
 
 export type provider_optionsUncheckedUpdateManyInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
-  vendor_id?: Prisma.IntFieldUpdateOperationsInput | number
+  vendor_id?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sort_order?: Prisma.IntFieldUpdateOperationsInput | number
   created_at?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -383,8 +378,6 @@ export type provider_optionsCountOrderByAggregateInput = {
 }
 
 export type provider_optionsAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  vendor_id?: Prisma.SortOrder
   sort_order?: Prisma.SortOrder
 }
 
@@ -409,8 +402,6 @@ export type provider_optionsMinOrderByAggregateInput = {
 }
 
 export type provider_optionsSumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  vendor_id?: Prisma.SortOrder
   sort_order?: Prisma.SortOrder
 }
 
@@ -457,6 +448,7 @@ export type provider_optionsUncheckedUpdateManyWithoutVendorsNestedInput = {
 }
 
 export type provider_optionsCreateWithoutVendorsInput = {
+  id?: string
   name: string
   is_active?: boolean
   sort_order?: number
@@ -465,7 +457,7 @@ export type provider_optionsCreateWithoutVendorsInput = {
 }
 
 export type provider_optionsUncheckedCreateWithoutVendorsInput = {
-  id?: number
+  id?: string
   name: string
   is_active?: boolean
   sort_order?: number
@@ -503,9 +495,9 @@ export type provider_optionsScalarWhereInput = {
   AND?: Prisma.provider_optionsScalarWhereInput | Prisma.provider_optionsScalarWhereInput[]
   OR?: Prisma.provider_optionsScalarWhereInput[]
   NOT?: Prisma.provider_optionsScalarWhereInput | Prisma.provider_optionsScalarWhereInput[]
-  id?: Prisma.IntFilter<"provider_options"> | number
+  id?: Prisma.StringFilter<"provider_options"> | string
   name?: Prisma.StringFilter<"provider_options"> | string
-  vendor_id?: Prisma.IntFilter<"provider_options"> | number
+  vendor_id?: Prisma.StringFilter<"provider_options"> | string
   is_active?: Prisma.BoolFilter<"provider_options"> | boolean
   sort_order?: Prisma.IntFilter<"provider_options"> | number
   created_at?: Prisma.DateTimeFilter<"provider_options"> | Date | string
@@ -513,7 +505,7 @@ export type provider_optionsScalarWhereInput = {
 }
 
 export type provider_optionsCreateManyVendorsInput = {
-  id?: number
+  id?: string
   name: string
   is_active?: boolean
   sort_order?: number
@@ -522,6 +514,7 @@ export type provider_optionsCreateManyVendorsInput = {
 }
 
 export type provider_optionsUpdateWithoutVendorsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sort_order?: Prisma.IntFieldUpdateOperationsInput | number
@@ -530,7 +523,7 @@ export type provider_optionsUpdateWithoutVendorsInput = {
 }
 
 export type provider_optionsUncheckedUpdateWithoutVendorsInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sort_order?: Prisma.IntFieldUpdateOperationsInput | number
@@ -539,7 +532,7 @@ export type provider_optionsUncheckedUpdateWithoutVendorsInput = {
 }
 
 export type provider_optionsUncheckedUpdateManyWithoutVendorsInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   is_active?: Prisma.BoolFieldUpdateOperationsInput | boolean
   sort_order?: Prisma.IntFieldUpdateOperationsInput | number
@@ -609,9 +602,9 @@ export type $provider_optionsPayload<ExtArgs extends runtime.Types.Extensions.In
     vendors: Prisma.$VendorPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: number
+    id: string
     name: string
-    vendor_id: number
+    vendor_id: string
     is_active: boolean
     sort_order: number
     created_at: Date
@@ -1040,9 +1033,9 @@ export interface Prisma__provider_optionsClient<T, Null = never, ExtArgs extends
  * Fields of the provider_options model
  */
 export interface provider_optionsFieldRefs {
-  readonly id: Prisma.FieldRef<"provider_options", 'Int'>
+  readonly id: Prisma.FieldRef<"provider_options", 'String'>
   readonly name: Prisma.FieldRef<"provider_options", 'String'>
-  readonly vendor_id: Prisma.FieldRef<"provider_options", 'Int'>
+  readonly vendor_id: Prisma.FieldRef<"provider_options", 'String'>
   readonly is_active: Prisma.FieldRef<"provider_options", 'Boolean'>
   readonly sort_order: Prisma.FieldRef<"provider_options", 'Int'>
   readonly created_at: Prisma.FieldRef<"provider_options", 'DateTime'>

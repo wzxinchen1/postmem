@@ -6,9 +6,6 @@ interface Deps {
   sessionService: SessionService
 }
 
-/**
- * 会话统计 API
- */
 export default createApiHandler<Deps>({
   dependencies: ['sessionService'],
   handler: async (req, res, deps) => {

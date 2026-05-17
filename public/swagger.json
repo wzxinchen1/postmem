@@ -15,6 +15,562 @@
     }
   ],
   "paths": {
+    "/api/chat/cancel": {
+      "post": {
+        "summary": "POST /api/chat/cancel",
+        "description": "POST /api/chat/cancel",
+        "tags": [
+          "Chat"
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "冲突（重复）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/completions": {
+      "post": {
+        "summary": "POST /api/chat/completions",
+        "description": "POST /api/chat/completions",
+        "tags": [
+          "Chat"
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "冲突（重复）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/conversations": {
+      "get": {
+        "summary": "GET /api/chat/conversations",
+        "description": "GET /api/chat/conversations",
+        "tags": [
+          "Chat"
+        ],
+        "parameters": [
+          {
+            "name": "kbId",
+            "in": "query",
+            "description": "按知识库筛选",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页数量",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "POST /api/chat/conversations",
+        "description": "POST /api/chat/conversations",
+        "tags": [
+          "Chat"
+        ],
+        "parameters": [
+          {
+            "name": "kbId",
+            "in": "query",
+            "description": "按知识库筛选",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页数量",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "201": {
+            "description": "创建成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "400": {
+            "description": "请求参数错误",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          },
+          "409": {
+            "description": "冲突（重复）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "type": "object"
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "DELETE /api/chat/conversations",
+        "description": "DELETE /api/chat/conversations",
+        "tags": [
+          "Chat"
+        ],
+        "parameters": [
+          {
+            "name": "kbId",
+            "in": "query",
+            "description": "按知识库筛选",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页数量",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/messages": {
+      "get": {
+        "summary": "GET /api/chat/messages",
+        "description": "GET /api/chat/messages",
+        "tags": [
+          "Chat"
+        ],
+        "parameters": [
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "integer",
+              "default": 1
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页数量",
+            "schema": {
+              "type": "integer",
+              "default": 20
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "$ref": "#/components/schemas/ChatMessageListResult"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/stream": {
+      "get": {
+        "summary": "GET /api/chat/stream",
+        "description": "GET /api/chat/stream",
+        "tags": [
+          "Chat"
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应（SSE 流式响应）",
+            "content": {
+              "text/event-stream": {
+                "schema": {
+                  "type": "object",
+                  "description": "SSE 流式响应",
+                  "properties": {
+                    "type": {
+                      "type": "string",
+                      "description": "事件类型",
+                      "enum": [
+                        "message"
+                      ]
+                    },
+                    "message": {
+                      "type": "string",
+                      "description": "事件消息"
+                    },
+                    "data": {
+                      "type": "object",
+                      "description": "事件数据"
+                    }
+                  }
+                },
+                "x-sse-event-types": [
+                  {
+                    "event": "message",
+                    "description": "流式消息事件"
+                  }
+                ]
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/init/providers": {
+      "get": {
+        "summary": "GET /api/init/providers",
+        "description": "GET /api/init/providers",
+        "tags": [
+          "Other"
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/kb/create": {
       "post": {
         "summary": "POST /api/kb/create",
@@ -208,7 +764,7 @@
                 "$ref": "#/components/schemas/DeleteRequest"
               },
               "example": {
-                "id": 123
+                "id": "clxabc123def456"
               }
             }
           }
@@ -274,7 +830,7 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/IngestTextResponse"
                     }
                   }
                 }
@@ -293,7 +849,7 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/IngestTextResponse"
                     }
                   }
                 }
@@ -312,7 +868,7 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/IngestTextResponse"
                     }
                   }
                 }
@@ -336,7 +892,7 @@
                 "description": "支持多种请求体格式: IngestTextRequest, IngestMessagesRequest"
               },
               "example": {
-                "kbId": 1,
+                "kbId": "clxabc123def456",
                 "content": "示例内容..."
               }
             }
@@ -364,7 +920,10 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ListItem"
+                      }
                     }
                   }
                 }
@@ -383,7 +942,10 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ListItem"
+                      }
                     }
                   }
                 }
@@ -402,7 +964,10 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ListItem"
+                      }
                     }
                   }
                 }
@@ -421,7 +986,10 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ListItem"
+                      }
                     }
                   }
                 }
@@ -437,7 +1005,7 @@
                 "$ref": "#/components/schemas/ListRequest"
               },
               "example": {
-                "kbId": 1
+                "kbId": "clxabc123def456"
               }
             }
           }
@@ -464,7 +1032,10 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SearchResult"
+                      }
                     }
                   }
                 }
@@ -483,7 +1054,10 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SearchResult"
+                      }
                     }
                   }
                 }
@@ -502,7 +1076,10 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SearchResult"
+                      }
                     }
                   }
                 }
@@ -521,7 +1098,10 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/SearchResult"
+                      }
                     }
                   }
                 }
@@ -537,7 +1117,7 @@
                 "$ref": "#/components/schemas/SearchRequest"
               },
               "example": {
-                "kbId": 1,
+                "kbId": "clxabc123def456",
                 "query": "查询语句"
               }
             }
@@ -565,7 +1145,7 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/Stats"
                     }
                   }
                 }
@@ -584,7 +1164,7 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/Stats"
                     }
                   }
                 }
@@ -603,7 +1183,7 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/Stats"
                     }
                   }
                 }
@@ -622,7 +1202,7 @@
                       "example": true
                     },
                     "data": {
-                      "type": "object"
+                      "$ref": "#/components/schemas/Stats"
                     }
                   }
                 }
@@ -657,7 +1237,7 @@
             "required": true,
             "description": "模型ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -715,7 +1295,7 @@
             "required": true,
             "description": "模型ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -784,7 +1364,7 @@
             "required": true,
             "description": "模型ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -864,7 +1444,7 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/models"
+                      "$ref": "#/components/schemas/Model"
                     }
                   }
                 }
@@ -896,7 +1476,7 @@
             "in": "query",
             "description": "按提供商ID筛选",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -913,7 +1493,10 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/models"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Model"
+                      }
                     }
                   }
                 }
@@ -943,7 +1526,7 @@
             "in": "query",
             "description": "按提供商ID筛选",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -1033,7 +1616,7 @@
                 "$ref": "#/components/schemas/CreateModelRequest"
               },
               "example": {
-                "providerId": 1,
+                "providerId": "clxabc123def456",
                 "name": "示例名称",
                 "modelType": "chat"
               }
@@ -1056,7 +1639,7 @@
             "required": true,
             "description": "提供商ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -1114,7 +1697,7 @@
             "required": true,
             "description": "提供商ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -1183,7 +1766,7 @@
             "required": true,
             "description": "提供商ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -1260,7 +1843,10 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/providers"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Provider"
+                      }
                     }
                   }
                 }
@@ -1373,7 +1959,7 @@
               },
               "example": {
                 "name": "示例名称",
-                "vendorId": 1,
+                "vendorId": "clxabc123def456",
                 "baseUrl": "https://api.example.com/v1"
               }
             }
@@ -1401,7 +1987,10 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/Provider"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Model"
+                      }
                     }
                   }
                 }
@@ -1420,7 +2009,10 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/Provider"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Model"
+                      }
                     }
                   }
                 }
@@ -1439,7 +2031,10 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/Provider"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Model"
+                      }
                     }
                   }
                 }
@@ -1458,7 +2053,10 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/Provider"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Model"
+                      }
                     }
                   }
                 }
@@ -1472,6 +2070,50 @@
             "application/json": {
               "schema": {
                 "type": "object"
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers/tree": {
+      "get": {
+        "summary": "提供商树形结构 API - 返回提供商及其下属模型的树",
+        "description": "提供商树形结构 API - 返回提供商及其下属模型的树",
+        "tags": [
+          "Providers"
+        ],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "description": "是否包含已禁用的项",
+            "schema": {
+              "type": "boolean",
+              "default": false
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/ProviderTreeNode"
+                      }
+                    }
+                  }
+                }
               }
             }
           }
@@ -1498,7 +2140,7 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/Provider"
+                      "type": "boolean"
                     }
                   }
                 }
@@ -1517,7 +2159,7 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/Provider"
+                      "type": "boolean"
                     }
                   }
                 }
@@ -1536,7 +2178,7 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/Provider"
+                      "type": "boolean"
                     }
                   }
                 }
@@ -1555,7 +2197,7 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/Provider"
+                      "type": "boolean"
                     }
                   }
                 }
@@ -1577,8 +2219,8 @@
     },
     "/api/sessions/{id}": {
       "get": {
-        "summary": "会话详情和删除 API",
-        "description": "会话详情和删除 API",
+        "summary": "GET /api/sessions/{id}",
+        "description": "GET /api/sessions/{id}",
         "tags": [
           "Sessions"
         ],
@@ -1589,7 +2231,7 @@
             "required": true,
             "description": "会话ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -1635,8 +2277,8 @@
         }
       },
       "delete": {
-        "summary": "会话详情和删除 API",
-        "description": "会话详情和删除 API",
+        "summary": "DELETE /api/sessions/{id}",
+        "description": "DELETE /api/sessions/{id}",
         "tags": [
           "Sessions"
         ],
@@ -1647,7 +2289,7 @@
             "required": true,
             "description": "会话ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -1695,8 +2337,8 @@
     },
     "/api/sessions/index": {
       "get": {
-        "summary": "会话列表 API",
-        "description": "会话列表 API",
+        "summary": "GET /api/sessions/index",
+        "description": "GET /api/sessions/index",
         "tags": [
           "Sessions"
         ],
@@ -1706,7 +2348,7 @@
             "in": "query",
             "description": "按知识库筛选",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           },
           {
@@ -1766,7 +2408,10 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/sessions"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Session"
+                      }
                     }
                   }
                 }
@@ -1778,8 +2423,8 @@
     },
     "/api/sessions/stats": {
       "get": {
-        "summary": "会话统计 API",
-        "description": "会话统计 API",
+        "summary": "GET /api/sessions/stats",
+        "description": "GET /api/sessions/stats",
         "tags": [
           "Sessions"
         ],
@@ -1796,7 +2441,7 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/sessions"
+                      "$ref": "#/components/schemas/Stats"
                     }
                   }
                 }
@@ -1878,7 +2523,7 @@
             "required": true,
             "description": "厂商ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -1936,7 +2581,7 @@
             "required": true,
             "description": "厂商ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -2005,7 +2650,7 @@
             "required": true,
             "description": "厂商ID",
             "schema": {
-              "type": "integer"
+              "type": "string"
             }
           }
         ],
@@ -2082,7 +2727,10 @@
                       "example": true
                     },
                     "data": {
-                      "$ref": "#/components/schemas/vendors"
+                      "type": "array",
+                      "items": {
+                        "$ref": "#/components/schemas/Vendor"
+                      }
                     }
                   }
                 }
@@ -2243,7 +2891,7 @@
         ],
         "properties": {
           "id": {
-            "type": "number",
+            "type": "string",
             "description": "id"
           },
           "title": {
@@ -2261,13 +2909,13 @@
           "topicId": {
             "type": "string",
             "enum": [
-              "number",
+              "string",
               "null"
             ],
             "description": "topicId"
           },
           "metadata": {
-            "type": "string",
+            "$ref": "#/components/schemas/MemoryMetadata",
             "description": "metadata"
           },
           "source": {
@@ -2279,11 +2927,17 @@
             "description": "context"
           },
           "prev": {
-            "type": "string",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "description": "prev"
           },
           "next": {
-            "type": "string",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "description": "next"
           }
         }
@@ -2300,7 +2954,7 @@
         ],
         "properties": {
           "id": {
-            "type": "number",
+            "type": "string",
             "description": "id"
           },
           "title": {
@@ -2314,13 +2968,13 @@
           "topicId": {
             "type": "string",
             "enum": [
-              "number",
+              "string",
               "null"
             ],
             "description": "topicId"
           },
           "metadata": {
-            "type": "string",
+            "$ref": "#/components/schemas/MemoryMetadata",
             "description": "metadata"
           },
           "createdAt": {
@@ -2336,7 +2990,7 @@
         ],
         "properties": {
           "kbId": {
-            "type": "number",
+            "type": "string",
             "description": "kbId"
           },
           "kbName": {
@@ -2383,7 +3037,7 @@
         ],
         "properties": {
           "kbId": {
-            "type": "number",
+            "type": "string",
             "description": "kbId"
           },
           "content": {
@@ -2400,11 +3054,14 @@
         ],
         "properties": {
           "kbId": {
-            "type": "number",
+            "type": "string",
             "description": "kbId"
           },
           "messages": {
-            "type": "string",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/IngestMessage"
+            },
             "description": "messages"
           }
         }
@@ -2421,11 +3078,17 @@
             "description": "count"
           },
           "memoryIds": {
-            "type": "string",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "description": "memoryIds"
           },
           "topicsInvolved": {
-            "type": "string",
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
             "description": "topicsInvolved"
           }
         }
@@ -2438,7 +3101,7 @@
         ],
         "properties": {
           "kbId": {
-            "type": "number",
+            "type": "string",
             "description": "kbId"
           },
           "query": {
@@ -2462,7 +3125,7 @@
         ],
         "properties": {
           "kbId": {
-            "type": "number",
+            "type": "string",
             "description": "kbId"
           },
           "page": {
@@ -2482,7 +3145,7 @@
         ],
         "properties": {
           "id": {
-            "type": "number",
+            "type": "string",
             "description": "id"
           }
         }
@@ -2491,7 +3154,7 @@
         "type": "object",
         "properties": {
           "kbId": {
-            "type": "number",
+            "type": "string",
             "description": "kbId"
           }
         }
@@ -2508,7 +3171,7 @@
         ],
         "properties": {
           "id": {
-            "type": "number",
+            "type": "string",
             "description": "id"
           },
           "name": {
@@ -2571,7 +3234,7 @@
         ],
         "properties": {
           "id": {
-            "type": "number",
+            "type": "string",
             "description": "id"
           },
           "name": {
@@ -2579,11 +3242,11 @@
             "description": "name"
           },
           "vendorId": {
-            "type": "number",
+            "type": "string",
             "description": "vendorId"
           },
           "vendor": {
-            "type": "string",
+            "$ref": "#/components/schemas/Vendor",
             "description": "vendor"
           },
           "apiKey": {
@@ -2627,11 +3290,11 @@
         ],
         "properties": {
           "id": {
-            "type": "number",
+            "type": "string",
             "description": "id"
           },
           "providerId": {
-            "type": "number",
+            "type": "string",
             "description": "providerId"
           },
           "name": {
@@ -2681,7 +3344,7 @@
             "description": "name"
           },
           "vendorId": {
-            "type": "number",
+            "type": "string",
             "description": "vendorId"
           },
           "apiKey": {
@@ -2710,7 +3373,7 @@
             "description": "name"
           },
           "vendorId": {
-            "type": "number",
+            "type": "string",
             "description": "vendorId"
           },
           "apiKey": {
@@ -2793,7 +3456,7 @@
         ],
         "properties": {
           "providerId": {
-            "type": "number",
+            "type": "string",
             "description": "providerId"
           },
           "name": {
@@ -2904,7 +3567,7 @@
         ],
         "properties": {
           "id": {
-            "type": "number",
+            "type": "string",
             "description": "id"
           },
           "name": {
@@ -2925,24 +3588,27 @@
           }
         }
       },
-      "SessionMessage": {
+      "ChatMessage": {
         "type": "object",
         "required": [
           "id",
-          "sessionId",
+          "conversationId",
           "role",
           "content",
+          "tokens",
+          "totalTokens",
+          "memoried",
           "metadata",
           "createdAt"
         ],
         "properties": {
           "id": {
-            "type": "number",
+            "type": "string",
             "description": "id"
           },
-          "sessionId": {
-            "type": "number",
-            "description": "sessionId"
+          "conversationId": {
+            "type": "string",
+            "description": "conversationId"
           },
           "role": {
             "type": "string",
@@ -2956,6 +3622,14 @@
             "type": "number",
             "description": "tokens"
           },
+          "totalTokens": {
+            "type": "number",
+            "description": "totalTokens"
+          },
+          "memoried": {
+            "type": "boolean",
+            "description": "memoried"
+          },
           "metadata": {
             "type": "object",
             "description": "metadata"
@@ -2963,6 +3637,41 @@
           "createdAt": {
             "type": "string",
             "description": "createdAt"
+          }
+        }
+      },
+      "ChatMessageListResult": {
+        "type": "object",
+        "required": [
+          "messages",
+          "total",
+          "page",
+          "limit",
+          "conversationId"
+        ],
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessage"
+            },
+            "description": "messages"
+          },
+          "total": {
+            "type": "number",
+            "description": "total"
+          },
+          "page": {
+            "type": "number",
+            "description": "page"
+          },
+          "limit": {
+            "type": "number",
+            "description": "limit"
+          },
+          "conversationId": {
+            "type": "string",
+            "description": "conversationId"
           }
         }
       },
@@ -2979,11 +3688,11 @@
         ],
         "properties": {
           "id": {
-            "type": "number",
+            "type": "string",
             "description": "id"
           },
           "kbId": {
-            "type": "number",
+            "type": "string",
             "description": "kbId"
           },
           "modelType": {
@@ -3015,8 +3724,130 @@
             "description": "createdAt"
           },
           "messages": {
-            "type": "string",
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/SessionMessage"
+            },
             "description": "messages"
+          }
+        }
+      },
+      "SessionMessage": {
+        "type": "object",
+        "required": [
+          "id",
+          "sessionId",
+          "role",
+          "content",
+          "tokens",
+          "metadata",
+          "createdAt"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "id"
+          },
+          "sessionId": {
+            "type": "string",
+            "description": "sessionId"
+          },
+          "role": {
+            "type": "string",
+            "description": "role"
+          },
+          "content": {
+            "type": "string",
+            "description": "content"
+          },
+          "tokens": {
+            "type": "number",
+            "description": "tokens"
+          },
+          "metadata": {
+            "type": "object",
+            "description": "metadata"
+          },
+          "createdAt": {
+            "type": "string",
+            "description": "createdAt"
+          }
+        }
+      },
+      "ProviderTreeNode": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "vendorName",
+          "baseUrl",
+          "isActive",
+          "models"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "id"
+          },
+          "name": {
+            "type": "string",
+            "description": "name"
+          },
+          "vendorName": {
+            "type": "string",
+            "description": "vendorName"
+          },
+          "baseUrl": {
+            "type": "string",
+            "description": "baseUrl"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "isActive"
+          },
+          "models": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ModelTreeNode"
+            },
+            "description": "models"
+          }
+        }
+      },
+      "ModelTreeNode": {
+        "type": "object",
+        "required": [
+          "id",
+          "name",
+          "displayName",
+          "modelType",
+          "isDefault",
+          "isActive"
+        ],
+        "properties": {
+          "id": {
+            "type": "string",
+            "description": "id"
+          },
+          "name": {
+            "type": "string",
+            "description": "name"
+          },
+          "displayName": {
+            "type": "string",
+            "description": "displayName"
+          },
+          "modelType": {
+            "type": "string",
+            "description": "modelType"
+          },
+          "isDefault": {
+            "type": "boolean",
+            "description": "isDefault"
+          },
+          "isActive": {
+            "type": "boolean",
+            "description": "isActive"
           }
         }
       },
@@ -3100,6 +3931,10 @@
     {
       "name": "Sessions",
       "description": "对话会话管理接口"
+    },
+    {
+      "name": "Chat",
+      "description": "聊天消息接口"
     },
     {
       "name": "Settings",

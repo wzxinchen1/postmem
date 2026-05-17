@@ -6,15 +6,12 @@ interface Deps {
   sessionService: SessionService
 }
 
-/**
- * 会话列表 API
- */
 export default createApiHandler<Deps>({
   dependencies: ['sessionService'],
   handler: async (req, res, deps) => {
     await apiHandler(req, res, deps, {
       GET: async (deps) => {
-        const kbId = req.query.kbId ? Number(req.query.kbId) : undefined
+        const kbId = req.query.kbId as string | undefined
         const modelType = req.query.modelType as string | undefined
         const status = req.query.status as string | undefined
         const page = req.query.page ? Number(req.query.page) : 1

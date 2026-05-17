@@ -58,6 +58,10 @@ export const ModelName = {
   Model: 'Model',
   KnowledgeBase: 'KnowledgeBase',
   Setting: 'Setting',
+  Conversation: 'Conversation',
+  ChatMessage: 'ChatMessage',
+  WebPage: 'WebPage',
+  ChatSetting: 'ChatSetting',
   Session: 'Session',
   SessionMessage: 'SessionMessage',
   provider_options: 'provider_options'
@@ -171,6 +175,54 @@ export const SettingScalarFieldEnum = {
 } as const
 
 export type SettingScalarFieldEnum = (typeof SettingScalarFieldEnum)[keyof typeof SettingScalarFieldEnum]
+
+
+export const ConversationScalarFieldEnum = {
+  id: 'id',
+  metadata: 'metadata',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ConversationScalarFieldEnum = (typeof ConversationScalarFieldEnum)[keyof typeof ConversationScalarFieldEnum]
+
+
+export const ChatMessageScalarFieldEnum = {
+  id: 'id',
+  conversationId: 'conversationId',
+  role: 'role',
+  content: 'content',
+  tokens: 'tokens',
+  totalTokens: 'totalTokens',
+  memoried: 'memoried',
+  metadata: 'metadata',
+  createdAt: 'createdAt'
+} as const
+
+export type ChatMessageScalarFieldEnum = (typeof ChatMessageScalarFieldEnum)[keyof typeof ChatMessageScalarFieldEnum]
+
+
+export const WebPageScalarFieldEnum = {
+  id: 'id',
+  url: 'url',
+  title: 'title',
+  content: 'content',
+  keywords: 'keywords',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type WebPageScalarFieldEnum = (typeof WebPageScalarFieldEnum)[keyof typeof WebPageScalarFieldEnum]
+
+
+export const ChatSettingScalarFieldEnum = {
+  id: 'id',
+  memoryContextThreshold: 'memoryContextThreshold',
+  createdAt: 'createdAt',
+  updatedAt: 'updatedAt'
+} as const
+
+export type ChatSettingScalarFieldEnum = (typeof ChatSettingScalarFieldEnum)[keyof typeof ChatSettingScalarFieldEnum]
 
 
 export const SessionScalarFieldEnum = {

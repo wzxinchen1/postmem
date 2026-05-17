@@ -35,7 +35,7 @@ export class ModelService {
   /**
    * 获取指定提供商的模型
    */
-  async listByProvider(providerId: number, includeInactive = false): Promise<Model[]> {
+  async listByProvider(providerId: string, includeInactive = false): Promise<Model[]> {
     return this.prisma.model.findMany({
       where: {
         providerId,
@@ -48,7 +48,7 @@ export class ModelService {
   /**
    * 获取单个模型
    */
-  async get(id: number): Promise<Model | null> {
+  async get(id: string): Promise<Model | null> {
     return this.prisma.model.findUnique({
       where: { id },
       include: {
@@ -103,7 +103,7 @@ export class ModelService {
   /**
    * 更新模型
    */
-  async update(id: number, data: UpdateModelRequest): Promise<Model> {
+  async update(id: string, data: UpdateModelRequest): Promise<Model> {
     if (data.isDefault) {
       const model = await this.prisma.model.findUnique({
         where: { id },
@@ -136,7 +136,7 @@ export class ModelService {
   /**
    * 删除模型
    */
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     await this.prisma.model.delete({
       where: { id },
     })
@@ -145,7 +145,7 @@ export class ModelService {
   /**
    * 检查模型名称是否存在
    */
-  async exists(providerId: number, name: string, excludeId?: number): Promise<boolean> {
+  async exists(providerId: string, name: string, excludeId?: string): Promise<boolean> {
     const count = await this.prisma.model.count({
       where: {
         providerId,

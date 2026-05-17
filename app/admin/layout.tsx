@@ -10,7 +10,7 @@ const { Title } = Typography
 
 const menuItems = [
   { key: '/admin', label: '概览', icon: <HomeOutlined /> },
-  { key: '/admin/kb', label: '知识列表', icon: <BookOutlined /> },
+  { key: '/admin/kb', label: '知识库列表', icon: <BookOutlined /> },
   { key: '/admin/search', label: '语义检索', icon: <SearchOutlined /> },
   { key: '/admin/list', label: '片段列表', icon: <UnorderedListOutlined /> },
   { key: '/admin/sessions', label: '会话记录', icon: <MessageOutlined /> },

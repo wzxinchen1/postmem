@@ -13,9 +13,9 @@ interface Deps {
 export default createApiHandler<Deps>({
   dependencies: ['providerService'],
   handler: async (req, res, deps) => {
-    const id = Number(req.query.id)
+    const id = req.query.id as string
 
-    if (isNaN(id)) {
+    if (!id) {
       return errorResponse(res, 'VALIDATION_ERROR', '无效的 ID', 400)
     }
 

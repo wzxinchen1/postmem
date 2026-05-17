@@ -53,6 +53,26 @@ export type KnowledgeBase = Prisma.KnowledgeBaseModel
  */
 export type Setting = Prisma.SettingModel
 /**
+ * Model Conversation
+ * 
+ */
+export type Conversation = Prisma.ConversationModel
+/**
+ * Model ChatMessage
+ * 
+ */
+export type ChatMessage = Prisma.ChatMessageModel
+/**
+ * Model WebPage
+ * 
+ */
+export type WebPage = Prisma.WebPageModel
+/**
+ * Model ChatSetting
+ * 
+ */
+export type ChatSetting = Prisma.ChatSettingModel
+/**
  * Model Session
  * 
  */

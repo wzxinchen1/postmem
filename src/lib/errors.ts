@@ -63,7 +63,7 @@ export const Errors = {
   projectNotFound: (kbName: string) =>
     new AppError(ErrorCode.KB_NOT_FOUND, `知识库 '${kbName}' 不存在`),
 
-  memoryNotFound: (id: number) =>
+  memoryNotFound: (id: string) =>
     new AppError(ErrorCode.MEMORY_NOT_FOUND, `片段 ID ${id} 不存在`),
 
   embeddingError: (details: string) =>

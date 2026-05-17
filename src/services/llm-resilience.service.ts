@@ -1,0 +1,302 @@
+import { ChatOpenAI } from '@langchain/openai'
+import { HumanMessage, SystemMessage, AIMessage } from '@langchain/core/messages'
+import { logger } from '@/src/lib/logger'
+import { Errors } from '@/src/lib/errors'
+
+export interface LLMInvokeOptions {
+  agent: ChatOpenAI
+  messages: (SystemMessage | HumanMessage | AIMessage)[]
+  maxRetries?: number
+  timeoutMs?: number
+}
+
+export interface LLMStreamOptions {
+  agent: ChatOpenAI
+  messages: (SystemMessage | HumanMessage | AIMessage)[]
+  maxRetries?: number
+  timeoutMs?: number
+  onChunk?: (chunk: string) => Promise<void>
+  onTokenMetadata?: (metadata: TokenMetadata) => void
+}
+
+export interface TokenMetadata {
+  promptTokens: number
+  completionTokens: number
+}
+
+export interface LLMInvokeResult {
+  content: string
+  usage?: TokenMetadata
+}
+
+export interface LLMStreamResult {
+  fullContent: string
+  usage: TokenMetadata
+}
+
+export interface ValidateResult<T> {
+  data: T
+  repaired?: boolean
+}
+
+export class LLMResilienceService {
+  private static readonly DEFAULT_MAX_RETRIES = 3
+  private static readonly DEFAULT_TIMEOUT_MS = 120_000
+  private static readonly BACKOFF_BASE_MS = 1000
+
+  async invokeWithRetry(options: LLMInvokeOptions): Promise<LLMInvokeResult> {
+    const maxRetries = options.maxRetries ?? LLMResilienceService.DEFAULT_MAX_RETRIES
+    const timeoutMs = options.timeoutMs ?? LLMResilienceService.DEFAULT_TIMEOUT_MS
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+        const response = await options.agent.invoke(options.messages, {
+          signal: controller.signal,
+        })
+
+        clearTimeout(timeoutId)
+
+        const content = response.content.toString()
+        if (!content || content.trim().length === 0) {
+          throw Errors.badRequest('LLM 返回空内容')
+        }
+
+        const usage = this.extractUsage(response)
+
+        logger.info('[LLMResilience] invoke 成功', { attempt, contentLength: content.length })
+
+        return { content, usage }
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+
+        logger.error('[LLMResilience] invoke 失败', {
+          attempt,
+          maxRetries,
+          errorMessage: lastError.message,
+        })
+
+        if (attempt < maxRetries) {
+          await this.backoff(attempt)
+        }
+      }
+    }
+
+    throw Errors.internalError(
+      `LLM invoke 失败，已重试 ${maxRetries} 次: ${lastError?.message}`
+    )
+  }
+
+  async invokeWithValidation<T>(
+    options: LLMInvokeOptions,
+    validator: (parsed: unknown) => T
+  ): Promise<ValidateResult<T>> {
+    const maxRetries = options.maxRetries ?? LLMResilienceService.DEFAULT_MAX_RETRIES
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      const result = await this.invokeWithRetry({
+        ...options,
+        maxRetries: 1,
+      })
+
+      try {
+        const parsed = this.parseJSON(result.content)
+        const validated = validator(parsed)
+        return { data: validated }
+      } catch (validationError) {
+        lastError = validationError instanceof Error ? validationError : new Error(String(validationError))
+
+        logger.error('[LLMResilience] JSON 解析/校验失败', {
+          attempt,
+          maxRetries,
+          errorMessage: lastError.message,
+          rawContent: result.content.slice(0, 500),
+        })
+
+        if (attempt < maxRetries) {
+          await this.backoff(attempt)
+        }
+      }
+    }
+
+    throw Errors.badRequest(
+      `LLM 响应校验失败，已重试 ${maxRetries} 次: ${lastError?.message}`
+    )
+  }
+
+  async streamWithRetry(options: LLMStreamOptions): Promise<LLMStreamResult> {
+    const maxRetries = options.maxRetries ?? LLMResilienceService.DEFAULT_MAX_RETRIES
+    const timeoutMs = options.timeoutMs ?? LLMResilienceService.DEFAULT_TIMEOUT_MS
+    let lastError: Error | null = null
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      let fullContent = ''
+      let promptTokens = 0
+      let completionTokens = 0
+      let streamCompleted = false
+
+      try {
+        const controller = new AbortController()
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs)
+
+        const stream = await options.agent.stream(options.messages, {
+          signal: controller.signal,
+        })
+
+        for await (const chunk of stream) {
+          if (chunk.usage_metadata) {
+            promptTokens = chunk.usage_metadata.input_tokens || promptTokens
+            completionTokens = chunk.usage_metadata.output_tokens || completionTokens
+          } else if (chunk.response_metadata) {
+            promptTokens = chunk.response_metadata.prompt_eval_count || promptTokens
+            completionTokens = chunk.response_metadata.eval_count || completionTokens
+          }
+
+          const content = chunk.content || ''
+          fullContent += content
+
+          if (options.onChunk) {
+            await options.onChunk(content)
+          }
+        }
+
+        clearTimeout(timeoutId)
+        streamCompleted = true
+
+        if (!fullContent || fullContent.trim().length === 0) {
+          throw Errors.badRequest('LLM 流式响应返回空内容')
+        }
+
+        const usage: TokenMetadata = { promptTokens, completionTokens }
+
+        if (options.onTokenMetadata) {
+          options.onTokenMetadata(usage)
+        }
+
+        logger.info('[LLMResilience] stream 成功', {
+          attempt,
+          contentLength: fullContent.length,
+          promptTokens,
+          completionTokens,
+        })
+
+        return { fullContent, usage }
+      } catch (error) {
+        lastError = error instanceof Error ? error : new Error(String(error))
+
+        if (!streamCompleted && fullContent.length > 0) {
+          logger.error('[LLMResilience] 流式中断，已有部分内容', {
+            attempt,
+            maxRetries,
+            receivedContentLength: fullContent.length,
+            errorMessage: lastError.message,
+          })
+        } else {
+          logger.error('[LLMResilience] stream 失败', {
+            attempt,
+            maxRetries,
+            errorMessage: lastError.message,
+          })
+        }
+
+        if (attempt < maxRetries) {
+          await this.backoff(attempt)
+        }
+      }
+    }
+
+    throw Errors.internalError(
+      `LLM stream 失败，已重试 ${maxRetries} 次: ${lastError?.message}`
+    )
+  }
+
+  parseJSON<T>(rawContent: string): T {
+    let jsonStr = rawContent.trim()
+
+    const codeBlockMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
+    if (codeBlockMatch) {
+      jsonStr = codeBlockMatch[1].trim()
+    }
+
+    const jsonObjectMatch = jsonStr.match(/\{[\s\S]*\}/)
+    if (jsonObjectMatch) {
+      jsonStr = jsonObjectMatch[0]
+    }
+
+    const jsonArrayMatch = jsonStr.match(/\[[\s\S]*\]/)
+    if (!jsonObjectMatch && jsonArrayMatch) {
+      jsonStr = jsonArrayMatch[0]
+    }
+
+    jsonStr = jsonStr
+      .replace(/,\s*([}\]])/g, '$1')
+      .replace(/\/\/.*$/gm, '')
+      .replace(/\/\*[\s\S]*?\*\//g, '')
+
+    try {
+      return JSON.parse(jsonStr)
+    } catch (parseError) {
+      const repaired = this.tryRepairJSON(jsonStr)
+      if (repaired !== null) {
+        logger.info('[LLMResilience] JSON 修复成功')
+        return repaired as T
+      }
+
+      throw Errors.badRequest(
+        `JSON 解析失败: ${parseError instanceof Error ? parseError.message : String(parseError)}`
+      )
+    }
+  }
+
+  private tryRepairJSON(jsonStr: string): unknown | null {
+    const repairs: ((s: string) => string)[] = [
+      (s) => s.replace(/'/g, '"'),
+      (s) => s.replace(/(\w+)\s*:/g, '"$1":'),
+      (s) => s + '}',
+      (s) => s + ']',
+      (s) => s + '"}',
+    ]
+
+    for (const repair of repairs) {
+      try {
+        const repaired = repair(jsonStr)
+        return JSON.parse(repaired)
+      } catch {
+        continue
+      }
+    }
+
+    return null
+  }
+
+  private extractUsage(response: any): TokenMetadata | undefined {
+    if (response.usage_metadata) {
+      return {
+        promptTokens: response.usage_metadata.input_tokens || 0,
+        completionTokens: response.usage_metadata.output_tokens || 0,
+      }
+    }
+
+    if (response.response_metadata) {
+      return {
+        promptTokens: response.response_metadata.prompt_eval_count || 0,
+        completionTokens: response.response_metadata.eval_count || 0,
+      }
+    }
+
+    return undefined
+  }
+
+  private async backoff(attempt: number): Promise<void> {
+    const delay = LLMResilienceService.BACKOFF_BASE_MS * Math.pow(2, attempt - 1)
+    const jitter = Math.random() * delay * 0.1
+    const totalDelay = delay + jitter
+
+    logger.info('[LLMResilience] 退避等待', { attempt, delayMs: totalDelay })
+    await new Promise((resolve) => setTimeout(resolve, totalDelay))
+  }
+}

@@ -20,22 +20,12 @@ export type KnowledgeBaseModel = runtime.Types.Result.DefaultSelection<Prisma.$K
 
 export type AggregateKnowledgeBase = {
   _count: KnowledgeBaseCountAggregateOutputType | null
-  _avg: KnowledgeBaseAvgAggregateOutputType | null
-  _sum: KnowledgeBaseSumAggregateOutputType | null
   _min: KnowledgeBaseMinAggregateOutputType | null
   _max: KnowledgeBaseMaxAggregateOutputType | null
 }
 
-export type KnowledgeBaseAvgAggregateOutputType = {
-  id: number | null
-}
-
-export type KnowledgeBaseSumAggregateOutputType = {
-  id: number | null
-}
-
 export type KnowledgeBaseMinAggregateOutputType = {
-  id: number | null
+  id: string | null
   name: string | null
   description: string | null
   createdAt: Date | null
@@ -43,7 +33,7 @@ export type KnowledgeBaseMinAggregateOutputType = {
 }
 
 export type KnowledgeBaseMaxAggregateOutputType = {
-  id: number | null
+  id: string | null
   name: string | null
   description: string | null
   createdAt: Date | null
@@ -59,14 +49,6 @@ export type KnowledgeBaseCountAggregateOutputType = {
   _all: number
 }
 
-
-export type KnowledgeBaseAvgAggregateInputType = {
-  id?: true
-}
-
-export type KnowledgeBaseSumAggregateInputType = {
-  id?: true
-}
 
 export type KnowledgeBaseMinAggregateInputType = {
   id?: true
@@ -131,18 +113,6 @@ export type KnowledgeBaseAggregateArgs<ExtArgs extends runtime.Types.Extensions.
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: KnowledgeBaseAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: KnowledgeBaseSumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: KnowledgeBaseMinAggregateInputType
@@ -173,21 +143,17 @@ export type KnowledgeBaseGroupByArgs<ExtArgs extends runtime.Types.Extensions.In
   take?: number
   skip?: number
   _count?: KnowledgeBaseCountAggregateInputType | true
-  _avg?: KnowledgeBaseAvgAggregateInputType
-  _sum?: KnowledgeBaseSumAggregateInputType
   _min?: KnowledgeBaseMinAggregateInputType
   _max?: KnowledgeBaseMaxAggregateInputType
 }
 
 export type KnowledgeBaseGroupByOutputType = {
-  id: number
+  id: string
   name: string
   description: string | null
   createdAt: Date
   updatedAt: Date
   _count: KnowledgeBaseCountAggregateOutputType | null
-  _avg: KnowledgeBaseAvgAggregateOutputType | null
-  _sum: KnowledgeBaseSumAggregateOutputType | null
   _min: KnowledgeBaseMinAggregateOutputType | null
   _max: KnowledgeBaseMaxAggregateOutputType | null
 }
@@ -211,7 +177,7 @@ export type KnowledgeBaseWhereInput = {
   AND?: Prisma.KnowledgeBaseWhereInput | Prisma.KnowledgeBaseWhereInput[]
   OR?: Prisma.KnowledgeBaseWhereInput[]
   NOT?: Prisma.KnowledgeBaseWhereInput | Prisma.KnowledgeBaseWhereInput[]
-  id?: Prisma.IntFilter<"KnowledgeBase"> | number
+  id?: Prisma.StringFilter<"KnowledgeBase"> | string
   name?: Prisma.StringFilter<"KnowledgeBase"> | string
   description?: Prisma.StringNullableFilter<"KnowledgeBase"> | string | null
   createdAt?: Prisma.DateTimeFilter<"KnowledgeBase"> | Date | string
@@ -233,7 +199,7 @@ export type KnowledgeBaseOrderByWithRelationInput = {
 }
 
 export type KnowledgeBaseWhereUniqueInput = Prisma.AtLeast<{
-  id?: number
+  id?: string
   name?: string
   AND?: Prisma.KnowledgeBaseWhereInput | Prisma.KnowledgeBaseWhereInput[]
   OR?: Prisma.KnowledgeBaseWhereInput[]
@@ -253,17 +219,15 @@ export type KnowledgeBaseOrderByWithAggregationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.KnowledgeBaseCountOrderByAggregateInput
-  _avg?: Prisma.KnowledgeBaseAvgOrderByAggregateInput
   _max?: Prisma.KnowledgeBaseMaxOrderByAggregateInput
   _min?: Prisma.KnowledgeBaseMinOrderByAggregateInput
-  _sum?: Prisma.KnowledgeBaseSumOrderByAggregateInput
 }
 
 export type KnowledgeBaseScalarWhereWithAggregatesInput = {
   AND?: Prisma.KnowledgeBaseScalarWhereWithAggregatesInput | Prisma.KnowledgeBaseScalarWhereWithAggregatesInput[]
   OR?: Prisma.KnowledgeBaseScalarWhereWithAggregatesInput[]
   NOT?: Prisma.KnowledgeBaseScalarWhereWithAggregatesInput | Prisma.KnowledgeBaseScalarWhereWithAggregatesInput[]
-  id?: Prisma.IntWithAggregatesFilter<"KnowledgeBase"> | number
+  id?: Prisma.StringWithAggregatesFilter<"KnowledgeBase"> | string
   name?: Prisma.StringWithAggregatesFilter<"KnowledgeBase"> | string
   description?: Prisma.StringNullableWithAggregatesFilter<"KnowledgeBase"> | string | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"KnowledgeBase"> | Date | string
@@ -271,6 +235,7 @@ export type KnowledgeBaseScalarWhereWithAggregatesInput = {
 }
 
 export type KnowledgeBaseCreateInput = {
+  id?: string
   name: string
   description?: string | null
   createdAt?: Date | string
@@ -281,7 +246,7 @@ export type KnowledgeBaseCreateInput = {
 }
 
 export type KnowledgeBaseUncheckedCreateInput = {
-  id?: number
+  id?: string
   name: string
   description?: string | null
   createdAt?: Date | string
@@ -292,6 +257,7 @@ export type KnowledgeBaseUncheckedCreateInput = {
 }
 
 export type KnowledgeBaseUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -302,7 +268,7 @@ export type KnowledgeBaseUpdateInput = {
 }
 
 export type KnowledgeBaseUncheckedUpdateInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -313,7 +279,7 @@ export type KnowledgeBaseUncheckedUpdateInput = {
 }
 
 export type KnowledgeBaseCreateManyInput = {
-  id?: number
+  id?: string
   name: string
   description?: string | null
   createdAt?: Date | string
@@ -321,6 +287,7 @@ export type KnowledgeBaseCreateManyInput = {
 }
 
 export type KnowledgeBaseUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -328,7 +295,7 @@ export type KnowledgeBaseUpdateManyMutationInput = {
 }
 
 export type KnowledgeBaseUncheckedUpdateManyInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -348,10 +315,6 @@ export type KnowledgeBaseCountOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
 }
 
-export type KnowledgeBaseAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-}
-
 export type KnowledgeBaseMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   name?: Prisma.SortOrder
@@ -366,10 +329,6 @@ export type KnowledgeBaseMinOrderByAggregateInput = {
   description?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-}
-
-export type KnowledgeBaseSumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
 }
 
 export type KnowledgeBaseNullableScalarRelationFilter = {
@@ -422,6 +381,7 @@ export type KnowledgeBaseUpdateOneWithoutSessionsNestedInput = {
 }
 
 export type KnowledgeBaseCreateWithoutTopicsInput = {
+  id?: string
   name: string
   description?: string | null
   createdAt?: Date | string
@@ -431,7 +391,7 @@ export type KnowledgeBaseCreateWithoutTopicsInput = {
 }
 
 export type KnowledgeBaseUncheckedCreateWithoutTopicsInput = {
-  id?: number
+  id?: string
   name: string
   description?: string | null
   createdAt?: Date | string
@@ -457,6 +417,7 @@ export type KnowledgeBaseUpdateToOneWithWhereWithoutTopicsInput = {
 }
 
 export type KnowledgeBaseUpdateWithoutTopicsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -466,7 +427,7 @@ export type KnowledgeBaseUpdateWithoutTopicsInput = {
 }
 
 export type KnowledgeBaseUncheckedUpdateWithoutTopicsInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -476,6 +437,7 @@ export type KnowledgeBaseUncheckedUpdateWithoutTopicsInput = {
 }
 
 export type KnowledgeBaseCreateWithoutMemoriesInput = {
+  id?: string
   name: string
   description?: string | null
   createdAt?: Date | string
@@ -485,7 +447,7 @@ export type KnowledgeBaseCreateWithoutMemoriesInput = {
 }
 
 export type KnowledgeBaseUncheckedCreateWithoutMemoriesInput = {
-  id?: number
+  id?: string
   name: string
   description?: string | null
   createdAt?: Date | string
@@ -511,6 +473,7 @@ export type KnowledgeBaseUpdateToOneWithWhereWithoutMemoriesInput = {
 }
 
 export type KnowledgeBaseUpdateWithoutMemoriesInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -520,7 +483,7 @@ export type KnowledgeBaseUpdateWithoutMemoriesInput = {
 }
 
 export type KnowledgeBaseUncheckedUpdateWithoutMemoriesInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -530,6 +493,7 @@ export type KnowledgeBaseUncheckedUpdateWithoutMemoriesInput = {
 }
 
 export type KnowledgeBaseCreateWithoutSessionsInput = {
+  id?: string
   name: string
   description?: string | null
   createdAt?: Date | string
@@ -539,7 +503,7 @@ export type KnowledgeBaseCreateWithoutSessionsInput = {
 }
 
 export type KnowledgeBaseUncheckedCreateWithoutSessionsInput = {
-  id?: number
+  id?: string
   name: string
   description?: string | null
   createdAt?: Date | string
@@ -565,6 +529,7 @@ export type KnowledgeBaseUpdateToOneWithWhereWithoutSessionsInput = {
 }
 
 export type KnowledgeBaseUpdateWithoutSessionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -574,7 +539,7 @@ export type KnowledgeBaseUpdateWithoutSessionsInput = {
 }
 
 export type KnowledgeBaseUncheckedUpdateWithoutSessionsInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   description?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -686,7 +651,7 @@ export type $KnowledgeBasePayload<ExtArgs extends runtime.Types.Extensions.Inter
     sessions: Prisma.$SessionPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: number
+    id: string
     name: string
     description: string | null
     createdAt: Date
@@ -1117,7 +1082,7 @@ export interface Prisma__KnowledgeBaseClient<T, Null = never, ExtArgs extends ru
  * Fields of the KnowledgeBase model
  */
 export interface KnowledgeBaseFieldRefs {
-  readonly id: Prisma.FieldRef<"KnowledgeBase", 'Int'>
+  readonly id: Prisma.FieldRef<"KnowledgeBase", 'String'>
   readonly name: Prisma.FieldRef<"KnowledgeBase", 'String'>
   readonly description: Prisma.FieldRef<"KnowledgeBase", 'String'>
   readonly createdAt: Prisma.FieldRef<"KnowledgeBase", 'DateTime'>

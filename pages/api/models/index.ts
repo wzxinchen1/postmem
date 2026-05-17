@@ -15,7 +15,7 @@ export default createApiHandler<Deps>({
     await apiHandler(req, res, deps, {
       GET: async (deps) => {
         const includeInactive = req.query.includeInactive === 'true'
-        const providerId = req.query.providerId ? Number(req.query.providerId) : undefined
+        const providerId = req.query.providerId as string | undefined
 
         let models
         if (providerId) {

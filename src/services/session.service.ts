@@ -3,12 +3,9 @@ import type {
   Session,
   SessionMessage,
   CreateSessionRequest,
-  AddMessageRequest,
+  AddSessionMessageRequest,
 } from '@/src/types'
 
-/**
- * 会话服务 - 记录大模型调用会话
- */
 export class SessionService {
   private prisma: PrismaClient
 
@@ -23,32 +20,32 @@ export class SessionService {
         modelType: data.modelType,
         modelName: data.modelName,
         provider: data.provider,
-        metadata: data.metadata || {},
+        metadata: data.metadata,
         status: 'pending',
       },
     }) as Promise<Session>
   }
 
-  async addMessage(data: AddMessageRequest): Promise<SessionMessage> {
+  async addMessage(data: AddSessionMessageRequest): Promise<SessionMessage> {
     return this.prisma.sessionMessage.create({
       data: {
         sessionId: data.sessionId,
         role: data.role,
         content: data.content,
-        tokens: data.tokens || 0,
-        metadata: data.metadata || {},
+        tokens: data.tokens,
+        metadata: data.metadata,
       },
     }) as Promise<SessionMessage>
   }
 
-  async complete(sessionId: number): Promise<Session> {
+  async complete(sessionId: string): Promise<Session> {
     return this.prisma.session.update({
       where: { id: sessionId },
       data: { status: 'completed' },
     }) as Promise<Session>
   }
 
-  async fail(sessionId: number, error: string): Promise<Session> {
+  async fail(sessionId: string, error: string): Promise<Session> {
     return this.prisma.session.update({
       where: { id: sessionId },
       data: {
@@ -59,14 +56,14 @@ export class SessionService {
   }
 
   async list(options: {
-    kbId?: number
+    kbId?: string
     modelType?: string
     status?: string
     page?: number
     limit?: number
   }): Promise<{ sessions: Session[]; total: number; page: number; limit: number }> {
-    const page = options.page || 1
-    const limit = options.limit || 20
+    const page = options.page ?? 1
+    const limit = options.limit ?? 20
     const skip = (page - 1) * limit
 
     const where: any = {}
@@ -97,7 +94,7 @@ export class SessionService {
     }
   }
 
-  async get(sessionId: number): Promise<Session | null> {
+  async get(sessionId: string): Promise<Session | null> {
     return this.prisma.session.findUnique({
       where: { id: sessionId },
       include: {
@@ -108,7 +105,7 @@ export class SessionService {
     }) as Promise<Session | null>
   }
 
-  async delete(sessionId: number): Promise<void> {
+  async delete(sessionId: string): Promise<void> {
     await this.prisma.session.delete({
       where: { id: sessionId },
     })

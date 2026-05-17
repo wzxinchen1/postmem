@@ -1,5 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { AppError, Errors } from '@/src/lib/errors'
+import { logger } from '@/src/lib/logger'
 import type { ApiResponse } from '@/src/types'
 import container from '@/src/lib/container'
 
@@ -68,9 +69,7 @@ export function withErrorHandler(
     } catch (error) {
       const errorDetails = formatErrorDetails(error, req)
       
-      console.error('API Error occurred:')
-      console.error(errorDetails)
-      console.error('\n')
+      logger.error('API Error occurred', { errorDetails })
 
       let statusCode = 500
       let errorMessage = '内部错误'

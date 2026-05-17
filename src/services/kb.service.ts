@@ -1,5 +1,6 @@
 import { PrismaClient, Prisma } from '@/src/generated/prisma/client/client'
 import { Errors } from '@/src/lib/errors'
+import { logger } from '@/src/lib/logger'
 import type {
   SearchResult,
   SearchSource,
@@ -105,7 +106,7 @@ export class KBService {
   /**
    * 根据ID获取知识库
    */
-  async getKnowledgeBaseById(id: number): Promise<KnowledgeBaseInfo> {
+  async getKnowledgeBaseById(id: string): Promise<KnowledgeBaseInfo> {
     const kb = await this.prisma.knowledgeBase.findUnique({
       where: { id },
     })
@@ -127,7 +128,7 @@ export class KBService {
  * 知识入库 - 纯文本方式（带进度回调的流式版本）
  */
   async ingestTextStream(
-    kbId: number,
+    kbId: string,
     content: string,
     onProgress: (event: { type: string; message?: string; data?: Record<string, unknown> }) => void
   ): Promise<IngestTextResponse> {
@@ -148,9 +149,9 @@ export class KBService {
     const chunks = await this.cutModelService.cutAndRewrite(content, kbId)
     onProgress({ type: 'status', message: `文本已切分为 ${chunks.length} 个片段，正在规划主题...` })
 
-    const memoryIds: number[] = []
+    const memoryIds: string[] = []
     const topicsInvolvedSet = new Set<string>()
-    const thisBatchIds = new Set<number>()
+    const thisBatchIds = new Set<string>()
 
     const existingTopics = await this.prisma.topic.findMany({
       where: { kbId },
@@ -162,7 +163,7 @@ export class KBService {
     onProgress({ type: 'status', message: '正在规划主题归属...' })
     const plan = await this.cutModelService.batchResolveTopics(chunkInputs, existingTopics, kbId)
 
-    const topicNameMap = new Map<string, number>()
+    const topicNameMap = new Map<string, string>()
     for (const t of existingTopics) {
       topicNameMap.set(t.name, t.id)
     }
@@ -220,7 +221,7 @@ export class KBService {
         throw Errors.internalError(`片段 ${chunk.index} 缺少主题规划`)
       }
 
-      let topicId: number
+      let topicId: string
       if (planItem.action === 'select' && planItem.topicName) {
         const tid = topicNameMap.get(planItem.topicName)
         if (!tid) {
@@ -253,7 +254,7 @@ export class KBService {
         onProgress({ type: 'chunk_detail', message: '无相似记录，直接入库', data: { title: chunk.title, action: 'insert' } })
         const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
-        const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
+        const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
           INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
           VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
                   ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
@@ -295,7 +296,7 @@ export class KBService {
       onProgress({ type: 'chunk_detail', message: '作为新记录入库', data: { title: chunk.title, action: 'new' } })
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
-      const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
+      const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
         INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
         VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
                 ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
@@ -318,7 +319,7 @@ export class KBService {
  * 切分策略：LLM 切分+重写一步到位，每个片段语义完整连贯，完整存储
  * 去重策略：每个分块先搜索相似记忆，LLM 判断是否有增量价值
  */
-  async ingestText(kbId: number, content: string): Promise<IngestTextResponse> {
+  async ingestText(kbId: string, content: string): Promise<IngestTextResponse> {
     const settings = await this.settingService.getAppSettings()
     const maxLength = settings.maxContentLength
 
@@ -333,10 +334,9 @@ export class KBService {
     await this.getKnowledgeBaseById(kbId)
 
     const chunks = await this.cutModelService.cutAndRewrite(content, kbId)
-    const memoryIds: number[] = []
+    const memoryIds: string[] = []
     const topicsInvolvedSet = new Set<string>()
 
-    // 批量主题规划：一次 LLM 调用决定所有切片的主题归属
     const existingTopics = await this.prisma.topic.findMany({
       where: { kbId },
       select: { id: true, name: true, description: true },
@@ -345,14 +345,12 @@ export class KBService {
     const chunkInputs = chunks
     const plan = await this.cutModelService.batchResolveTopics(chunkInputs, existingTopics, kbId)
 
-    // 先处理所有需要创建的新主题，建立 name → id 映射
-    const topicNameMap = new Map<string, number>()
+    const topicNameMap = new Map<string, string>()
     for (const t of existingTopics) {
       topicNameMap.set(t.name, t.id)
     }
     for (const p of plan.plans) {
       if (p.action === 'create' && p.newTopicName && !topicNameMap.has(p.newTopicName)) {
-        // 用第一个属于该新主题的切片内容来生成描述
         const sampleChunk = chunks[p.index]?.content || ''
         const createInfo = await this.cutModelService.createTopicInfo(sampleChunk, kbId)
         const newTopic = await this.prisma.topic.create({
@@ -366,7 +364,6 @@ export class KBService {
       }
     }
 
-    // 按计划逐个入库
     for (const chunk of chunks) {
       const planItem = plan.plans.find((p) => p.index === chunk.index)
 
@@ -374,7 +371,7 @@ export class KBService {
         throw Errors.internalError(`片段 ${chunk.index} 缺少主题规划`)
       }
 
-      let topicId: number
+      let topicId: string
       if (planItem.action === 'select' && planItem.topicName) {
         const tid = topicNameMap.get(planItem.topicName)
         if (!tid) {
@@ -404,7 +401,7 @@ export class KBService {
       if (similarMemories.length === 0) {
         const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
-        const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
+        const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
           INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
           VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
                   ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
@@ -440,7 +437,7 @@ export class KBService {
 
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
-      const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
+      const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
         INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
         VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
                 ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
@@ -462,7 +459,7 @@ export class KBService {
  * 存储方式：零 LLM 调用，每条消息原文完整存储
  * 去重策略：每条消息先搜索相似记忆，LLM 判断是否有增量价值
  */
-  async ingestMessages(kbId: number, messages: IngestMessage[]): Promise<IngestMessagesResponse> {
+  async ingestMessages(kbId: string, messages: IngestMessage[]): Promise<IngestMessagesResponse> {
     const settings = await this.settingService.getAppSettings()
     const maxLength = settings.maxContentLength
 
@@ -478,7 +475,7 @@ export class KBService {
 
     await this.getKnowledgeBaseById(kbId)
 
-    const memoryIds: number[] = []
+    const memoryIds: string[] = []
     const memorizedMessageIds: string[] = []
 
     for (const msg of messages) {
@@ -492,7 +489,7 @@ export class KBService {
       if (similarMemories.length === 0) {
         const embedding = await this.embeddingService.generateEmbedding(content)
 
-        const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
+        const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
           INSERT INTO memories (kb_id, topic_id, content, embedding, metadata)
           VALUES (${kbId}, ${topicId}, ${content}, ${`[${embedding.join(',')}]`}::vector,
                   ${JSON.stringify({ cutModel: 'verbatim', messageId: msg.id, role: msg.role })}::jsonb)
@@ -530,7 +527,7 @@ export class KBService {
 
       const embedding = await this.embeddingService.generateEmbedding(content)
 
-      const inserted = await this.prisma.$queryRaw<{ id: number }[]>`
+      const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
         INSERT INTO memories (kb_id, topic_id, content, embedding, metadata)
         VALUES (${kbId}, ${topicId}, ${content}, ${`[${embedding.join(',')}]`}::vector,
                 ${JSON.stringify({ cutModel: 'verbatim', messageId: msg.id, role: msg.role })}::jsonb)
@@ -551,7 +548,7 @@ export class KBService {
    * 混合检索：Dense + Sparse + RRF 融合
    */
   async search(
-    kbId: number,
+    kbId: string,
     query: string,
     topK: number = 5,
     contextWindow: number = 1
@@ -568,10 +565,10 @@ export class KBService {
     const [denseResults, sparseResults] = await Promise.all([
       this.prisma.$queryRaw<
         Array<{
-          id: number
+          id: string
           title: string
           content: string
-          topic_id: number | null
+          topic_id: string | null
           metadata: any
           cosine_distance: number
         }>
@@ -588,10 +585,10 @@ export class KBService {
       `,
       this.prisma.$queryRaw<
         Array<{
-          id: number
+          id: string
           title: string
           content: string
-          topic_id: number | null
+          topic_id: string | null
           metadata: any
           ts_rank: number
         }>
@@ -608,21 +605,19 @@ export class KBService {
       `
     ])
 
-    console.log('[Search Debug] Dense results count:', denseResults.length)
-    denseResults.forEach((r, i) => console.log(`  [Dense #${i}] id=${r.id} title=${r.title} dist=${r.cosine_distance}`))
-    console.log('[Search Debug] Sparse results count:', sparseResults.length)
-    sparseResults.forEach((r, i) => console.log(`  [Sparse #${i}] id=${r.id} title=${r.title} ts_rank=${r.ts_rank}`))
+    logger.debug('[Search] Dense results', { count: denseResults.length, results: denseResults.map((r, i) => ({ index: i, id: r.id, title: r.title, distance: r.cosine_distance })) })
+    logger.debug('[Search] Sparse results', { count: sparseResults.length, results: sparseResults.map((r, i) => ({ index: i, id: r.id, title: r.title, tsRank: r.ts_rank })) })
 
     const rrfK = 60
     interface RrfItem {
-      id: number
+      id: string
       title: string
       content: string
-      topic_id: number | null
+      topic_id: string | null
       metadata: any
       ts_rank?: number
     }
-    const rrfScores = new Map<number, { rrfScore: number; source: SearchSource; data: RrfItem; cosineSim: number; tsRank?: number }>()
+    const rrfScores = new Map<string, { rrfScore: number; source: SearchSource; data: RrfItem; cosineSim: number; tsRank?: number }>()
 
     for (let i = 0; i < denseResults.length; i++) {
       const item = denseResults[i]
@@ -653,8 +648,7 @@ export class KBService {
       .sort((a, b) => b.rrfScore - a.rrfScore)
       .slice(0, topK)
 
-    console.log('[Search Debug] RRF merged count:', merged.length)
-    merged.forEach((m, i) => console.log(`  [Merged #${i}] id=${m.data.id} source=${m.source} rrfScore=${m.rrfScore.toFixed(4)} cosSim=${m.cosineSim} tsRank=${m.tsRank}`))
+    logger.debug('[Search] RRF merged', { count: merged.length, results: merged.map((m, i) => ({ index: i, id: m.data.id, source: m.source, rrfScore: m.rrfScore, cosSim: m.cosineSim, tsRank: m.tsRank })) })
 
     const searchResults: SearchResult[] = []
     for (const item of merged) {
@@ -686,9 +680,9 @@ export class KBService {
   }
 
   private async getContextByTopic(
-    memoryId: number,
-    kbId: number,
-    topicId: number | null,
+    memoryId: string,
+    kbId: string,
+    topicId: string | null,
     windowSize: number
   ): Promise<{ prev: string[]; next: string[] }> {
     if (topicId === null) {
@@ -732,10 +726,10 @@ export class KBService {
   }
 
   async searchInTopic(
-    kbId: number,
+    kbId: string,
     query: string,
     topK: number = 5,
-    topicId?: number
+    topicId?: string
   ): Promise<SearchResult[]> {
     if (!query || query.trim().length === 0) {
       throw Errors.badRequest('查询语句不能为空')
@@ -749,7 +743,7 @@ export class KBService {
     const [denseResults, sparseResults] = await Promise.all([
       this.prisma.$queryRaw<
         Array<{
-          id: number
+          id: string
           title: string
           content: string
           metadata: any
@@ -769,7 +763,7 @@ export class KBService {
       `,
       this.prisma.$queryRaw<
         Array<{
-          id: number
+          id: string
           title: string
           content: string
           metadata: any
@@ -792,14 +786,14 @@ export class KBService {
     const rrfK = 60
 
     interface RrfItem {
-      id: number
+      id: string
       title: string
       content: string
       metadata: any
       ts_rank?: number
     }
 
-    const rrfScores = new Map<number, { rrfScore: number; source: SearchSource; data: RrfItem; cosineSim: number; tsRank?: number }>()
+    const rrfScores = new Map<string, { rrfScore: number; source: SearchSource; data: RrfItem; cosineSim: number; tsRank?: number }>()
 
     for (let i = 0; i < denseResults.length; i++) {
       const item = denseResults[i]
@@ -841,7 +835,7 @@ export class KBService {
     }))
   }
 
-  private async resolveTopic(kbId: number, content: string): Promise<number> {
+  private async resolveTopic(kbId: string, content: string): Promise<string> {
     const topics = await this.prisma.topic.findMany({
       where: { kbId },
       select: { id: true, name: true, description: true },
@@ -877,7 +871,7 @@ export class KBService {
    * 列表浏览
    */
   async list(
-    kbId: number,
+    kbId: string,
     page: number = 1,
     limit: number = 20
   ): Promise<{ items: ListItem[]; total: number; page: number; limit: number }> {
@@ -923,7 +917,7 @@ export class KBService {
   /**
    * 单条删除
    */
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     const memory = await this.prisma.memory.findUnique({
       where: { id },
     })
@@ -940,7 +934,7 @@ export class KBService {
   /**
    * 统计概览
    */
-  async stats(kbId?: number): Promise<Stats | { kbNames: Stats[] }> {
+  async stats(kbId?: string): Promise<Stats | { kbNames: Stats[] }> {
     if (kbId) {
       const kb = await this.getKnowledgeBaseById(kbId)
       const result = await this.prisma.memory.aggregate({

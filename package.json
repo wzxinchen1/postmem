@@ -12,6 +12,7 @@
     "lint": "next lint",
     "db:generate": "prisma generate",
     "db:migrate": "prisma migrate dev",
+    "db:update": "prisma migrate dev --create-only",
     "db:deploy": "prisma migrate deploy",
     "db:seed": "pnpm tsx prisma/seed.ts",
     "db:studio": "prisma studio",
@@ -19,7 +20,10 @@
     "db:setup": "prisma generate && prisma migrate deploy && prisma db seed",
     "test": "vitest run",
     "test:watch": "vitest",
-    "swagger": "pnpm tsx scripts/generate-swagger.ts"
+    "test:chat": "vitest run tests/api/chat/completions.test.ts",
+    "swagger": "pnpm tsx scripts/generate-swagger.ts",
+    "types:generate": "pnpm --filter postmem-types run generate",
+    "types:build": "pnpm --filter postmem-types run build"
   },
   "prisma": {
     "seed": "pnpm tsx prisma/seed.ts"
@@ -27,8 +31,10 @@
   "dependencies": {
     "@ant-design/icons": "^6.2.3",
     "@ant-design/nextjs-registry": "^1.3.0",
+    "@datalust/winston-seq": "^3.0.1",
     "@langchain/anthropic": "^0.3.17",
     "@langchain/core": "^1.1.46",
+    "@langchain/langgraph": "^1.3.0",
     "@langchain/ollama": "^1.2.7",
     "@langchain/openai": "^1.4.5",
     "@prisma/adapter-pg": "^7.8.0",
@@ -37,13 +43,16 @@
     "awilix": "^10.0.2",
     "axios": "^1.16.1",
     "dotenv": "^16.6.1",
+    "ioredis": "^5.10.1",
     "langchain": "^1.4.0",
     "next": "^14.2.20",
+    "pdf-parse": "^2.4.5",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "swagger-ui-react": "^5.18.2",
     "typescript": "^5.6.3",
     "vm2": "^3.9.19",
+    "winston": "^3.19.0",
     "zod": "^3.23.8"
   },
   "devDependencies": {

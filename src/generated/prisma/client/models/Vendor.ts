@@ -20,22 +20,12 @@ export type VendorModel = runtime.Types.Result.DefaultSelection<Prisma.$VendorPa
 
 export type AggregateVendor = {
   _count: VendorCountAggregateOutputType | null
-  _avg: VendorAvgAggregateOutputType | null
-  _sum: VendorSumAggregateOutputType | null
   _min: VendorMinAggregateOutputType | null
   _max: VendorMaxAggregateOutputType | null
 }
 
-export type VendorAvgAggregateOutputType = {
-  id: number | null
-}
-
-export type VendorSumAggregateOutputType = {
-  id: number | null
-}
-
 export type VendorMinAggregateOutputType = {
-  id: number | null
+  id: string | null
   name: string | null
   url: string | null
   chatModelClass: string | null
@@ -47,7 +37,7 @@ export type VendorMinAggregateOutputType = {
 }
 
 export type VendorMaxAggregateOutputType = {
-  id: number | null
+  id: string | null
   name: string | null
   url: string | null
   chatModelClass: string | null
@@ -71,14 +61,6 @@ export type VendorCountAggregateOutputType = {
   _all: number
 }
 
-
-export type VendorAvgAggregateInputType = {
-  id?: true
-}
-
-export type VendorSumAggregateInputType = {
-  id?: true
-}
 
 export type VendorMinAggregateInputType = {
   id?: true
@@ -155,18 +137,6 @@ export type VendorAggregateArgs<ExtArgs extends runtime.Types.Extensions.Interna
   /**
    * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
    * 
-   * Select which fields to average
-  **/
-  _avg?: VendorAvgAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
-   * Select which fields to sum
-  **/
-  _sum?: VendorSumAggregateInputType
-  /**
-   * {@link https://www.prisma.io/docs/concepts/components/prisma-client/aggregations Aggregation Docs}
-   * 
    * Select which fields to find the minimum value
   **/
   _min?: VendorMinAggregateInputType
@@ -197,14 +167,12 @@ export type VendorGroupByArgs<ExtArgs extends runtime.Types.Extensions.InternalA
   take?: number
   skip?: number
   _count?: VendorCountAggregateInputType | true
-  _avg?: VendorAvgAggregateInputType
-  _sum?: VendorSumAggregateInputType
   _min?: VendorMinAggregateInputType
   _max?: VendorMaxAggregateInputType
 }
 
 export type VendorGroupByOutputType = {
-  id: number
+  id: string
   name: string
   url: string
   chatModelClass: string | null
@@ -214,8 +182,6 @@ export type VendorGroupByOutputType = {
   createdAt: Date
   updatedAt: Date
   _count: VendorCountAggregateOutputType | null
-  _avg: VendorAvgAggregateOutputType | null
-  _sum: VendorSumAggregateOutputType | null
   _min: VendorMinAggregateOutputType | null
   _max: VendorMaxAggregateOutputType | null
 }
@@ -239,7 +205,7 @@ export type VendorWhereInput = {
   AND?: Prisma.VendorWhereInput | Prisma.VendorWhereInput[]
   OR?: Prisma.VendorWhereInput[]
   NOT?: Prisma.VendorWhereInput | Prisma.VendorWhereInput[]
-  id?: Prisma.IntFilter<"Vendor"> | number
+  id?: Prisma.StringFilter<"Vendor"> | string
   name?: Prisma.StringFilter<"Vendor"> | string
   url?: Prisma.StringFilter<"Vendor"> | string
   chatModelClass?: Prisma.StringNullableFilter<"Vendor"> | string | null
@@ -267,7 +233,7 @@ export type VendorOrderByWithRelationInput = {
 }
 
 export type VendorWhereUniqueInput = Prisma.AtLeast<{
-  id?: number
+  id?: string
   name?: string
   AND?: Prisma.VendorWhereInput | Prisma.VendorWhereInput[]
   OR?: Prisma.VendorWhereInput[]
@@ -294,17 +260,15 @@ export type VendorOrderByWithAggregationInput = {
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.VendorCountOrderByAggregateInput
-  _avg?: Prisma.VendorAvgOrderByAggregateInput
   _max?: Prisma.VendorMaxOrderByAggregateInput
   _min?: Prisma.VendorMinOrderByAggregateInput
-  _sum?: Prisma.VendorSumOrderByAggregateInput
 }
 
 export type VendorScalarWhereWithAggregatesInput = {
   AND?: Prisma.VendorScalarWhereWithAggregatesInput | Prisma.VendorScalarWhereWithAggregatesInput[]
   OR?: Prisma.VendorScalarWhereWithAggregatesInput[]
   NOT?: Prisma.VendorScalarWhereWithAggregatesInput | Prisma.VendorScalarWhereWithAggregatesInput[]
-  id?: Prisma.IntWithAggregatesFilter<"Vendor"> | number
+  id?: Prisma.StringWithAggregatesFilter<"Vendor"> | string
   name?: Prisma.StringWithAggregatesFilter<"Vendor"> | string
   url?: Prisma.StringWithAggregatesFilter<"Vendor"> | string
   chatModelClass?: Prisma.StringNullableWithAggregatesFilter<"Vendor"> | string | null
@@ -316,6 +280,7 @@ export type VendorScalarWhereWithAggregatesInput = {
 }
 
 export type VendorCreateInput = {
+  id?: string
   name: string
   url: string
   chatModelClass?: string | null
@@ -329,7 +294,7 @@ export type VendorCreateInput = {
 }
 
 export type VendorUncheckedCreateInput = {
-  id?: number
+  id?: string
   name: string
   url: string
   chatModelClass?: string | null
@@ -343,6 +308,7 @@ export type VendorUncheckedCreateInput = {
 }
 
 export type VendorUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -356,7 +322,7 @@ export type VendorUpdateInput = {
 }
 
 export type VendorUncheckedUpdateInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -370,7 +336,7 @@ export type VendorUncheckedUpdateInput = {
 }
 
 export type VendorCreateManyInput = {
-  id?: number
+  id?: string
   name: string
   url: string
   chatModelClass?: string | null
@@ -382,6 +348,7 @@ export type VendorCreateManyInput = {
 }
 
 export type VendorUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -393,7 +360,7 @@ export type VendorUpdateManyMutationInput = {
 }
 
 export type VendorUncheckedUpdateManyInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -414,10 +381,6 @@ export type VendorCountOrderByAggregateInput = {
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
-}
-
-export type VendorAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
 }
 
 export type VendorMaxOrderByAggregateInput = {
@@ -444,17 +407,9 @@ export type VendorMinOrderByAggregateInput = {
   updatedAt?: Prisma.SortOrder
 }
 
-export type VendorSumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-}
-
 export type VendorScalarRelationFilter = {
   is?: Prisma.VendorWhereInput
   isNot?: Prisma.VendorWhereInput
-}
-
-export type NullableStringFieldUpdateOperationsInput = {
-  set?: string | null
 }
 
 export type BoolFieldUpdateOperationsInput = {
@@ -490,6 +445,7 @@ export type VendorUpdateOneRequiredWithoutProvider_optionsNestedInput = {
 }
 
 export type VendorCreateWithoutProvidersInput = {
+  id?: string
   name: string
   url: string
   chatModelClass?: string | null
@@ -502,7 +458,7 @@ export type VendorCreateWithoutProvidersInput = {
 }
 
 export type VendorUncheckedCreateWithoutProvidersInput = {
-  id?: number
+  id?: string
   name: string
   url: string
   chatModelClass?: string | null
@@ -531,6 +487,7 @@ export type VendorUpdateToOneWithWhereWithoutProvidersInput = {
 }
 
 export type VendorUpdateWithoutProvidersInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -543,7 +500,7 @@ export type VendorUpdateWithoutProvidersInput = {
 }
 
 export type VendorUncheckedUpdateWithoutProvidersInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -556,6 +513,7 @@ export type VendorUncheckedUpdateWithoutProvidersInput = {
 }
 
 export type VendorCreateWithoutProvider_optionsInput = {
+  id?: string
   name: string
   url: string
   chatModelClass?: string | null
@@ -568,7 +526,7 @@ export type VendorCreateWithoutProvider_optionsInput = {
 }
 
 export type VendorUncheckedCreateWithoutProvider_optionsInput = {
-  id?: number
+  id?: string
   name: string
   url: string
   chatModelClass?: string | null
@@ -597,6 +555,7 @@ export type VendorUpdateToOneWithWhereWithoutProvider_optionsInput = {
 }
 
 export type VendorUpdateWithoutProvider_optionsInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -609,7 +568,7 @@ export type VendorUpdateWithoutProvider_optionsInput = {
 }
 
 export type VendorUncheckedUpdateWithoutProvider_optionsInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   url?: Prisma.StringFieldUpdateOperationsInput | string
   chatModelClass?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
@@ -728,7 +687,7 @@ export type $VendorPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs
     providers: Prisma.$ProviderPayload<ExtArgs>[]
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: number
+    id: string
     name: string
     url: string
     chatModelClass: string | null
@@ -1162,7 +1121,7 @@ export interface Prisma__VendorClient<T, Null = never, ExtArgs extends runtime.T
  * Fields of the Vendor model
  */
 export interface VendorFieldRefs {
-  readonly id: Prisma.FieldRef<"Vendor", 'Int'>
+  readonly id: Prisma.FieldRef<"Vendor", 'String'>
   readonly name: Prisma.FieldRef<"Vendor", 'String'>
   readonly url: Prisma.FieldRef<"Vendor", 'String'>
   readonly chatModelClass: Prisma.FieldRef<"Vendor", 'String'>

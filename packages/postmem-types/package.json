@@ -1,0 +1,41 @@
+{
+  "name": "postmem-types",
+  "version": "1.0.0",
+  "description": "TypeScript type definitions for PostMem API",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "default": "./dist/index.js"
+    },
+    "./api": {
+      "types": "./dist/api.d.ts",
+      "default": "./dist/api.js"
+    }
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "generate": "openapi-typescript ../../public/swagger.json -o dist/api.d.ts --export-type",
+    "build": "tsc",
+    "prepublishOnly": "pnpm run generate && pnpm run build"
+  },
+  "devDependencies": {
+    "openapi-typescript": "^7.0.0",
+    "typescript": "^5.6.0"
+  },
+  "peerDependencies": {},
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": ""
+  },
+  "keywords": [
+    "postmem",
+    "api",
+    "types",
+    "typescript"
+  ]
+}

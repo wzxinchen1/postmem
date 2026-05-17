@@ -6,15 +6,12 @@ interface Deps {
   sessionService: SessionService
 }
 
-/**
- * 会话详情和删除 API
- */
 export default createApiHandler<Deps>({
   dependencies: ['sessionService'],
   handler: async (req, res, deps) => {
-    const id = Number(req.query.id)
+    const id = req.query.id as string
 
-    if (isNaN(id)) {
+    if (!id) {
       return errorResponse(res, 'VALIDATION_ERROR', '无效的会话 ID', 400)
     }
 

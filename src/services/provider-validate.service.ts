@@ -9,7 +9,7 @@ export class ProviderValidateService {
   }
 
   async validateProvider(
-    vendorId: number,
+    vendorId: string,
     apiKey?: string,
     baseUrl?: string
   ): Promise<{ valid: boolean; error?: string; vendor?: Vendor; models: string[] }> {
@@ -18,7 +18,7 @@ export class ProviderValidateService {
   }
 
   async fetchModels(
-    vendorId: number,
+    vendorId: string,
     apiKey?: string,
     baseUrl?: string
   ): Promise<{ models: string[]; error?: string; vendor?: Vendor }> {

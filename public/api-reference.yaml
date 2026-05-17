@@ -3,6 +3,112 @@
 
 ---
 
+## Chat
+
+### POST /api/chat/cancel
+
+Request Body:
+  - `conversationId`: string (required)
+
+Response Body:
+  200: 成功响应 (object)
+    { success: boolean, data: object }
+  201: 创建成功 (object)
+    { success: boolean, data: object }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
+
+### POST /api/chat/completions
+
+Request Body:
+  - `messages`: string (required)
+  - `conversationId`: string (required)
+  - `newConversation`: string (required)
+  - `regenerateMessageId`: string (required)
+  - `modelId`: string (required)
+  - `kbId`: string (required)
+
+Response Body:
+  200: 成功响应 (object)
+    { success: boolean, data: object }
+  201: 创建成功 (object)
+    { success: boolean, data: object }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
+
+### GET /api/chat/conversations
+
+Query Parameters:
+  - `kbId`: string (required) - 按知识库筛选
+  - `page`: integer (默认: 1) - 页码
+  - `limit`: integer (默认: 20) - 每页数量
+
+Response Body:
+  200: 成功响应 (object)
+    { success: boolean, data: object }
+
+### POST /api/chat/conversations
+
+Query Parameters:
+  - `kbId`: string (required) - 按知识库筛选
+  - `page`: integer (默认: 1) - 页码
+  - `limit`: integer (默认: 20) - 每页数量
+
+Request Body:
+  - `kbId`: string (required)
+
+Response Body:
+  200: 成功响应 (object)
+    { success: boolean, data: object }
+  201: 创建成功 (object)
+    { success: boolean, data: object }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
+
+### DELETE /api/chat/conversations
+
+Query Parameters:
+  - `kbId`: string (required) - 按知识库筛选
+  - `page`: integer (默认: 1) - 页码
+  - `limit`: integer (默认: 20) - 每页数量
+
+Response Body:
+  200: 成功响应 (object)
+    { success: boolean, data: object }
+
+### GET /api/chat/messages
+
+**Types:** ChatMessageListResult (响应)
+
+Query Parameters:
+  - `page`: integer (默认: 1) - 页码
+  - `limit`: integer (默认: 20) - 每页数量
+
+Response Body:
+  200: 成功响应 (ChatMessageListResult)
+    { success: boolean, data: ChatMessageListResult }
+
+### GET /api/chat/stream
+
+Response Body:
+  200: 成功响应（SSE 流式响应）
+    Content-Type: text/event-stream
+    事件格式: data: { type: string, message?: string, data?: object }
+    事件类型:
+      - message: 流式消息事件
+
+---
+
+## Other
+
+### GET /api/init/providers
+
+Response Body:
+  200: 成功响应 (object)
+    { success: boolean, data: object }
+
+---
+
 ## Knowledge Base
 
 ### POST /api/kb/create
@@ -28,7 +134,7 @@ Response Body:
 
 Request Body:
   type: DeleteRequest
-  - `id`: number (required)
+  - `id`: string (required)
 
 Response Body:
   200: 成功响应 (void)
@@ -45,10 +151,10 @@ Response Body:
 Request Body:
   支持多种请求体格式 (oneOf):
   - IngestTextRequest:
-      - `kbId`: number (required)
+      - `kbId`: string (required)
       - `content`: string (required)
   - IngestMessagesRequest:
-      - `kbId`: number (required)
+      - `kbId`: string (required)
       - `messages`: IngestMessage[] (required)
 
 Response Body:
@@ -69,7 +175,7 @@ Response Body:
 
 Request Body:
   type: ListRequest
-  - `kbId`: number (required)
+  - `kbId`: string (required)
   - `page`: number
   - `limit`: number
 
@@ -87,7 +193,7 @@ Response Body:
 
 Request Body:
   type: SearchRequest
-  - `kbId`: number (required)
+  - `kbId`: string (required)
   - `query`: string (required)
   - `top_k`: number
   - `context_window`: number
@@ -106,7 +212,7 @@ Response Body:
 
 Request Body:
   type: StatsRequest
-  - `kbId`: number
+  - `kbId`: string
 
 Response Body:
   200: 成功响应 (Stats)
@@ -126,7 +232,7 @@ Response Body:
 **Types:** Model (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 模型ID
+  - `id`: string (required) - 模型ID
 
 Response Body:
   200: 成功响应 (Model)
@@ -139,7 +245,7 @@ Response Body:
 **Types:** UpdateModelRequest (请求), Model (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 模型ID
+  - `id`: string (required) - 模型ID
 
 Request Body:
   type: UpdateModelRequest
@@ -161,7 +267,7 @@ Response Body:
 **Types:** Model (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 模型ID
+  - `id`: string (required) - 模型ID
 
 Response Body:
   200: 成功响应 (Model)
@@ -187,7 +293,7 @@ Response Body:
 
 Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
-  - `providerId`: integer - 按提供商ID筛选
+  - `providerId`: string - 按提供商ID筛选
 
 Response Body:
   200: 成功响应 (Model[])
@@ -200,11 +306,11 @@ Response Body:
 
 Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
-  - `providerId`: integer - 按提供商ID筛选
+  - `providerId`: string - 按提供商ID筛选
 
 Request Body:
   type: CreateModelRequest
-  - `providerId`: number (required)
+  - `providerId`: string (required)
   - `name`: string (required)
   - `displayName`: string
   - `modelType`: ModelType (required)
@@ -230,7 +336,7 @@ Response Body:
 **Types:** Provider (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 提供商ID
+  - `id`: string (required) - 提供商ID
 
 Response Body:
   200: 成功响应 (Provider)
@@ -243,12 +349,12 @@ Response Body:
 **Types:** UpdateProviderRequest (请求), Provider (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 提供商ID
+  - `id`: string (required) - 提供商ID
 
 Request Body:
   type: UpdateProviderRequest
   - `name`: string
-  - `vendorId`: number
+  - `vendorId`: string
   - `apiKey`: string
   - `baseUrl`: string
   - `config`: unknown
@@ -265,7 +371,7 @@ Response Body:
 **Types:** Provider (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 提供商ID
+  - `id`: string (required) - 提供商ID
 
 Response Body:
   200: 成功响应 (Provider)
@@ -295,7 +401,7 @@ Query Parameters:
 Request Body:
   type: CreateProviderRequest
   - `name`: string (required)
-  - `vendorId`: number (required)
+  - `vendorId`: string (required)
   - `apiKey`: string
   - `baseUrl`: string (required)
   - `config`: unknown
@@ -326,6 +432,18 @@ Response Body:
   400: 请求参数错误 (ErrorResponse)
   409: 冲突（重复） (ErrorResponse)
 
+### GET /api/providers/tree
+提供商树形结构 API - 返回提供商及其下属模型的树
+
+**Types:** ProviderTreeNode[] (响应)
+
+Query Parameters:
+  - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
+
+Response Body:
+  200: 成功响应 (ProviderTreeNode[])
+    { success: boolean, data: ProviderTreeNode[] }
+
 ### POST /api/providers/validate
 
 **Types:** boolean (响应)
@@ -348,12 +466,11 @@ Response Body:
 ## Sessions
 
 ### GET /api/sessions/{id}
-会话详情和删除 API
 
 **Types:** Session (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 会话ID
+  - `id`: string (required) - 会话ID
 
 Response Body:
   200: 成功响应 (Session)
@@ -361,12 +478,11 @@ Response Body:
   404: 资源不存在 (ErrorResponse)
 
 ### DELETE /api/sessions/{id}
-会话详情和删除 API
 
 **Types:** Session (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 会话ID
+  - `id`: string (required) - 会话ID
 
 Response Body:
   200: 成功响应 (Session)
@@ -374,12 +490,11 @@ Response Body:
   404: 资源不存在 (ErrorResponse)
 
 ### GET /api/sessions/index
-会话列表 API
 
 **Types:** Session[] (响应)
 
 Query Parameters:
-  - `kbId`: integer (required) - 按知识库筛选
+  - `kbId`: string (required) - 按知识库筛选
   - `modelType`: string [chat|embedding] - 模型类型
   - `status`: string [pending|completed|failed] - 按状态筛选
   - `page`: integer (默认: 1) - 页码
@@ -390,7 +505,6 @@ Response Body:
     { success: boolean, data: Session[] }
 
 ### GET /api/sessions/stats
-会话统计 API
 
 **Types:** Stats (响应)
 
@@ -430,7 +544,7 @@ Response Body:
 **Types:** Vendor (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 厂商ID
+  - `id`: string (required) - 厂商ID
 
 Response Body:
   200: 成功响应 (Vendor)
@@ -443,7 +557,7 @@ Response Body:
 **Types:** UpdateVendorRequest (请求), Vendor (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 厂商ID
+  - `id`: string (required) - 厂商ID
 
 Request Body:
   type: UpdateVendorRequest
@@ -464,7 +578,7 @@ Response Body:
 **Types:** Vendor (响应)
 
 Path Parameters:
-  - `id`: integer (required) - 厂商ID
+  - `id`: string (required) - 厂商ID
 
 Response Body:
   200: 成功响应 (Vendor)
@@ -524,11 +638,11 @@ key
 Required:
 id, title, content, score, topicId, metadata, source, prev, next
 
-- `id`*: number
+- `id`*: string
 - `title`*: string
 - `content`*: string
 - `score`*: number
-- `topicId`*: number | null
+- `topicId`*: string | null
 - `metadata`*: MemoryMetadata
 - `source`*: SearchSource
 - `context`?: {
@@ -539,10 +653,10 @@ id, title, content, score, topicId, metadata, source, prev, next
 Required:
 id, title, content, topicId, metadata, createdAt
 
-- `id`*: number
+- `id`*: string
 - `title`*: string
 - `content`*: string
-- `topicId`*: number | null
+- `topicId`*: string | null
 - `metadata`*: MemoryMetadata
 - `createdAt`*: Date
 
@@ -550,7 +664,7 @@ id, title, content, topicId, metadata, createdAt
 Required:
 total
 
-- `kbId`?: number
+- `kbId`?: string
 - `kbName`?: string
 - `total`*: number
 - `lastUpdated`?: Date
@@ -567,14 +681,14 @@ id, role, content
 Required:
 kbId, content
 
-- `kbId`*: number
+- `kbId`*: string
 - `content`*: string
 
 ### IngestMessagesRequest
 Required:
 kbId, messages
 
-- `kbId`*: number
+- `kbId`*: string
 - `messages`*: IngestMessage[]
 
 ### IngestTextResponse
@@ -582,14 +696,14 @@ Required:
 count, memoryIds
 
 - `count`*: number
-- `memoryIds`*: number[]
+- `memoryIds`*: string[]
 - `topicsInvolved`?: string[]
 
 ### SearchRequest
 Required:
 kbId, query
 
-- `kbId`*: number
+- `kbId`*: string
 - `query`*: string
 - `top_k`?: number
 - `context_window`?: number
@@ -598,7 +712,7 @@ kbId, query
 Required:
 kbId
 
-- `kbId`*: number
+- `kbId`*: string
 - `page`?: number
 - `limit`?: number
 
@@ -606,17 +720,17 @@ kbId
 Required:
 id
 
-- `id`*: number
+- `id`*: string
 
 ### StatsRequest
 
-- `kbId`?: number
+- `kbId`?: string
 
 ### Vendor
 Required:
 id, name, url, isActive, createdAt, updatedAt
 
-- `id`*: number
+- `id`*: string
 - `name`*: string
 - `url`*: string
 - `chatModelClass`?: string | null
@@ -630,9 +744,9 @@ id, name, url, isActive, createdAt, updatedAt
 Required:
 id, name, vendorId, baseUrl, config, isActive, createdAt, updatedAt
 
-- `id`*: number
+- `id`*: string
 - `name`*: string
-- `vendorId`*: number
+- `vendorId`*: string
 - `vendor`?: Vendor
 - `apiKey`?: string
 - `baseUrl`*: string
@@ -645,8 +759,8 @@ id, name, vendorId, baseUrl, config, isActive, createdAt, updatedAt
 Required:
 id, providerId, name, modelType, config, isActive, isDefault, createdAt, updatedAt
 
-- `id`*: number
-- `providerId`*: number
+- `id`*: string
+- `providerId`*: string
 - `name`*: string
 - `displayName`?: string
 - `modelType`*: ModelType
@@ -661,7 +775,7 @@ Required:
 name, vendorId, baseUrl
 
 - `name`*: string
-- `vendorId`*: number
+- `vendorId`*: string
 - `apiKey`?: string
 - `baseUrl`*: string
 - `config`?: unknown
@@ -670,7 +784,7 @@ name, vendorId, baseUrl
 ### UpdateProviderRequest
 
 - `name`?: string
-- `vendorId`?: number
+- `vendorId`?: string
 - `apiKey`?: string
 - `baseUrl`?: string
 - `config`?: unknown
@@ -698,7 +812,7 @@ name
 Required:
 providerId, name, modelType
 
-- `providerId`*: number
+- `providerId`*: string
 - `name`*: string
 - `displayName`?: string
 - `modelType`*: ModelType
@@ -735,36 +849,82 @@ name
 Required:
 id, name, createdAt, updatedAt
 
-- `id`*: number
+- `id`*: string
 - `name`*: string
 - `description`?: string
 - `createdAt`*: Date
 - `updatedAt`*: Date
 
-### SessionMessage
+### ChatMessage
 Required:
-id, sessionId, role, content, metadata, createdAt
+id, conversationId, role, content, tokens, totalTokens, memoried, metadata, createdAt
 
-- `id`*: number
-- `sessionId`*: number
+- `id`*: string
+- `conversationId`*: string
 - `role`*: MessageRole
 - `content`*: string
-- `tokens`?: number
+- `tokens`*: number
+- `totalTokens`*: number
+- `memoried`*: boolean
 - `metadata`*: unknown
 - `createdAt`*: Date
+
+### ChatMessageListResult
+Required:
+messages, total, page, limit, conversationId
+
+- `messages`*: ChatMessage[]
+- `total`*: number
+- `page`*: number
+- `limit`*: number
+- `conversationId`*: string
 
 ### Session
 Required:
 id, modelType, modelName, provider, status, metadata, createdAt
 
-- `id`*: number
-- `kbId`?: number
-- `modelType`*: ModelType
+- `id`*: string
+- `kbId`?: string
+- `modelType`*: string
 - `modelName`*: string
 - `provider`*: string
-- `status`*: SessionStatus
+- `status`*: string
 - `error`?: string
 - `metadata`*: unknown
 - `createdAt`*: Date
 - `messages`?: SessionMessage[]
+
+### SessionMessage
+Required:
+id, sessionId, role, content, tokens, metadata, createdAt
+
+- `id`*: string
+- `sessionId`*: string
+- `role`*: string
+- `content`*: string
+- `tokens`*: number
+- `metadata`*: unknown
+- `createdAt`*: Date
+
+### ProviderTreeNode
+Required:
+id, name, vendorName, baseUrl, isActive, models
+
+- `id`*: string
+- `name`*: string
+- `vendorName`*: string
+- `baseUrl`*: string
+- `isActive`*: boolean
+- `models`*: ModelTreeNode[]
+
+### ModelTreeNode
+Required:
+id, name, displayName, modelType, isDefault, isActive
+
+- `id`*: string
+- `name`*: string
+- `displayName`*: string
+- `modelType`*: ModelType
+- `isDefault`*: boolean
+- `isActive`*: boolean
 

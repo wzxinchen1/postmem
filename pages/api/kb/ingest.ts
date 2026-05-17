@@ -13,7 +13,7 @@ export default async function handler(req: NextApiRequest, res: NextApiResponse)
 
   const body = req.body
 
-  if (!body.kbId || typeof body.kbId !== 'number') {
+  if (!body.kbId || typeof body.kbId !== 'string') {
     res.status(400).json({ success: false, error: Errors.badRequest('缺少必需字段: kbId') })
     return
   }

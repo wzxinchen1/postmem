@@ -3,7 +3,7 @@ export interface IngestResponse {
   success: boolean
   data?: {
     count: number
-    memoryIds: number[]
+    memoryIds: string[]
     memorizedMessageIds?: string[]
   }
   error?: {
@@ -21,7 +21,7 @@ export interface IngestProgressEvent {
     title?: string
     action?: 'insert' | 'skip' | 'merge' | 'new'
     count?: number
-    memoryIds?: number[]
+    memoryIds?: string[]
     topicsInvolved?: string[]
     message?: string
     code?: string
@@ -31,10 +31,10 @@ export interface IngestProgressEvent {
 export type SearchSource = 'dense' | 'sparse' | 'hybrid'
 
 export interface SearchResult {
-  id: number
+  id: string
   content: string
   score: number
-  topicId: number | null
+  topicId: string | null
   source: SearchSource
   metadata?: {
     cutModel?: string
@@ -59,9 +59,9 @@ export interface SearchResponse {
 }
 
 export interface ListItem {
-  id: number
+  id: string
   content: string
-  topicId: number | null
+  topicId: string | null
   metadata: Record<string, unknown>
   createdAt: string
 }
@@ -84,7 +84,7 @@ export interface DeleteResponse {
   success: boolean
   data?: {
     deleted: boolean
-    id: number
+    id: string
   }
   error?: {
     code: string
@@ -93,12 +93,12 @@ export interface DeleteResponse {
 }
 
 export interface StatsData {
-  kbId?: number
+  kbId?: string
   kbName?: string
   total?: number
   lastUpdated?: string
   kbNames?: Array<{
-    kbId: number
+    kbId: string
     kbName: string
     total: number
     lastUpdated: string
@@ -115,7 +115,7 @@ export interface StatsResponse {
 }
 
 export interface KnowledgeBaseInfo {
-  id: number
+  id: string
   name: string
   description?: string
   total: number

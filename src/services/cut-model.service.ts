@@ -2,22 +2,26 @@ import { HumanMessage, SystemMessage } from '@langchain/core/messages'
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { Errors } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
+import { logger } from '@/src/lib/logger'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelType, TopicMatchResult, TopicCreateInfo, BatchTopicPlan, TitledChunk } from '@/src/types'
 import { SessionService } from '@/src/services/session.service'
 import { VendorService } from './vendor.service'
+import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 
 export class CutModelService {
   private prisma: PrismaClient
   private sessionService: SessionService
   private vendorService: VendorService
+  private llmResilienceService: LLMResilienceService
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map<string, { model: Model; provider: Provider }>()
 
   private static readonly MAX_RETRIES = 5
 
-  constructor({ prisma, sessionService }: { prisma: PrismaClient; sessionService: SessionService }) {
+  constructor({ prisma, sessionService, llmResilienceService }: { prisma: PrismaClient; sessionService: SessionService; llmResilienceService: LLMResilienceService }) {
     this.prisma = prisma
     this.sessionService = sessionService
+    this.llmResilienceService = llmResilienceService
     this.vendorService = new VendorService({ prisma })
   }
 
@@ -66,6 +70,7 @@ export class CutModelService {
         vendor: {
           id: model.provider.vendor.id,
           name: model.provider.vendor.name,
+          url: model.provider.vendor.url,
           chatModelClass: model.provider.vendor.chatModelClass,
           embeddingModelClass: model.provider.vendor.embeddingModelClass,
           factoryCode: model.provider.vendor.factoryCode,
@@ -108,7 +113,7 @@ export class CutModelService {
     systemPrompt: string,
     model: Model,
     provider: Provider,
-    sessionId: number
+    sessionId: string
   ): Promise<string> {
     const chatModel = await this.createModel(model, provider)
 
@@ -147,15 +152,6 @@ export class CutModelService {
     return content
   }
 
-  private parseJSON<T>(response: string): T {
-    let jsonStr = response.trim()
-    const jsonMatch = jsonStr.match(/```(?:json)?\s*([\s\S]*?)```/)
-    if (jsonMatch) {
-      jsonStr = jsonMatch[1].trim()
-    }
-    return JSON.parse(jsonStr)
-  }
-
   /**
    * LLM 调用 + JSON 解析 + 格式校验，带自动重试
    * 校验不通过或调用异常时自动重试，超过 MAX_RETRIES 次后抛出错误
@@ -165,7 +161,7 @@ export class CutModelService {
     systemPrompt: string,
     model: Model,
     provider: Provider,
-    sessionId: number,
+    sessionId: string,
     validator: (parsed: unknown) => T
   ): Promise<T> {
     let lastError: Error | null = null
@@ -173,10 +169,16 @@ export class CutModelService {
     for (let attempt = 1; attempt <= CutModelService.MAX_RETRIES; attempt++) {
       try {
         const content = await this.callLLM(prompt, systemPrompt, model, provider, sessionId)
-        const parsed = this.parseJSON<unknown>(content)
+        const parsed = this.llmResilienceService.parseJSON<unknown>(content)
         return validator(parsed)
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
+
+        logger.error('[CutModelService] callLLMAndValidate 失败', {
+          attempt,
+          maxRetries: CutModelService.MAX_RETRIES,
+          errorMessage: lastError.message,
+        })
       }
     }
 
@@ -185,7 +187,7 @@ export class CutModelService {
     )
   }
 
-  async analyzeCutPoints(text: string, kbId?: number): Promise<CutPoint[]> {
+  async analyzeCutPoints(text: string, kbId?: string): Promise<CutPoint[]> {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
@@ -226,7 +228,7 @@ export class CutModelService {
     }))
   }
 
-  async analyzeMessageGroups(messages: IngestMessage[], kbId?: number): Promise<MessageGroup[]> {
+  async analyzeMessageGroups(messages: IngestMessage[], kbId?: string): Promise<MessageGroup[]> {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
@@ -268,7 +270,7 @@ export class CutModelService {
     }))
   }
 
-  async analyzeTextGroups(text: string, kbId?: number): Promise<MessageGroup[]> {
+  async analyzeTextGroups(text: string, kbId?: string): Promise<MessageGroup[]> {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
@@ -310,7 +312,7 @@ export class CutModelService {
     }))
   }
 
-  async cutAndRewrite(text: string, kbId?: number): Promise<TitledChunk[]> {
+  async cutAndRewrite(text: string, kbId?: string): Promise<TitledChunk[]> {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
@@ -356,7 +358,7 @@ export class CutModelService {
   async shouldIngestChunk(
     chunk: string,
     existingMemories: Array<{ id: number; content: string; score: number }>,
-    kbId?: number
+    kbId?: string
   ): Promise<{
     action: 'skip' | 'merge' | 'new'
     reason: string
@@ -435,7 +437,7 @@ export class CutModelService {
   async matchTopic(
     content: string,
     existingTopics: Array<{ name: string; description: string }>,
-    kbId?: number
+    kbId?: string
   ): Promise<TopicMatchResult> {
     const { model, provider } = await this.getDefaultModel()
 
@@ -482,7 +484,7 @@ export class CutModelService {
     }
   }
 
-  async createTopicInfo(content: string, kbId?: number): Promise<TopicCreateInfo> {
+  async createTopicInfo(content: string, kbId?: string): Promise<TopicCreateInfo> {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
@@ -529,7 +531,7 @@ export class CutModelService {
 
   async batchCreateTopics(
     proposedTopics: Array<{ name: string; sampleContent: string }>,
-    kbId?: number
+    kbId?: string
   ): Promise<TopicCreateInfo[]> {
     if (proposedTopics.length === 0) return []
 
@@ -582,7 +584,7 @@ export class CutModelService {
   async batchResolveTopics(
     chunks: TitledChunk[],
     existingTopics: Array<{ id: number; name: string; description: string }>,
-    kbId?: number
+    kbId?: string
   ): Promise<BatchTopicPlan> {
     const { model, provider } = await this.getDefaultModel()
 

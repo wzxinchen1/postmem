@@ -1,11 +1,28 @@
+
+-- 启用 PGRoonga 扩展（全文检索，TokenBigram 分词器原生支持中日韩文本）
+CREATE EXTENSION IF NOT EXISTS "pgroonga";
+
 CREATE EXTENSION IF NOT EXISTS "vector";
 -- CreateTable
+CREATE TABLE "topics" (
+    "id" TEXT NOT NULL,
+    "kb_id" TEXT NOT NULL,
+    "name" VARCHAR(200) NOT NULL,
+    "description" VARCHAR(500) NOT NULL,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL,
+
+    CONSTRAINT "topics_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
 CREATE TABLE "memories" (
-    "id" SERIAL NOT NULL,
-    "kb_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "kb_id" TEXT NOT NULL,
+    "topic_id" TEXT,
+    "title" VARCHAR(200) NOT NULL,
     "content" TEXT NOT NULL,
-    "embedding" vector,
-    "chunk_index" INTEGER NOT NULL,
+    "embedding" vector(1024),
     "metadata" JSONB NOT NULL DEFAULT '{}',
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
@@ -14,10 +31,11 @@ CREATE TABLE "memories" (
 
 -- CreateTable
 CREATE TABLE "vendors" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "name" VARCHAR(100) NOT NULL,
     "url" VARCHAR(255) NOT NULL,
     "chat_model_class" VARCHAR(100),
+    "embedding_model_class" VARCHAR(100),
     "factory_code" TEXT,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -28,7 +46,7 @@ CREATE TABLE "vendors" (
 
 -- CreateTable
 CREATE TABLE "providers" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "name" VARCHAR(100) NOT NULL,
     "api_key" TEXT,
     "base_url" VARCHAR(255) NOT NULL,
@@ -36,15 +54,15 @@ CREATE TABLE "providers" (
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
     "updated_at" TIMESTAMPTZ(6) NOT NULL,
-    "vendor_id" INTEGER NOT NULL,
+    "vendor_id" TEXT NOT NULL,
 
     CONSTRAINT "providers_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "models" (
-    "id" SERIAL NOT NULL,
-    "provider_id" INTEGER NOT NULL,
+    "id" TEXT NOT NULL,
+    "provider_id" TEXT NOT NULL,
     "name" VARCHAR(100) NOT NULL,
     "display_name" VARCHAR(150),
     "model_type" VARCHAR(50) NOT NULL,
@@ -59,7 +77,7 @@ CREATE TABLE "models" (
 
 -- CreateTable
 CREATE TABLE "knowledge_bases" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "name" VARCHAR(100) NOT NULL,
     "description" VARCHAR(500),
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -70,7 +88,7 @@ CREATE TABLE "knowledge_bases" (
 
 -- CreateTable
 CREATE TABLE "settings" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "key" VARCHAR(100) NOT NULL,
     "value" JSONB NOT NULL,
     "description" VARCHAR(255),
@@ -81,38 +99,61 @@ CREATE TABLE "settings" (
 );
 
 -- CreateTable
-CREATE TABLE "sessions" (
-    "id" SERIAL NOT NULL,
-    "kb_id" INTEGER,
-    "model_type" VARCHAR(50) NOT NULL,
-    "model_name" VARCHAR(100) NOT NULL,
-    "provider" VARCHAR(100) NOT NULL,
+CREATE TABLE "conversations" (
+    "id" TEXT NOT NULL,
+    "kb_id" TEXT,
     "status" VARCHAR(20) NOT NULL DEFAULT 'completed',
     "error" TEXT,
     "metadata" JSONB NOT NULL DEFAULT '{}',
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL,
 
-    CONSTRAINT "sessions_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "conversations_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
-CREATE TABLE "session_messages" (
-    "id" SERIAL NOT NULL,
-    "session_id" INTEGER NOT NULL,
+CREATE TABLE "chat_messages" (
+    "id" TEXT NOT NULL,
+    "conversation_id" TEXT NOT NULL,
     "role" VARCHAR(20) NOT NULL,
     "content" TEXT NOT NULL,
-    "tokens" INTEGER DEFAULT 0,
+    "tokens" INTEGER NOT NULL DEFAULT 0,
+    "total_tokens" INTEGER NOT NULL DEFAULT 0,
+    "memoried" BOOLEAN NOT NULL DEFAULT false,
     "metadata" JSONB NOT NULL DEFAULT '{}',
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
 
-    CONSTRAINT "session_messages_pkey" PRIMARY KEY ("id")
+    CONSTRAINT "chat_messages_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "web_pages" (
+    "id" TEXT NOT NULL,
+    "url" TEXT NOT NULL,
+    "title" TEXT,
+    "content" TEXT NOT NULL,
+    "keywords" TEXT[] DEFAULT ARRAY[]::TEXT[],
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL,
+
+    CONSTRAINT "web_pages_pkey" PRIMARY KEY ("id")
+);
+
+-- CreateTable
+CREATE TABLE "chat_settings" (
+    "id" TEXT NOT NULL,
+    "memory_context_threshold" INTEGER NOT NULL DEFAULT 50,
+    "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    "updated_at" TIMESTAMPTZ(6) NOT NULL,
+
+    CONSTRAINT "chat_settings_pkey" PRIMARY KEY ("id")
 );
 
 -- CreateTable
 CREATE TABLE "provider_options" (
-    "id" SERIAL NOT NULL,
+    "id" TEXT NOT NULL,
     "name" VARCHAR(100) NOT NULL,
-    "vendor_id" INTEGER NOT NULL,
+    "vendor_id" TEXT NOT NULL,
     "is_active" BOOLEAN NOT NULL DEFAULT true,
     "sort_order" INTEGER NOT NULL DEFAULT 0,
     "created_at" TIMESTAMPTZ(6) NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -122,10 +163,19 @@ CREATE TABLE "provider_options" (
 );
 
 -- CreateIndex
+CREATE INDEX "topics_kb_id_idx" ON "topics"("kb_id");
+
+-- CreateIndex
+CREATE UNIQUE INDEX "topics_kb_id_name_key" ON "topics"("kb_id", "name");
+
+-- CreateIndex
 CREATE INDEX "memories_kb_id_idx" ON "memories"("kb_id");
 
 -- CreateIndex
 CREATE INDEX "memories_created_at_idx" ON "memories"("created_at");
+
+-- CreateIndex
+CREATE INDEX "memories_topic_id_idx" ON "memories"("topic_id");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "vendors_name_key" ON "vendors"("name");
@@ -164,22 +214,22 @@ CREATE INDEX "knowledge_bases_name_idx" ON "knowledge_bases"("name");
 CREATE UNIQUE INDEX "settings_key_key" ON "settings"("key");
 
 -- CreateIndex
-CREATE INDEX "sessions_kb_id_idx" ON "sessions"("kb_id");
+CREATE INDEX "conversations_kb_id_idx" ON "conversations"("kb_id");
 
 -- CreateIndex
-CREATE INDEX "sessions_model_type_idx" ON "sessions"("model_type");
+CREATE INDEX "conversations_created_at_idx" ON "conversations"("created_at");
 
 -- CreateIndex
-CREATE INDEX "sessions_created_at_idx" ON "sessions"("created_at");
+CREATE INDEX "conversations_status_idx" ON "conversations"("status");
 
 -- CreateIndex
-CREATE INDEX "sessions_status_idx" ON "sessions"("status");
+CREATE INDEX "chat_messages_conversation_id_idx" ON "chat_messages"("conversation_id");
 
 -- CreateIndex
-CREATE INDEX "session_messages_session_id_idx" ON "session_messages"("session_id");
+CREATE INDEX "chat_messages_created_at_idx" ON "chat_messages"("created_at");
 
 -- CreateIndex
-CREATE INDEX "session_messages_created_at_idx" ON "session_messages"("created_at");
+CREATE UNIQUE INDEX "web_pages_url_key" ON "web_pages"("url");
 
 -- CreateIndex
 CREATE UNIQUE INDEX "provider_options_name_key" ON "provider_options"("name");
@@ -191,7 +241,13 @@ CREATE INDEX "provider_options_is_active_idx" ON "provider_options"("is_active")
 CREATE INDEX "provider_options_sort_order_idx" ON "provider_options"("sort_order");
 
 -- AddForeignKey
+ALTER TABLE "topics" ADD CONSTRAINT "topics_kb_id_fkey" FOREIGN KEY ("kb_id") REFERENCES "knowledge_bases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
 ALTER TABLE "memories" ADD CONSTRAINT "memories_kb_id_fkey" FOREIGN KEY ("kb_id") REFERENCES "knowledge_bases"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- AddForeignKey
+ALTER TABLE "memories" ADD CONSTRAINT "memories_topic_id_fkey" FOREIGN KEY ("topic_id") REFERENCES "topics"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "providers" ADD CONSTRAINT "providers_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "vendors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
@@ -200,10 +256,19 @@ ALTER TABLE "providers" ADD CONSTRAINT "providers_vendor_id_fkey" FOREIGN KEY ("
 ALTER TABLE "models" ADD CONSTRAINT "models_provider_id_fkey" FOREIGN KEY ("provider_id") REFERENCES "providers"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "sessions" ADD CONSTRAINT "sessions_kb_id_fkey" FOREIGN KEY ("kb_id") REFERENCES "knowledge_bases"("id") ON DELETE SET NULL ON UPDATE CASCADE;
+ALTER TABLE "conversations" ADD CONSTRAINT "conversations_kb_id_fkey" FOREIGN KEY ("kb_id") REFERENCES "knowledge_bases"("id") ON DELETE SET NULL ON UPDATE CASCADE;
 
 -- AddForeignKey
-ALTER TABLE "session_messages" ADD CONSTRAINT "session_messages_session_id_fkey" FOREIGN KEY ("session_id") REFERENCES "sessions"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+ALTER TABLE "chat_messages" ADD CONSTRAINT "chat_messages_conversation_id_fkey" FOREIGN KEY ("conversation_id") REFERENCES "conversations"("id") ON DELETE CASCADE ON UPDATE CASCADE;
 
 -- AddForeignKey
 ALTER TABLE "provider_options" ADD CONSTRAINT "provider_options_vendor_id_fkey" FOREIGN KEY ("vendor_id") REFERENCES "vendors"("id") ON DELETE CASCADE ON UPDATE CASCADE;
+
+-- 创建 PGRoonga 全文索引（Sparse 路：content &@ query 依赖此索引）
+CREATE INDEX IF NOT EXISTS "memories_content_pgroonga_idx" ON "memories" USING PGroonga ("content");
+
+-- 给 embedding 列添加维度声明（HNSW 索引必需）
+ALTER TABLE "memories" ALTER COLUMN "embedding" TYPE vector(1024);
+
+-- 创建 HNSW 向量索引（Dense 路：embedding <=> 向量 余弦距离检索）
+CREATE INDEX IF NOT EXISTS "memories_embedding_hnsw_idx" ON "memories" USING hnsw ("embedding" vector_cosine_ops) WITH (m = 16, ef_construction = 64);

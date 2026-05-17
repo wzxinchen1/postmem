@@ -16,7 +16,7 @@ export class VendorService {
     }) as Promise<Vendor[]>
   }
 
-  async get(id: number): Promise<Vendor | null> {
+  async get(id: string): Promise<Vendor | null> {
     return this.prisma.vendor.findUnique({
       where: { id },
     }) as Promise<Vendor | null>
@@ -38,7 +38,7 @@ export class VendorService {
     return vendor as Vendor
   }
 
-  async update(id: number, data: UpdateVendorRequest): Promise<Vendor> {
+  async update(id: string, data: UpdateVendorRequest): Promise<Vendor> {
     if (data.factoryCode) {
       this.validateCode(data.factoryCode)
     }
@@ -55,13 +55,13 @@ export class VendorService {
     }) as Promise<Vendor>
   }
 
-  async delete(id: number): Promise<void> {
+  async delete(id: string): Promise<void> {
     await this.prisma.vendor.delete({
       where: { id },
     })
   }
 
-  async exists(name: string, excludeId?: number): Promise<boolean> {
+  async exists(name: string, excludeId?: string): Promise<boolean> {
     const count = await this.prisma.vendor.count({
       where: {
         name,

@@ -279,6 +279,93 @@ ${topicsText}
 只返回 JSON。`
   }
 
+  static chatSystemRole(searchResult: string, memoryResult: string): string {
+    return `你是一个智能助手，拥有联网搜索和记忆搜索能力。
+
+## 当前时间
+${new Date().toLocaleString('zh-CN')}
+
+## 互联网搜索结果
+${searchResult}
+
+## 记忆搜索结果
+${memoryResult}
+
+## 指南
+1. 优先使用记忆搜索结果中的信息回答，因为这是用户的历史上下文
+2. 如果互联网搜索结果中有更新的信息，可以补充记忆中的内容
+3. 如果搜索结果为空或与问题无关，基于自身知识回答
+4. 回答时自然地融合信息，不要提及"搜索结果"或"记忆"等来源
+5. 使用中文回答`
+  }
+
+  static searchNeedsAnalysis(historyText: string, currentQuery: string): string {
+    return `你是一个智能搜索决策专家。请分析用户当前问题，判断是否需要搜索互联网和/或搜索记忆。
+
+## 最近对话历史（最多3轮）
+${historyText || '（暂无历史对话）'}
+
+## 当前问题
+${currentQuery}
+
+## 输出要求
+返回 JSON 格式：
+{
+  "searchWebReason": "解释为何要搜索互联网",
+  "searchWebMemoryReason": "解释为何要搜索记忆",
+  "needSearchWeb": true/false,
+  "webKeywords": ["关键词1", "关键词2"],
+  "needSearchMemory": true/false,
+  "memoryQuery": "搜索关键词（如果需要搜索记忆）"
+}
+
+## 判断标准
+
+### 搜索互联网的情况
+1. 用户询问实时信息（新闻、天气、股价等）
+2. 用户询问最新的技术、产品、事件
+3. 用户需要查找特定网站、资源、工具
+4. 对话历史中没有相关信息，需要外部知识
+5. 用户明确要求"搜索"、"查一下"、"帮我找"等
+
+### 不需要搜索互联网的情况
+1. 纯粹的通用知识问题（历史、科学原理等）
+2. 完全基于当前对话历史就能回答的问题
+3. 简单的问候、闲聊
+4. 创意写作、翻译、代码生成等任务
+
+### 搜索记忆的情况
+1. 用户消息中出现了在对话历史中信息很少的词
+2. 查询涉及用户个人信息、偏好、历史记录
+3. 查询上下文不明确，需要更多背景信息
+4. 用户提到"之前"、"上次"、"以前"等指向过去的词汇
+
+### 不需要搜索记忆的情况
+1. 纯粹的通用知识问题
+2. 完全基于当前对话历史就能回答的问题
+3. 简单的问候或闲聊
+
+只返回 JSON，不要其他内容。`
+  }
+
+  static confirmSearchWeb(historyText: string, currentQuery: string, webpagesText: string): string {
+    return `判断缓存的网页内容是否足以回答用户当前问题。
+
+## 最近对话历史
+${historyText || '（暂无历史对话）'}
+
+## 当前问题
+${currentQuery}
+
+## 已缓存的网页
+${webpagesText}
+
+如果缓存内容足以回答问题，返回 false（不需要重新搜索）。
+如果缓存内容不足，需要重新搜索，返回 true。
+
+只返回 true 或 false。`
+  }
+
   static batchTopicMatch(
     titledChunks: Array<{ index: number; title: string }>,
     existingTopics: Array<{ name: string; description: string }>

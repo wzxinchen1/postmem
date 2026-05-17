@@ -27,20 +27,16 @@ export type AggregateSessionMessage = {
 }
 
 export type SessionMessageAvgAggregateOutputType = {
-  id: number | null
-  sessionId: number | null
   tokens: number | null
 }
 
 export type SessionMessageSumAggregateOutputType = {
-  id: number | null
-  sessionId: number | null
   tokens: number | null
 }
 
 export type SessionMessageMinAggregateOutputType = {
-  id: number | null
-  sessionId: number | null
+  id: string | null
+  sessionId: string | null
   role: string | null
   content: string | null
   tokens: number | null
@@ -48,8 +44,8 @@ export type SessionMessageMinAggregateOutputType = {
 }
 
 export type SessionMessageMaxAggregateOutputType = {
-  id: number | null
-  sessionId: number | null
+  id: string | null
+  sessionId: string | null
   role: string | null
   content: string | null
   tokens: number | null
@@ -69,14 +65,10 @@ export type SessionMessageCountAggregateOutputType = {
 
 
 export type SessionMessageAvgAggregateInputType = {
-  id?: true
-  sessionId?: true
   tokens?: true
 }
 
 export type SessionMessageSumAggregateInputType = {
-  id?: true
-  sessionId?: true
   tokens?: true
 }
 
@@ -196,11 +188,11 @@ export type SessionMessageGroupByArgs<ExtArgs extends runtime.Types.Extensions.I
 }
 
 export type SessionMessageGroupByOutputType = {
-  id: number
-  sessionId: number
+  id: string
+  sessionId: string
   role: string
   content: string
-  tokens: number | null
+  tokens: number
   metadata: runtime.JsonValue
   createdAt: Date
   _count: SessionMessageCountAggregateOutputType | null
@@ -229,11 +221,11 @@ export type SessionMessageWhereInput = {
   AND?: Prisma.SessionMessageWhereInput | Prisma.SessionMessageWhereInput[]
   OR?: Prisma.SessionMessageWhereInput[]
   NOT?: Prisma.SessionMessageWhereInput | Prisma.SessionMessageWhereInput[]
-  id?: Prisma.IntFilter<"SessionMessage"> | number
-  sessionId?: Prisma.IntFilter<"SessionMessage"> | number
+  id?: Prisma.StringFilter<"SessionMessage"> | string
+  sessionId?: Prisma.StringFilter<"SessionMessage"> | string
   role?: Prisma.StringFilter<"SessionMessage"> | string
   content?: Prisma.StringFilter<"SessionMessage"> | string
-  tokens?: Prisma.IntNullableFilter<"SessionMessage"> | number | null
+  tokens?: Prisma.IntFilter<"SessionMessage"> | number
   metadata?: Prisma.JsonFilter<"SessionMessage">
   createdAt?: Prisma.DateTimeFilter<"SessionMessage"> | Date | string
   session?: Prisma.XOR<Prisma.SessionScalarRelationFilter, Prisma.SessionWhereInput>
@@ -244,21 +236,21 @@ export type SessionMessageOrderByWithRelationInput = {
   sessionId?: Prisma.SortOrder
   role?: Prisma.SortOrder
   content?: Prisma.SortOrder
-  tokens?: Prisma.SortOrderInput | Prisma.SortOrder
+  tokens?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   session?: Prisma.SessionOrderByWithRelationInput
 }
 
 export type SessionMessageWhereUniqueInput = Prisma.AtLeast<{
-  id?: number
+  id?: string
   AND?: Prisma.SessionMessageWhereInput | Prisma.SessionMessageWhereInput[]
   OR?: Prisma.SessionMessageWhereInput[]
   NOT?: Prisma.SessionMessageWhereInput | Prisma.SessionMessageWhereInput[]
-  sessionId?: Prisma.IntFilter<"SessionMessage"> | number
+  sessionId?: Prisma.StringFilter<"SessionMessage"> | string
   role?: Prisma.StringFilter<"SessionMessage"> | string
   content?: Prisma.StringFilter<"SessionMessage"> | string
-  tokens?: Prisma.IntNullableFilter<"SessionMessage"> | number | null
+  tokens?: Prisma.IntFilter<"SessionMessage"> | number
   metadata?: Prisma.JsonFilter<"SessionMessage">
   createdAt?: Prisma.DateTimeFilter<"SessionMessage"> | Date | string
   session?: Prisma.XOR<Prisma.SessionScalarRelationFilter, Prisma.SessionWhereInput>
@@ -269,7 +261,7 @@ export type SessionMessageOrderByWithAggregationInput = {
   sessionId?: Prisma.SortOrder
   role?: Prisma.SortOrder
   content?: Prisma.SortOrder
-  tokens?: Prisma.SortOrderInput | Prisma.SortOrder
+  tokens?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.SessionMessageCountOrderByAggregateInput
@@ -283,77 +275,80 @@ export type SessionMessageScalarWhereWithAggregatesInput = {
   AND?: Prisma.SessionMessageScalarWhereWithAggregatesInput | Prisma.SessionMessageScalarWhereWithAggregatesInput[]
   OR?: Prisma.SessionMessageScalarWhereWithAggregatesInput[]
   NOT?: Prisma.SessionMessageScalarWhereWithAggregatesInput | Prisma.SessionMessageScalarWhereWithAggregatesInput[]
-  id?: Prisma.IntWithAggregatesFilter<"SessionMessage"> | number
-  sessionId?: Prisma.IntWithAggregatesFilter<"SessionMessage"> | number
+  id?: Prisma.StringWithAggregatesFilter<"SessionMessage"> | string
+  sessionId?: Prisma.StringWithAggregatesFilter<"SessionMessage"> | string
   role?: Prisma.StringWithAggregatesFilter<"SessionMessage"> | string
   content?: Prisma.StringWithAggregatesFilter<"SessionMessage"> | string
-  tokens?: Prisma.IntNullableWithAggregatesFilter<"SessionMessage"> | number | null
+  tokens?: Prisma.IntWithAggregatesFilter<"SessionMessage"> | number
   metadata?: Prisma.JsonWithAggregatesFilter<"SessionMessage">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"SessionMessage"> | Date | string
 }
 
 export type SessionMessageCreateInput = {
+  id?: string
   role: string
   content: string
-  tokens?: number | null
+  tokens?: number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   session: Prisma.SessionCreateNestedOneWithoutMessagesInput
 }
 
 export type SessionMessageUncheckedCreateInput = {
-  id?: number
-  sessionId: number
+  id?: string
+  sessionId: string
   role: string
   content: string
-  tokens?: number | null
+  tokens?: number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type SessionMessageUpdateInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  tokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  tokens?: Prisma.IntFieldUpdateOperationsInput | number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   session?: Prisma.SessionUpdateOneRequiredWithoutMessagesNestedInput
 }
 
 export type SessionMessageUncheckedUpdateInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  sessionId?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  tokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  tokens?: Prisma.IntFieldUpdateOperationsInput | number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type SessionMessageCreateManyInput = {
-  id?: number
-  sessionId: number
+  id?: string
+  sessionId: string
   role: string
   content: string
-  tokens?: number | null
+  tokens?: number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type SessionMessageUpdateManyMutationInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  tokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  tokens?: Prisma.IntFieldUpdateOperationsInput | number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type SessionMessageUncheckedUpdateManyInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
-  sessionId?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
+  sessionId?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  tokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  tokens?: Prisma.IntFieldUpdateOperationsInput | number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -379,8 +374,6 @@ export type SessionMessageCountOrderByAggregateInput = {
 }
 
 export type SessionMessageAvgOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  sessionId?: Prisma.SortOrder
   tokens?: Prisma.SortOrder
 }
 
@@ -403,8 +396,6 @@ export type SessionMessageMinOrderByAggregateInput = {
 }
 
 export type SessionMessageSumOrderByAggregateInput = {
-  id?: Prisma.SortOrder
-  sessionId?: Prisma.SortOrder
   tokens?: Prisma.SortOrder
 }
 
@@ -451,18 +442,19 @@ export type SessionMessageUncheckedUpdateManyWithoutSessionNestedInput = {
 }
 
 export type SessionMessageCreateWithoutSessionInput = {
+  id?: string
   role: string
   content: string
-  tokens?: number | null
+  tokens?: number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type SessionMessageUncheckedCreateWithoutSessionInput = {
-  id?: number
+  id?: string
   role: string
   content: string
-  tokens?: number | null
+  tokens?: number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -497,46 +489,47 @@ export type SessionMessageScalarWhereInput = {
   AND?: Prisma.SessionMessageScalarWhereInput | Prisma.SessionMessageScalarWhereInput[]
   OR?: Prisma.SessionMessageScalarWhereInput[]
   NOT?: Prisma.SessionMessageScalarWhereInput | Prisma.SessionMessageScalarWhereInput[]
-  id?: Prisma.IntFilter<"SessionMessage"> | number
-  sessionId?: Prisma.IntFilter<"SessionMessage"> | number
+  id?: Prisma.StringFilter<"SessionMessage"> | string
+  sessionId?: Prisma.StringFilter<"SessionMessage"> | string
   role?: Prisma.StringFilter<"SessionMessage"> | string
   content?: Prisma.StringFilter<"SessionMessage"> | string
-  tokens?: Prisma.IntNullableFilter<"SessionMessage"> | number | null
+  tokens?: Prisma.IntFilter<"SessionMessage"> | number
   metadata?: Prisma.JsonFilter<"SessionMessage">
   createdAt?: Prisma.DateTimeFilter<"SessionMessage"> | Date | string
 }
 
 export type SessionMessageCreateManySessionInput = {
-  id?: number
+  id?: string
   role: string
   content: string
-  tokens?: number | null
+  tokens?: number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
 
 export type SessionMessageUpdateWithoutSessionInput = {
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  tokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  tokens?: Prisma.IntFieldUpdateOperationsInput | number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type SessionMessageUncheckedUpdateWithoutSessionInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  tokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  tokens?: Prisma.IntFieldUpdateOperationsInput | number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
 
 export type SessionMessageUncheckedUpdateManyWithoutSessionInput = {
-  id?: Prisma.IntFieldUpdateOperationsInput | number
+  id?: Prisma.StringFieldUpdateOperationsInput | string
   role?: Prisma.StringFieldUpdateOperationsInput | string
   content?: Prisma.StringFieldUpdateOperationsInput | string
-  tokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
+  tokens?: Prisma.IntFieldUpdateOperationsInput | number
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -603,11 +596,11 @@ export type $SessionMessagePayload<ExtArgs extends runtime.Types.Extensions.Inte
     session: Prisma.$SessionPayload<ExtArgs>
   }
   scalars: runtime.Types.Extensions.GetPayloadResult<{
-    id: number
-    sessionId: number
+    id: string
+    sessionId: string
     role: string
     content: string
-    tokens: number | null
+    tokens: number
     metadata: runtime.JsonValue
     createdAt: Date
   }, ExtArgs["result"]["sessionMessage"]>
@@ -1034,8 +1027,8 @@ export interface Prisma__SessionMessageClient<T, Null = never, ExtArgs extends r
  * Fields of the SessionMessage model
  */
 export interface SessionMessageFieldRefs {
-  readonly id: Prisma.FieldRef<"SessionMessage", 'Int'>
-  readonly sessionId: Prisma.FieldRef<"SessionMessage", 'Int'>
+  readonly id: Prisma.FieldRef<"SessionMessage", 'String'>
+  readonly sessionId: Prisma.FieldRef<"SessionMessage", 'String'>
   readonly role: Prisma.FieldRef<"SessionMessage", 'String'>
   readonly content: Prisma.FieldRef<"SessionMessage", 'String'>
   readonly tokens: Prisma.FieldRef<"SessionMessage", 'Int'>
