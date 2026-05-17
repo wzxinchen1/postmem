@@ -21,7 +21,7 @@ export class PostMemClient {
     this.streamReader = new StreamReader(config.redis)
   }
 
-  private fetchWithTimeout(url: string, options: RequestInit): Promise<Response> {
+  private fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
     const controller = new AbortController()
     const timer = setTimeout(() => controller.abort(), this.requestTimeout)
     return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer))
