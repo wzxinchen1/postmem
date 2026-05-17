@@ -1,5 +1,5 @@
 {
-  "name": "postmem",
+  "name": "postmem-sdk",
   "version": "1.0.0",
   "description": "PostMem client SDK - chat with Redis Stream consumption",
   "main": "dist/index.js",
