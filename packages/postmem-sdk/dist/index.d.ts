@@ -10,7 +10,16 @@ declare enum StreamStatus {
     SearchingWeb = "searchingWeb",
     SearchingMemory = "searchingMemory",
     Summarizing = "summarizing",
-    MemoryProgress = "memoryProgress"
+    MemoryProgress = "memoryProgress",
+    Thinking = "thinking"
+}
+declare enum ThinkingEffort {
+    None = "none",
+    Minimal = "minimal",
+    Low = "low",
+    Medium = "medium",
+    High = "high",
+    XHigh = "xhigh"
 }
 declare enum DoneReason {
     Truncated = "truncated",
@@ -24,6 +33,9 @@ type StreamEvent = {
         id: string;
         name: string;
     };
+} | {
+    type: 'thinking';
+    content: string;
 } | {
     type: 'status';
     status: StreamStatus;
@@ -54,6 +66,8 @@ interface ChatRequest {
     regenerateMessageId?: string;
     modelId: string;
     kbId: string;
+    enableThinking?: boolean;
+    thinkingEffort?: ThinkingEffort;
 }
 interface ChatMessage {
     id: string;

@@ -87,7 +87,8 @@ export function createModel(vendor: {
   }
 
   if (vendor.factoryCode) {
-    const factory = executeFactoryCode(vendor.factoryCode)
+    const code = Buffer.from(vendor.factoryCode, 'base64').toString('utf-8')
+    const factory = executeFactoryCode(code)
     return factory.createModel({ ...params })
   }
 

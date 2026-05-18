@@ -25,6 +25,16 @@ export enum StreamStatus {
   SearchingMemory = 'searchingMemory',
   Summarizing = 'summarizing',
   MemoryProgress = 'memoryProgress',
+  Thinking = 'thinking',
+}
+
+export enum ThinkingEffort {
+  None = 'none',
+  Minimal = 'minimal',
+  Low = 'low',
+  Medium = 'medium',
+  High = 'high',
+  XHigh = 'xhigh',
 }
 
 export enum DoneReason {
@@ -35,6 +45,7 @@ export enum DoneReason {
 
 export type StreamEvent =
   | { type: 'chunk'; content: string; model: { id: string; name: string } }
+  | { type: 'thinking'; content: string }
   | { type: 'status'; status: StreamStatus }
   | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
   | { type: 'error'; message: string }
@@ -52,6 +63,8 @@ export interface ChatRequest {
   regenerateMessageId?: string
   modelId: string
   kbId: string
+  enableThinking?: boolean
+  thinkingEffort?: ThinkingEffort
 }
 
 export interface ChatMessage {

@@ -485,6 +485,8 @@ export interface ChatCompletionRequest {
   regenerateMessageId?: string
   modelId: string
   kbId: string
+  enableThinking?: boolean
+  thinkingEffort?: ThinkingEffort
 }
 
 /**
@@ -525,6 +527,15 @@ export enum StreamStatus {
   MemoryProgress = 'memoryProgress',
 }
 
+export enum ThinkingEffort {
+  None = 'none',
+  Minimal = 'minimal',
+  Low = 'low',
+  Medium = 'medium',
+  High = 'high',
+  XHigh = 'xhigh',
+}
+
 export enum DoneReason {
   Truncated = 'truncated',
   InsufficientBalance = 'insufficient_balance',
@@ -536,6 +547,7 @@ export enum DoneReason {
  */
 export type StreamEvent =
   | { type: 'chunk'; content: string; model: { id: string; name: string } }
+  | { type: 'thinking'; content: string }
   | { type: 'status'; status: StreamStatus }
   | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
   | { type: 'error'; message: string }

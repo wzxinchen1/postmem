@@ -4,6 +4,7 @@ import type {
   CreateModelRequest,
   UpdateModelRequest,
 } from '@/src/types'
+import { Errors } from '@/src/lib/errors'
 
 /**
  * 模型服务

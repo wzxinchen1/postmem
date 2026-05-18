@@ -1,12 +1,7 @@
 /**
  * DeepSeek 厂商 - 自定义工厂（支持 reasoning / thinking）
  */
-export const deepseek = {
-  name: 'DeepSeek',
-  url: 'https://api.deepseek.com',
-  chatModelClass: null,
-  embeddingModelClass: 'OpenAIEmbeddings',
-  factoryCode: `const { BaseChatModel } = require('@langchain/core/language_models/chat_models')
+const factoryCode = `const { BaseChatModel } = require('@langchain/core/language_models/chat_models')
 const { AIMessage, AIMessageChunk } = require('@langchain/core/messages')
 const { ChatGenerationChunk } = require('@langchain/core/outputs')
 
@@ -24,6 +19,26 @@ class DeepSeekChatModel extends BaseChatModel {
 
   _llmType() {
     return 'deepseek'
+  }
+
+  _mapReasoningEffort(effort) {
+    const map = {
+      none: null,
+      minimal: 'high',
+      low: 'high',
+      medium: 'high',
+      high: 'high',
+      xhigh: 'max',
+    }
+    return map[effort] ?? 'high'
+  }
+
+  _buildThinkingBody() {
+    if (!this.reasoning || this.reasoningEffort === 'none') return undefined
+    const mapped = this._mapReasoningEffort(this.reasoningEffort)
+    const body = { type: 'enabled' }
+    if (mapped) body.reasoning_effort = mapped
+    return body
   }
 
   _buildMessages(messages) {
@@ -51,10 +66,8 @@ class DeepSeekChatModel extends BaseChatModel {
       temperature: this.temperature,
     }
     if (this.maxTokens) body.max_tokens = this.maxTokens
-    if (this.reasoning) {
-      body.thinking = { type: 'enabled' }
-      if (this.reasoningEffort) body.thinking.reasoning_effort = this.reasoningEffort
-    }
+    const thinking = this._buildThinkingBody()
+    if (thinking) body.thinking = thinking
 
     const response = await fetch(this.baseUrl + '/chat/completions', {
       method: 'POST',
@@ -97,7 +110,7 @@ class DeepSeekChatModel extends BaseChatModel {
     }
   }
 
-  async *_stream(messages) {
+  async *_streamResponseChunks(messages, options, runManager) {
     const body = {
       model: this.modelName,
       messages: this._buildMessages(messages),
@@ -105,10 +118,8 @@ class DeepSeekChatModel extends BaseChatModel {
       temperature: this.temperature,
     }
     if (this.maxTokens) body.max_tokens = this.maxTokens
-    if (this.reasoning) {
-      body.thinking = { type: 'enabled' }
-      if (this.reasoningEffort) body.thinking.reasoning_effort = this.reasoningEffort
-    }
+    const thinking = this._buildThinkingBody()
+    if (thinking) body.thinking = thinking
 
     const response = await fetch(this.baseUrl + '/chat/completions', {
       method: 'POST',
@@ -182,6 +193,13 @@ module.exports = {
   createModel(params) {
     return new DeepSeekChatModel(params)
   }
-}`,
+}`
+
+export const deepseek = {
+  name: 'DeepSeek',
+  url: 'https://api.deepseek.com',
+  chatModelClass: null,
+  embeddingModelClass: 'OpenAIEmbeddings',
+  factoryCode: Buffer.from(factoryCode).toString('base64'),
   isActive: true,
 }

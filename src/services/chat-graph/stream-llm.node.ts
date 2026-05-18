@@ -18,7 +18,16 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
     let finishReason = ''
 
     try {
+      logger.info('[ChatGraph] streamLLM 开始', {
+        conversationId: state.conversationId,
+        enableThinking: (state as any).enableThinking,
+        thinkingEffort: (state as any).thinkingEffort,
+        finalMessageCount: state.finalMessages.length,
+      })
       const stream = await (state.agent as { stream: (messages: unknown[]) => AsyncIterable<Record<string, unknown>> }).stream(state.finalMessages)
+
+      let thinkingCount = 0
+      let chunkCount = 0
 
       for await (const chunk of stream) {
         if (chunk.usage_metadata) {
@@ -35,10 +44,25 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
           finishReason = String(meta.finish_reason ?? '')
         }
 
+        if (chunk.additional_kwargs?.type === 'reasoning') {
+          const thinkingContent = chunk.content ?? ''
+          if (thinkingContent) {
+            thinkingCount++
+            logger.debug('[ChatGraph] thinking chunk', { index: thinkingCount, contentLength: thinkingContent.length, content: thinkingContent.slice(0, 100) })
+            if (await deps.sseService.isCancelled(state.conversationId)) {
+              break
+            }
+            await deps.sseService.emit({ type: 'thinking', content: thinkingContent })
+          }
+          continue
+        }
+
         const content = chunk.content ?? ''
         fullContent += content
 
         if (content) {
+          chunkCount++
+          logger.debug('[ChatGraph] content chunk', { index: chunkCount, contentLength: content.length, content: content.slice(0, 100) })
           if (await deps.sseService.isCancelled(state.conversationId)) {
             break
           }
@@ -49,7 +73,9 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
           })
         }
       }
+      logger.info('[ChatGraph] streamLLM 流结束', { thinkingCount, chunkCount, fullContentLength: fullContent.length })
     } catch (err) {
+      logger.error('[ChatGraph] streamLLM 异常', { conversationId: state.conversationId, error: err })
       if (isInsufficientBalanceError(err)) {
         logger.error('[ChatGraph] 提供商 API 欠费', { conversationId: state.conversationId, errorMessage: (err as Error).message })
         await deps.sseService.emit({ type: 'done', reason: DoneReason.InsufficientBalance })
@@ -70,13 +96,6 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
     for (const m of historyMessages) {
       const before = remaining
       remaining -= m.tokens
-      logger.info('[ChatGraph] 倒减步骤', {
-        msgId: m.id,
-        role: m.role,
-        subtract: m.tokens,
-        before,
-        after: remaining,
-      })
     }
 
     const userTokens = remaining

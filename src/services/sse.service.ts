@@ -15,6 +15,7 @@ export enum DoneReason {
 
 export type StreamEvent =
   | { type: 'chunk'; content: string; model: { id: string; name: string } }
+  | { type: 'thinking'; content: string }
   | { type: 'status'; status: StreamStatus }
   | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
   | { type: 'error'; message: string }

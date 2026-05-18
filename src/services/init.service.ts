@@ -45,7 +45,7 @@ export class InitService {
     const existingNames = new Set(providers.map((p) => p.name))
 
     const configs = [
-      { name: 'Ollama 本地', vendorName: 'Ollama 本地', baseUrl: 'http://localhost:11434', apiKey: undefined },
+      { name: 'Ollama 本地', vendorName: 'Ollama 本地', baseUrl: 'http://192.168.50.236:11434', apiKey: undefined },
       { name: 'DeepSeek', vendorName: 'DeepSeek', baseUrl: 'https://api.deepseek.com', apiKey: process.env.DEEPSEEK_API_KEY },
     ]
 
@@ -110,6 +110,8 @@ export class InitService {
         vendorId: vendor.id,
         baseUrl: config.baseUrl,
         apiKey: config.apiKey,
+        config: {},
+        isActive: true,
       })
 
       const createdModels: string[] = []
@@ -122,6 +124,8 @@ export class InitService {
           providerId: provider.id,
           name: modelName,
           modelType,
+          isDefault: false,
+          isActive: true,
         })
         createdModels.push(modelName)
       }

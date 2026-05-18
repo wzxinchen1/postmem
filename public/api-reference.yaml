@@ -41,6 +41,8 @@ Request Body:
   - `regenerateMessageId`: string (required)
   - `modelId`: string (required)
   - `kbId`: string (required)
+  - `enableThinking`: string (required)
+  - `thinkingEffort`: string (required)
 
 Response Body:
   200: 成功响应 (object)

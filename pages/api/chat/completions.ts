@@ -1,12 +1,13 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ChatService } from '@/src/services/chat.service'
+import { ConversationService } from '@/src/services/conversation.service'
 import { SSEService } from '@/src/services/sse.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 import { logger } from '@/src/lib/logger'
-import { Errors } from '@/src/lib/errors'
 
 interface Deps {
   chatService: ChatService
+  conversationService: ConversationService
   sseService: SSEService
 }
 
@@ -14,7 +15,7 @@ export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['chatService', 'conversationService', 'sseService'],
   handler: async (req, res, deps) => {
-    const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId } = req.body
+    const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId, enableThinking, thinkingEffort } = req.body
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return errorResponse(res, 'BAD_REQUEST', 'messages 不能为空')
@@ -71,11 +72,13 @@ export default createApiHandler<Deps>({
       regenerateMessageId,
       modelId,
       kbId,
+      enableThinking,
+      thinkingEffort,
     }).then(() => {
       logger.info('[completions] chat completed')
     }).catch(error => {
       logger.error('[completions] Chat error', { errorMessage: error.message, stack: error.stack })
-      deps.sseService.emit(convId, { type: 'error', content: error.message })
+      deps.sseService.emit({ type: 'error', message: error.message })
     })
 
     return successResponse(res, { conversationId: convId })

@@ -18,6 +18,12 @@ export function createInitNode(deps: GraphDependencies) {
     }
 
     const chatSetting = await deps.chatSettingService.get()
+    logger.info('[ChatGraph] init 创建模型', {
+      modelId: state.modelId,
+      modelName: model.name,
+      enableThinking: state.enableThinking,
+      thinkingEffort: state.thinkingEffort,
+    })
     const agent = deps.chatModelFactory.createAgent(provider.vendor, {
       model: model.name,
       apiKey: provider.apiKey,
