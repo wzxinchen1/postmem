@@ -1,7 +1,7 @@
 {
   "name": "postmem-sdk",
-  "version": "1.0.3",
-  "description": "PostMem client SDK - chat with Redis Stream consumption",
+  "version": "1.0.5",
+  "description": "PostMem client SDK - chat with HTTP SSE streaming",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "exports": {
@@ -18,9 +18,7 @@
     "build": "tsup",
     "prepublishOnly": "pnpm run build"
   },
-  "dependencies": {
-    "ioredis": "^5.6.0"
-  },
+  "dependencies": {},
   "peerDependencies": {},
   "devDependencies": {
     "tsup": "^8.4.0",
@@ -31,7 +29,7 @@
     "postmem",
     "sdk",
     "chat",
-    "redis-stream"
+    "sse"
   ],
   "engines": {
     "node": ">=18.0.0"

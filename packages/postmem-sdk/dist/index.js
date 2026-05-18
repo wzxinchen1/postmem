@@ -1,9 +1,7 @@
 "use strict";
-var __create = Object.create;
 var __defProp = Object.defineProperty;
 var __getOwnPropDesc = Object.getOwnPropertyDescriptor;
 var __getOwnPropNames = Object.getOwnPropertyNames;
-var __getProtoOf = Object.getPrototypeOf;
 var __hasOwnProp = Object.prototype.hasOwnProperty;
 var __export = (target, all) => {
   for (var name in all)
@@ -17,14 +15,6 @@ var __copyProps = (to, from, except, desc) => {
   }
   return to;
 };
-var __toESM = (mod, isNodeMode, target) => (target = mod != null ? __create(__getProtoOf(mod)) : {}, __copyProps(
-  // If the importer is in node compatibility mode or this is not an ESM
-  // file that has been converted to a CommonJS file using a Babel-
-  // compatible transform (i.e. "__esModule" has not been set), then set
-  // "default" to the CommonJS "module.exports" for node compatibility.
-  isNodeMode || !mod || !mod.__esModule ? __defProp(target, "default", { value: mod, enumerable: true }) : target,
-  mod
-));
 var __toCommonJS = (mod) => __copyProps(__defProp({}, "__esModule", { value: true }), mod);
 
 // src/index.ts
@@ -37,44 +27,56 @@ __export(index_exports, {
 module.exports = __toCommonJS(index_exports);
 
 // src/stream-reader.ts
-var import_ioredis = __toESM(require("ioredis"));
-var GLOBAL_STREAM_KEY = "chat:global";
-var POLL_INTERVAL_MS = 200;
 var StreamReader = class {
   constructor(config) {
-    this.redis = new import_ioredis.default({
-      host: config.host,
-      port: config.port,
-      db: config.db ?? 5,
-      password: config.password,
-      enableReadyCheck: false,
-      maxRetriesPerRequest: null
-    });
+    this.baseUrl = config.baseUrl.replace(/\/+$/, "");
+    this.requestTimeout = config.requestTimeout ?? 3e5;
   }
   async consume(onEvent) {
     if (typeof onEvent !== "function") {
       throw new Error("onEvent callback is required");
     }
-    let lastId = "0-0";
-    while (true) {
-      const result = await this.redis.xread("STREAMS", GLOBAL_STREAM_KEY, lastId);
-      if (result && result.length > 0) {
-        const [, messages] = result[0];
-        for (const [msgId, fields] of messages) {
-          lastId = msgId;
-          const parsed = {};
-          for (let i = 0; i < fields.length; i += 2) {
-            parsed[fields[i]] = fields[i + 1];
+    const controller = new AbortController();
+    const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
+    try {
+      const response = await fetch(`${this.baseUrl}/api/chat/stream`, {
+        signal: controller.signal
+      });
+      if (!response.ok) {
+        throw new Error(`Stream request failed: ${response.status}`);
+      }
+      const reader = response.body?.getReader();
+      if (!reader) {
+        throw new Error("Failed to get response reader");
+      }
+      const decoder = new TextDecoder();
+      let buffer = "";
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split("\n");
+        buffer = lines.pop() || "";
+        for (const line of lines) {
+          const trimmed = line.trim();
+          if (!trimmed.startsWith("data:")) continue;
+          const jsonStr = trimmed.slice(5).trim();
+          if (!jsonStr || jsonStr === "[DONE]") continue;
+          let event;
+          try {
+            event = JSON.parse(jsonStr);
+          } catch {
+            continue;
           }
-          const event = JSON.parse(parsed.data);
           onEvent(event);
+          if (event.type === "done" || event.type === "error") {
+            return;
+          }
         }
       }
-      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    } finally {
+      clearTimeout(timeoutId);
     }
-  }
-  async disconnect() {
-    await this.redis.quit();
   }
 };
 
@@ -93,7 +95,10 @@ var PostMemClient = class {
   constructor(config) {
     this.baseUrl = config.baseUrl;
     this.requestTimeout = config.requestTimeout ?? 3e4;
-    this.streamReader = new StreamReader(config.redis);
+    this.streamReader = new StreamReader({
+      baseUrl: config.baseUrl,
+      requestTimeout: config.streamTimeout ?? 3e5
+    });
   }
   fetchWithTimeout(url, options) {
     const controller = new AbortController();
@@ -116,8 +121,68 @@ var PostMemClient = class {
     }
     return conversationId;
   }
-  async consume(onEvent) {
-    await this.streamReader.consume(onEvent);
+  async consume(onEvent, options) {
+    if (onEvent) {
+      let fullContent = "";
+      let promptTokens = 0;
+      let completionTokens = 0;
+      let conversationId = "";
+      await this.streamReader.consume((event) => {
+        onEvent(event);
+        switch (event.type) {
+          case "chunk":
+            fullContent += event.content;
+            break;
+          case "usage":
+            promptTokens = event.promptTokens;
+            completionTokens = event.completionTokens;
+            break;
+        }
+      });
+      return { conversationId, fullContent, promptTokens, completionTokens };
+    }
+    const encoder = new TextEncoder();
+    const reader = this.streamReader;
+    const stream = new ReadableStream({
+      async start(controller) {
+        const signal = options?.signal;
+        if (signal) {
+          if (signal.aborted) {
+            controller.close();
+            return;
+          }
+          signal.addEventListener("abort", () => controller.close(), { once: true });
+        }
+        const keepAliveInterval = setInterval(() => {
+          if (signal?.aborted) {
+            clearInterval(keepAliveInterval);
+            return;
+          }
+          controller.enqueue(encoder.encode(`: keep-alive
+
+`));
+        }, 3e4);
+        try {
+          await reader.consume((event) => {
+            const data = JSON.stringify(event);
+            controller.enqueue(encoder.encode(`data: ${data}
+
+`));
+          });
+        } finally {
+          clearInterval(keepAliveInterval);
+        }
+        controller.close();
+      }
+    });
+    return new Response(stream, {
+      headers: {
+        "Content-Type": "text/event-stream",
+        "Cache-Control": "no-cache",
+        "Connection": "keep-alive",
+        "X-Accel-Buffering": "no"
+      }
+    });
   }
   async cancel(conversationId) {
     const response = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/cancel`, {
@@ -178,9 +243,6 @@ var PostMemClient = class {
     if (!res.ok) {
       throw new Error(`Delete conversation failed: ${res.status}`);
     }
-  }
-  async disconnect() {
-    await this.streamReader.disconnect();
   }
 };
 // Annotate the CommonJS export names for ESM import in node:

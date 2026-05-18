@@ -55,13 +55,15 @@ export interface Conversation {
   updatedAt: string
 }
 
+export interface ChatResult {
+  conversationId: string
+  fullContent: string
+  promptTokens: number
+  completionTokens: number
+}
+
 export interface PostMemConfig {
   baseUrl: string
   requestTimeout?: number
-  redis: {
-    host: string
-    port: number
-    db?: number
-    password?: string
-  }
+  streamTimeout?: number
 }

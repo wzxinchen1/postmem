@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { message, Card, InputNumber, Button, Space, Typography, Alert } from 'antd'
+import { message, Card, InputNumber, Button, Space, Typography, Alert, Divider } from 'antd'
 import { SaveOutlined, ReloadOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography
@@ -13,6 +13,10 @@ interface AppSettings {
   defaultPageSize: number
 }
 
+interface ChatSettings {
+  memoryContextThreshold: number
+}
+
 export default function SettingsPage() {
   const [settings, setSettings] = useState<AppSettings>({
     maxContentLength: 20000,
@@ -20,11 +24,15 @@ export default function SettingsPage() {
     defaultContextWindow: 1,
     defaultPageSize: 20,
   })
+  const [chatSettings, setChatSettings] = useState<ChatSettings>({
+    memoryContextThreshold: 50,
+  })
   const [loading, setLoading] = useState(false)
   const [msg, contextHolder] = message.useMessage()
 
   useEffect(() => {
     loadSettings()
+    loadChatSettings()
   }, [])
 
   const loadSettings = async () => {
@@ -51,7 +59,30 @@ export default function SettingsPage() {
     }
   }
 
-  const handleSave = async () => {
+  const loadChatSettings = async () => {
+    try {
+      const res = await fetch('/api/chat-settings')
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('加载聊天设置失败')
+        }
+        return
+      }
+      const data = await res.json()
+      if (data.success) {
+        setChatSettings({
+          memoryContextThreshold: data.data.setting.memoryContextThreshold,
+        })
+      }
+    } catch (err) {
+      msg.error('网络请求失败')
+    }
+  }
+
+  const handleSaveAppSettings = async () => {
     setLoading(true)
     try {
       const res = await fetch('/api/settings', {
@@ -70,7 +101,35 @@ export default function SettingsPage() {
       }
       const data = await res.json()
       if (data.success) {
-        msg.success('设置已保存')
+        msg.success('应用设置已保存')
+      }
+    } catch (err) {
+      msg.error('网络请求失败')
+    } finally {
+      setLoading(false)
+    }
+  }
+
+  const handleSaveChatSettings = async () => {
+    setLoading(true)
+    try {
+      const res = await fetch('/api/chat-settings', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(chatSettings),
+      })
+      if (!res.ok) {
+        const errorMessage = await res.text()
+        if (res.status >= 400 && res.status < 500) {
+          msg.info(errorMessage)
+        } else {
+          msg.error('保存聊天设置失败')
+        }
+        return
+      }
+      const data = await res.json()
+      if (data.success) {
+        msg.success('聊天设置已保存')
       }
     } catch (err) {
       msg.error('网络请求失败')
@@ -90,6 +149,44 @@ export default function SettingsPage() {
         showIcon
         style={{ marginBottom: 24 }}
       />
+
+      <Card title={<Title level={4} style={{ margin: 0 }}>聊天设置</Title>} style={{ maxWidth: 800 }}>
+        <Space direction="vertical" size="large" style={{ width: '100%' }}>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>记忆上下文阈值 (K)</Text>
+            <InputNumber
+              value={chatSettings.memoryContextThreshold}
+              onChange={(value) => setChatSettings({ ...chatSettings, memoryContextThreshold: value || 50 })}
+              min={1}
+              max={1000}
+              style={{ width: '100%' }}
+            />
+            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+              未记忆消息累计 token 数超过此阈值（×1000）时触发自动记忆。例如设为 50 表示 50,000 tokens 时触发（范围 1-1000）
+            </Text>
+          </div>
+
+          <Space>
+            <Button
+              type="primary"
+              icon={<SaveOutlined />}
+              onClick={handleSaveChatSettings}
+              loading={loading}
+            >
+              保存聊天设置
+            </Button>
+            <Button
+              icon={<ReloadOutlined />}
+              onClick={loadChatSettings}
+              disabled={loading}
+            >
+              重置
+            </Button>
+          </Space>
+        </Space>
+      </Card>
+
+      <Divider />
 
       <Card title={<Title level={4} style={{ margin: 0 }}>应用设置</Title>} style={{ maxWidth: 800 }}>
         <Space direction="vertical" size="large" style={{ width: '100%' }}>
@@ -152,7 +249,7 @@ export default function SettingsPage() {
             <Button
               type="primary"
               icon={<SaveOutlined />}
-              onClick={handleSave}
+              onClick={handleSaveAppSettings}
               loading={loading}
             >
               保存设置

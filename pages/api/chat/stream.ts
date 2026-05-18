@@ -1,8 +1,10 @@
 import { redis } from '@/src/lib/redis'
 import { logger } from '@/src/lib/logger'
-import type { StreamEvent } from '@/src/services/sse.service'
 
 const encoder = new TextEncoder()
+const GLOBAL_STREAM_KEY = 'chat:global'
+const POLL_INTERVAL_MS = 200
+const KEEP_ALIVE_MS = 30000
 
 export default async function handler(req: any, res: any) {
   if (req.method !== 'GET') {
@@ -10,12 +12,6 @@ export default async function handler(req: any, res: any) {
     return res.status(405).send('方法不被允许')
   }
 
-  const conversationId = req.query.conversationId
-  if (!conversationId) {
-    return res.status(400).send('conversationId 不能为空')
-  }
-
-  const redisKey = `chat:${conversationId}`
   let lastId = '0-0'
 
   res.writeHead(200, {
@@ -27,7 +23,7 @@ export default async function handler(req: any, res: any) {
 
   const keepAliveInterval = setInterval(() => {
     res.write(`event: keep-alive\ndata: ${Date.now()}\n\n`)
-  }, 30000)
+  }, KEEP_ALIVE_MS)
 
   req.on('close', () => {
     clearInterval(keepAliveInterval)
@@ -38,8 +34,8 @@ export default async function handler(req: any, res: any) {
     while (true) {
       const result = await redis.xread(
         'STREAMS',
-        redisKey,
-        lastId
+        GLOBAL_STREAM_KEY,
+        lastId,
       )
 
       if (result && result.length > 0) {
@@ -50,27 +46,18 @@ export default async function handler(req: any, res: any) {
           for (let i = 0; i < fields.length; i += 2) {
             parsed[fields[i]] = fields[i + 1]
           }
-          const { event, data } = parsed
+          const data = parsed.data
 
-          if (data === '[DONE]') {
-            await redis.del(redisKey)
-            clearInterval(keepAliveInterval)
-            res.end()
-            return
-          }
+          res.write(`data: ${data}\n\n`)
 
-          let streamEvent: StreamEvent
+          let streamEvent: any
           try {
             streamEvent = JSON.parse(data)
           } catch {
-            res.write(`event: ${event}\ndata: ${data || ''}\n\n`)
             continue
           }
 
-          const sseData = formatSSEEvent(streamEvent)
-          res.write(`event: message\ndata: ${JSON.stringify(sseData)}\n\n`)
-
-          if (streamEvent.type === 'done') {
+          if (streamEvent.type === 'done' || streamEvent.type === 'error') {
             clearInterval(keepAliveInterval)
             res.end()
             return
@@ -78,50 +65,11 @@ export default async function handler(req: any, res: any) {
         }
       }
 
-      await new Promise(resolve => setTimeout(resolve, 500))
+      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
     }
   } catch (err) {
-    logger.error('[stream] SSE stream error', { errorMessage: err instanceof Error ? err.message : String(err), stack: err instanceof Error ? err.stack : undefined })
+    logger.error('[stream] SSE stream error', err)
     clearInterval(keepAliveInterval)
     res.end()
-  }
-}
-
-function formatSSEEvent(event: StreamEvent) {
-  switch (event.type) {
-    case 'chunk':
-      return {
-        object: 'chat.completion.chunk',
-        created: Math.floor(Date.now() / 1000),
-        model: event.model,
-        choices: [{
-          index: 0,
-          delta: { role: 'assistant', content: event.content },
-          finish_reason: null,
-        }],
-      }
-    case 'status':
-      return { type: 'status', status: event.status }
-    case 'messageId':
-      return { type: 'messageId', role: event.role, id: event.id }
-    case 'usage':
-      return {
-        object: 'chat.completion.chunk',
-        created: Math.floor(Date.now() / 1000),
-        choices: [{
-          index: 0,
-          delta: {},
-          finish_reason: 'stop',
-        }],
-        usage: {
-          prompt_tokens: event.promptTokens,
-          completion_tokens: event.completionTokens,
-          total_tokens: event.promptTokens + event.completionTokens,
-        },
-      }
-    case 'error':
-      return { type: 'error', message: event.message }
-    case 'done':
-      return { type: 'done' }
   }
 }

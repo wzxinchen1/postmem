@@ -6,6 +6,7 @@ import type {
   StreamEvent,
   ChatMessage,
   Conversation,
+  ChatResult,
 } from './types'
 
 export class PostMemClient {
@@ -16,7 +17,10 @@ export class PostMemClient {
   constructor(config: PostMemConfig) {
     this.baseUrl = config.baseUrl
     this.requestTimeout = config.requestTimeout ?? 30_000
-    this.streamReader = new StreamReader(config.redis)
+    this.streamReader = new StreamReader({
+      baseUrl: config.baseUrl,
+      requestTimeout: config.streamTimeout ?? 300_000,
+    })
   }
 
   private fetchWithTimeout(url: string, options?: RequestInit): Promise<Response> {
@@ -28,6 +32,16 @@ export class PostMemClient {
   async chat(
     request: ChatRequest,
   ): Promise<string> {
+    if (!request.messages || request.messages.length === 0) {
+      throw new Error('messages 不能为空')
+    }
+    if (!request.modelId) {
+      throw new Error('modelId 不能为空')
+    }
+    if (!request.kbId) {
+      throw new Error('kbId 不能为空')
+    }
+
     const response = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -48,9 +62,77 @@ export class PostMemClient {
   }
 
   async consume(
-    onEvent: (event: StreamEvent) => void,
-  ): Promise<void> {
-    await this.streamReader.consume(onEvent)
+    onEvent?: (event: StreamEvent) => void,
+    options?: { signal?: AbortSignal },
+  ): Promise<Response | ChatResult> {
+    if (onEvent) {
+      let fullContent = ''
+      let promptTokens = 0
+      let completionTokens = 0
+      let conversationId = ''
+
+      await this.streamReader.consume((event) => {
+        onEvent(event)
+
+        switch (event.type) {
+          case 'chunk':
+            fullContent += event.content
+            break
+          case 'usage':
+            promptTokens = event.promptTokens
+            completionTokens = event.completionTokens
+            break
+        }
+      })
+
+      return { conversationId, fullContent, promptTokens, completionTokens }
+    }
+
+    const encoder = new TextEncoder()
+    const reader = this.streamReader
+
+    const stream = new ReadableStream({
+      async start(controller) {
+        const signal = options?.signal
+
+        if (signal) {
+          if (signal.aborted) {
+            controller.close()
+            return
+          }
+
+          signal.addEventListener('abort', () => controller.close(), { once: true })
+        }
+
+        const keepAliveInterval = setInterval(() => {
+          if (signal?.aborted) {
+            clearInterval(keepAliveInterval)
+            return
+          }
+          controller.enqueue(encoder.encode(`: keep-alive\n\n`))
+        }, 30_000)
+
+        try {
+          await reader.consume((event: StreamEvent) => {
+            const data = JSON.stringify(event)
+            controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+          })
+        } finally {
+          clearInterval(keepAliveInterval)
+        }
+
+        controller.close()
+      },
+    })
+
+    return new Response(stream, {
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+      },
+    })
   }
 
   async cancel(conversationId: string): Promise<void> {
@@ -124,9 +206,5 @@ export class PostMemClient {
     if (!res.ok) {
       throw new Error(`Delete conversation failed: ${res.status}`)
     }
-  }
-
-  async disconnect(): Promise<void> {
-    await this.streamReader.disconnect()
   }
 }

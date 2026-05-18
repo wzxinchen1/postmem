@@ -1,66 +1,89 @@
-import Redis from 'ioredis'
-import type { StreamEvent, PostMemConfig } from './types'
+export type StreamEvent =
+  | { type: 'chunk'; content: string; model: { id: string; name: string } }
+  | { type: 'status'; status: StreamStatus }
+  | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
+  | { type: 'usage'; promptTokens: number; completionTokens: number }
+  | { type: 'error'; message: string }
+  | { type: 'done' }
 
-const STREAM_KEY_PREFIX = 'chat:'
-const POLL_INTERVAL_MS = 200
+export type StreamStatus =
+  | 'searchingWeb'
+  | 'searchingMemory'
+  | 'summarizing'
+  | 'memoryProgress'
+
+interface StreamReaderConfig {
+  baseUrl: string
+  requestTimeout?: number
+}
 
 export class StreamReader {
-  private redis: Redis
+  private baseUrl: string
+  private requestTimeout: number
 
-  constructor(config: PostMemConfig['redis']) {
-    this.redis = new Redis({
-      host: config.host,
-      port: config.port,
-      db: config.db ?? 5,
-      password: config.password,
-      enableReadyCheck: false,
-      maxRetriesPerRequest: null,
-    })
+  constructor(config: StreamReaderConfig) {
+    this.baseUrl = config.baseUrl.replace(/\/+$/, '')
+    this.requestTimeout = config.requestTimeout ?? 300_000
   }
 
   async consume(
-    conversationId: string,
     onEvent: (event: StreamEvent) => void,
-  ): Promise<{ fullContent: string; promptTokens: number; completionTokens: number }> {
-    const redisKey = `${STREAM_KEY_PREFIX}${conversationId}`
-    let lastId = '0-0'
-    let fullContent = ''
-    let promptTokens = 0
-    let completionTokens = 0
+  ): Promise<void> {
+    if (typeof onEvent !== 'function') {
+      throw new Error('onEvent callback is required')
+    }
 
-    while (true) {
-      const result = await this.redis.xread('STREAMS', redisKey, lastId)
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout)
 
-      if (result && result.length > 0) {
-        const [, messages] = result[0]
-        for (const [msgId, fields] of messages) {
-          lastId = msgId
-          const parsed: Record<string, string> = {}
-          for (let i = 0; i < fields.length; i += 2) {
-            parsed[fields[i]] = fields[i + 1]
+    try {
+      const response = await fetch(`${this.baseUrl}/api/chat/stream`, {
+        signal: controller.signal,
+      })
+
+      if (!response.ok) {
+        throw new Error(`Stream request failed: ${response.status}`)
+      }
+
+      const reader = response.body?.getReader()
+      if (!reader) {
+        throw new Error('Failed to get response reader')
+      }
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          const trimmed = line.trim()
+          if (!trimmed.startsWith('data:')) continue
+
+          const jsonStr = trimmed.slice(5).trim()
+          if (!jsonStr || jsonStr === '[DONE]') continue
+
+          let event: StreamEvent
+          try {
+            event = JSON.parse(jsonStr)
+          } catch {
+            continue
           }
 
-          const event: StreamEvent = JSON.parse(parsed.data)
           onEvent(event)
 
-          if (event.type === 'chunk') {
-            fullContent += event.content
-          }
-          if (event.type === 'usage') {
-            promptTokens = event.promptTokens
-            completionTokens = event.completionTokens
-          }
           if (event.type === 'done' || event.type === 'error') {
-            return { fullContent, promptTokens, completionTokens }
+            return
           }
         }
       }
-
-      await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
+    } finally {
+      clearTimeout(timeoutId)
     }
-  }
-
-  async disconnect(): Promise<void> {
-    await this.redis.quit()
   }
 }
