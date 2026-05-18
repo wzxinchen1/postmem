@@ -83,6 +83,8 @@ export class LLMResilienceService {
           attempt,
           maxRetries,
           errorMessage: lastError.message,
+          errorStack: lastError.stack,
+          errorCause: (lastError as any).cause?.message,
         })
 
         if (attempt < maxRetries) {
@@ -290,21 +292,25 @@ export class LLMResilienceService {
 
   private extractUsage(response: any): TokenMetadata | undefined {
     if (response.usage_metadata) {
-      if (!('input_tokens' in response.usage_metadata)) throw Errors.internalError('usage_metadata 缺少 input_tokens 字段')
-      if (!('output_tokens' in response.usage_metadata)) throw Errors.internalError('usage_metadata 缺少 output_tokens 字段')
-      return {
-        promptTokens: response.usage_metadata.input_tokens,
-        completionTokens: response.usage_metadata.output_tokens,
+      const meta = response.usage_metadata
+      const inputTokens = meta.input_tokens ?? meta.prompt_tokens
+      const outputTokens = meta.output_tokens ?? meta.completion_tokens
+      if (typeof inputTokens !== 'number' || typeof outputTokens !== 'number') {
+        logger.warn('[LLMResilience] usage_metadata 字段不完整', { keys: Object.keys(meta), meta })
+        return undefined
       }
+      return { promptTokens: inputTokens, completionTokens: outputTokens }
     }
 
     if (response.response_metadata) {
-      if (!('prompt_eval_count' in response.response_metadata)) throw Errors.internalError('response_metadata 缺少 prompt_eval_count 字段')
-      if (!('eval_count' in response.response_metadata)) throw Errors.internalError('response_metadata 缺少 eval_count 字段')
-      return {
-        promptTokens: response.response_metadata.prompt_eval_count,
-        completionTokens: response.response_metadata.eval_count,
+      const meta = response.response_metadata
+      const promptTokens = meta.prompt_eval_count
+      const evalCount = meta.eval_count
+      if (typeof promptTokens !== 'number' || typeof evalCount !== 'number') {
+        logger.warn('[LLMResilience] response_metadata 字段不完整', { keys: Object.keys(meta) })
+        return undefined
       }
+      return { promptTokens, completionTokens: evalCount }
     }
 
     return undefined

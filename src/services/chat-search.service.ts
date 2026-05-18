@@ -4,6 +4,7 @@ import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 import { Prompts } from '@/src/lib/prompts'
 import { Errors } from '@/src/lib/errors'
+import { logger } from '@/src/lib/logger'
 import type { SearchNeedsResult } from '@/src/types'
 
 interface SearXNGResult {
@@ -41,6 +42,10 @@ export class SearchService {
       : ''
 
     const lastMessage = recentMessages[recentMessages.length - 1]
+    logger.info('[SearchService] analyzeSearchNeeds 入参', {
+      recentCount: recentMessages.length,
+      messages: recentMessages.map(m => ({ role: m.role, contentLen: m.content?.length ?? -1, contentPreview: (m.content ?? '<<<NULL>>>').slice(0, 50) })),
+    })
     if (!lastMessage?.content) throw Errors.badRequest('缺少最新消息内容')
     const currentQuery = lastMessage.content
     if (!currentQuery) {

@@ -154,6 +154,8 @@ export class ChatService {
         searchResult: '',
         memoryText: '',
         cancelled: false,
+        enableThinking: true,
+        thinkingEffort: '',
         langchainMessages: [],
         finalMessages: [],
       })
