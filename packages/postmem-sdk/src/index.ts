@@ -9,4 +9,4 @@ export type {
   PostMemConfig,
   ChatResult,
 } from './types'
-export type { StreamStatus, StreamEvent } from './stream-reader'
+export type { StreamStatus, StreamEvent } from './types'

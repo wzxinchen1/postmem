@@ -5,18 +5,24 @@ import type {
   CreateProviderRequest,
   UpdateProviderRequest,
 } from '@/src/types'
+import { Errors } from '@/src/lib/errors'
 import { VendorService } from './vendor.service'
 
 /**
  * 提供商服务
  */
+interface ProviderDependencies {
+  prisma: PrismaClient
+  vendorService: VendorService
+}
+
 export class ProviderService {
   private prisma: PrismaClient
   private vendorService: VendorService
 
-  constructor({ prisma }: { prisma: PrismaClient }) {
+  constructor({ prisma, vendorService }: ProviderDependencies) {
     this.prisma = prisma
-    this.vendorService = new VendorService({ prisma })
+    this.vendorService = vendorService
   }
 
   /**
@@ -57,11 +63,11 @@ export class ProviderService {
   async createModel(providerId: string, model: string, modelType: 'chat' | 'embedding', config?: Record<string, unknown>): Promise<unknown> {
     const provider = await this.get(providerId)
     if (!provider) {
-      throw new Error(`提供商不存在: ${providerId}`)
+      throw Errors.badRequest(`提供商不存在: ${providerId}`)
     }
 
     if (!provider.vendor) {
-      throw new Error(`提供商未关联厂商: ${providerId}`)
+      throw Errors.badRequest(`提供商未关联厂商: ${providerId}`)
     }
 
     return this.vendorService.createModel(provider.vendor, {
@@ -80,14 +86,17 @@ export class ProviderService {
    * 创建提供商
    */
   async create(data: CreateProviderRequest): Promise<Provider> {
+    if (data.config === undefined) throw Errors.badRequest('提供商缺少 config 字段')
+    if (data.isActive === undefined) throw Errors.badRequest('提供商缺少 isActive 字段')
+
     const provider = await this.prisma.provider.create({
       data: {
         name: data.name,
         vendorId: data.vendorId,
         apiKey: data.apiKey ?? null,
         baseUrl: data.baseUrl,
-        config: (data.config ?? {}) as any,
-        isActive: data.isActive ?? true,
+        config: data.config as any,
+        isActive: data.isActive,
       } as any,
       include: { vendor: true },
     })

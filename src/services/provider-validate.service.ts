@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Vendor } from '@/src/types'
+import { Errors } from '@/src/lib/errors'
 
 export class ProviderValidateService {
   private prisma: PrismaClient
@@ -61,7 +62,12 @@ export class ProviderValidateService {
       }
 
       const data = await response.json()
-      const models = data.models?.map((model: any) => model.name) || []
+
+      if (!data.models || !Array.isArray(data.models)) {
+        return { models: [], error: 'Ollama 响应格式无效: 缺少 models 数组', vendor }
+      }
+
+      const models = data.models.map((model: any) => model.name)
 
       return { models, vendor }
     } catch (err) {
@@ -90,7 +96,12 @@ export class ProviderValidateService {
       }
 
       const data = await response.json()
-      const models = data.data?.map((model: any) => model.id) || []
+
+      if (!data.data || !Array.isArray(data.data)) {
+        return { models: [], error: 'OpenAI 兼容响应格式无效: 缺少 data 数组', vendor }
+      }
+
+      const models = data.data.map((model: any) => model.id)
 
       return { models, vendor }
     } catch (err) {

@@ -62,8 +62,11 @@ export class SessionService {
     page?: number
     limit?: number
   }): Promise<{ sessions: Session[]; total: number; page: number; limit: number }> {
-    const page = options.page ?? 1
-    const limit = options.limit ?? 20
+    if (options.page === undefined) throw Errors.badRequest('缺少 page 参数')
+    if (options.limit === undefined) throw Errors.badRequest('缺少 limit 参数')
+
+    const page = options.page
+    const limit = options.limit
     const skip = (page - 1) * limit
 
     const where: any = {}

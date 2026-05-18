@@ -5,6 +5,20 @@
 
 ## Chat
 
+### GET /api/chat-settings/index
+聊天设置 API - 管理 chat_settings 表
+
+Response Body:
+  200: 成功响应 (object)
+    { success: boolean, data: object }
+
+### PUT /api/chat-settings/index
+聊天设置 API - 管理 chat_settings 表
+
+Response Body:
+  200: 成功响应 (object)
+    { success: boolean, data: object }
+
 ### POST /api/chat/cancel
 
 Request Body:

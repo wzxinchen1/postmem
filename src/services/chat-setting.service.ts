@@ -20,7 +20,7 @@ export class ChatSettingService {
     return setting as ChatSettingInfo
   }
 
-  async update(data: { memoryContextThreshold?: number }): Promise<ChatSettingInfo> {
+  async update(data: { memoryContextThreshold?: number; maxOutputTokens?: number | null }): Promise<ChatSettingInfo> {
     const setting = await this.get()
     return this.prisma.chatSetting.update({
       where: { id: setting.id },

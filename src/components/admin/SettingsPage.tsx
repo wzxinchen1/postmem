@@ -15,6 +15,7 @@ interface AppSettings {
 
 interface ChatSettings {
   memoryContextThreshold: number
+  maxOutputTokens?: number | null
 }
 
 export default function SettingsPage() {
@@ -26,6 +27,7 @@ export default function SettingsPage() {
   })
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
     memoryContextThreshold: 50,
+    maxOutputTokens: null,
   })
   const [loading, setLoading] = useState(false)
   const [msg, contextHolder] = message.useMessage()
@@ -75,6 +77,7 @@ export default function SettingsPage() {
       if (data.success) {
         setChatSettings({
           memoryContextThreshold: data.data.setting.memoryContextThreshold,
+          maxOutputTokens: data.data.setting.maxOutputTokens ?? null,
         })
       }
     } catch (err) {
@@ -163,6 +166,22 @@ export default function SettingsPage() {
             />
             <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
               未记忆消息累计 token 数超过此阈值（×1000）时触发自动记忆。例如设为 50 表示 50,000 tokens 时触发（范围 1-1000）
+            </Text>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>最大输出 Token 数</Text>
+            <InputNumber
+              value={chatSettings.maxOutputTokens}
+              onChange={(value) => setChatSettings({ ...chatSettings, maxOutputTokens: value })}
+              min={1}
+              max={100000}
+              placeholder="留空表示不限制（由模型决定）"
+              style={{ width: '100%' }}
+              allowClear
+            />
+            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+              单次聊天回复的最大输出 token 数。留空或清空表示不限制，由模型 API 自行决定（范围 1-100000）。建议根据模型能力设置，如 GPT-4o 可设 16384
             </Text>
           </div>
 

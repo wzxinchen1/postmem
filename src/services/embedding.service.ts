@@ -4,14 +4,19 @@ import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Model, Provider } from '@/src/types'
 import { VendorService } from './vendor.service'
 
+interface Dependencies {
+  prisma: PrismaClient
+  vendorService: VendorService
+}
+
 export class EmbeddingService {
   private prisma: PrismaClient
   private vendorService: VendorService
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map()
 
-  constructor({ prisma }: { prisma: PrismaClient }) {
+  constructor({ prisma, vendorService }: Dependencies) {
     this.prisma = prisma
-    this.vendorService = new VendorService({ prisma })
+    this.vendorService = vendorService
   }
 
   private async getDefaultModel(): Promise<{ model: Model; provider: Provider }> {
@@ -74,20 +79,16 @@ export class EmbeddingService {
   }
 
   async healthCheck(): Promise<boolean> {
-    try {
-      const { provider } = await this.getDefaultModel()
+    const { provider } = await this.getDefaultModel()
 
-      if (provider.baseUrl.includes('localhost:11434')) {
-        const response = await fetch(`${provider.baseUrl}/api/tags`, {
-          method: 'GET',
-        })
-        return response.ok
-      }
-
-      return true
-    } catch {
-      return false
+    if (provider.baseUrl.includes('localhost:11434')) {
+      const response = await fetch(`${provider.baseUrl}/api/tags`, {
+        method: 'GET',
+      })
+      return response.ok
     }
+
+    return true
   }
 
   clearCache(): void {

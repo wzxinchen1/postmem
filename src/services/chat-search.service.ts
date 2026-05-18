@@ -3,7 +3,7 @@ import { HumanMessage } from '@langchain/core/messages'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 import { Prompts } from '@/src/lib/prompts'
-import { logger } from '@/src/lib/logger'
+import { Errors } from '@/src/lib/errors'
 import type { SearchNeedsResult } from '@/src/types'
 
 interface SearXNGResult {
@@ -17,15 +17,6 @@ interface Dependencies {
   llmResilienceService: LLMResilienceService
 }
 
-const DEFAULT_SEARCH_RESULT: SearchNeedsResult = {
-  searchWebReason: '',
-  searchWebMemoryReason: '',
-  needSearchWeb: false,
-  webKeywords: [],
-  needSearchMemory: false,
-  memoryQuery: null,
-}
-
 export class SearchService {
   private prisma: PrismaClient
   private llmResilienceService: LLMResilienceService
@@ -34,7 +25,8 @@ export class SearchService {
   constructor({ prisma, llmResilienceService }: Dependencies) {
     this.prisma = prisma
     this.llmResilienceService = llmResilienceService
-    this.searxngUrl = process.env.SEARXNG_URL || ''
+    if (!process.env.SEARXNG_URL) throw Errors.internalError('缺少环境变量 SEARXNG_URL')
+    this.searxngUrl = process.env.SEARXNG_URL
   }
 
   async analyzeSearchNeeds(
@@ -48,7 +40,9 @@ export class SearchService {
       ).join('\n')}`
       : ''
 
-    const currentQuery = recentMessages[recentMessages.length - 1]?.content || ''
+    const lastMessage = recentMessages[recentMessages.length - 1]
+    if (!lastMessage?.content) throw Errors.badRequest('缺少最新消息内容')
+    const currentQuery = lastMessage.content
     if (!currentQuery) {
       throw new Error('Current query not found')
     }
@@ -61,16 +55,15 @@ export class SearchService {
           agent,
           messages: [new HumanMessage(prompt)],
           maxRetries: 3,
+          timeoutMs: 120_000,
         },
         (parsed) => this.validateSearchNeedsResult(parsed)
       )
 
       return result.data
     } catch (error) {
-      logger.error('[SearchService] 搜索需求分析失败，使用默认值（不搜索）', {
-        errorMessage: error instanceof Error ? error.message : String(error),
-      })
-      return DEFAULT_SEARCH_RESULT
+      const originalError = error instanceof Error ? error : new Error(String(error))
+      throw Errors.internalError(`搜索需求分析失败: ${originalError.message}`)
     }
   }
 
@@ -99,10 +92,13 @@ export class SearchService {
       ).join('\n')}`
       : ''
 
-    const currentQuery = recentMessages[recentMessages.length - 1]?.content || ''
-    const webpagesText = cachedWebpages.map(w =>
-      `链接：${w.url}\n标题：${w.title || ''}\n正文：${w.content}`
-    ).join('\n\n')
+    const lastMessage = recentMessages[recentMessages.length - 1]
+    if (!lastMessage?.content) throw Errors.badRequest('缺少最新消息内容')
+    const currentQuery = lastMessage.content
+    const webpagesText = cachedWebpages.map(w => {
+      if (!w.title) throw Errors.internalError(`网页 ${w.url} 缺少标题`)
+      return `链接：${w.url}\n标题：${w.title}\n正文：${w.content}`
+    }).join('\n\n')
 
     const prompt = Prompts.confirmSearchWeb(historyText, currentQuery, webpagesText)
 
@@ -110,6 +106,7 @@ export class SearchService {
       agent,
       messages: [new HumanMessage(prompt)],
       maxRetries: 2,
+      timeoutMs: 120_000,
     })
 
     const rawContent = result.content.trim().toLowerCase()
@@ -117,21 +114,24 @@ export class SearchService {
   }
 
   async searchWeb(keywords: string[]): Promise<Array<{ url: string; title: string; content: string; keywords: string[] }>> {
-    if (!this.searxngUrl) {
-      return []
+    if (!keywords || keywords.length === 0) {
+      throw Errors.badRequest('搜索关键词不能为空')
     }
 
     const url = `${this.searxngUrl}/search?q=${encodeURIComponent(keywords.join(' '))}&format=json&language=zh&categories=general,news`
     try {
       const response = await fetch(url)
       if (!response.ok) {
-        return []
+        throw Errors.internalError(`SearXNG 请求失败: HTTP ${response.status}`)
       }
 
       const data = await response.json()
-      const results: SearXNGResult[] = data.results || []
-      if (!results.length) {
-        return []
+      const results: SearXNGResult[] = data.results
+      if (!results || !Array.isArray(results)) {
+        throw Errors.internalError('SearXNG 返回结果格式异常: 缺少 results 数组')
+      }
+      if (results.length === 0) {
+        throw Errors.internalError(`SearXNG 未找到与关键词 "${keywords.join(', ')}" 相关的结果`)
       }
 
       const webpages: Array<{ url: string; title: string; content: string; keywords: string[] }> = []
@@ -139,10 +139,11 @@ export class SearchService {
       for (const item of results.slice(0, 10)) {
         const content = await this.extractWebContent(item.url)
         if (!content) continue
+        if (!item.title) throw Errors.internalError(`搜索结果 ${item.url} 缺少标题`)
 
         webpages.push({
           url: item.url,
-          title: item.title || '',
+          title: item.title,
           content,
           keywords,
         })
@@ -157,8 +158,9 @@ export class SearchService {
 
   async saveWebpages(webpages: Array<{ url: string; title: string; content: string; keywords: string[] }>): Promise<void> {
     for (const wp of webpages) {
+      if (!wp.title) throw Errors.internalError(`网页 ${wp.url} 缺少标题`)
       const cleanContent = wp.content.replace(/\x00/g, '')
-      const cleanTitle = (wp.title || '').replace(/\x00/g, '')
+      const cleanTitle = wp.title.replace(/\x00/g, '')
 
       await this.prisma.webPage.upsert({
         where: { url: wp.url },
@@ -185,8 +187,8 @@ export class SearchService {
 
       if (!response.ok) return null
 
-      const contentType = response.headers.get('content-type') || ''
-      const isPdf = contentType.includes('application/pdf') || url.endsWith('.pdf')
+      const contentType = response.headers.get('content-type')
+      const isPdf = contentType ? (contentType.includes('application/pdf') || url.endsWith('.pdf')) : url.endsWith('.pdf')
 
       if (isPdf) {
         try {

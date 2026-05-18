@@ -218,6 +218,7 @@ export type WebPageScalarFieldEnum = (typeof WebPageScalarFieldEnum)[keyof typeo
 export const ChatSettingScalarFieldEnum = {
   id: 'id',
   memoryContextThreshold: 'memoryContextThreshold',
+  maxOutputTokens: 'maxOutputTokens',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

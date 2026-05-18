@@ -541,6 +541,64 @@
         }
       }
     },
+    "/api/chat-settings/index": {
+      "get": {
+        "summary": "聊天设置 API - 管理 chat_settings 表",
+        "description": "聊天设置 API - 管理 chat_settings 表",
+        "tags": [
+          "Chat"
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "聊天设置 API - 管理 chat_settings 表",
+        "description": "聊天设置 API - 管理 chat_settings 表",
+        "tags": [
+          "Chat"
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/init/providers": {
       "get": {
         "summary": "GET /api/init/providers",

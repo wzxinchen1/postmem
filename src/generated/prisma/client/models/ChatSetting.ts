@@ -28,15 +28,18 @@ export type AggregateChatSetting = {
 
 export type ChatSettingAvgAggregateOutputType = {
   memoryContextThreshold: number | null
+  maxOutputTokens: number | null
 }
 
 export type ChatSettingSumAggregateOutputType = {
   memoryContextThreshold: number | null
+  maxOutputTokens: number | null
 }
 
 export type ChatSettingMinAggregateOutputType = {
   id: string | null
   memoryContextThreshold: number | null
+  maxOutputTokens: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -44,6 +47,7 @@ export type ChatSettingMinAggregateOutputType = {
 export type ChatSettingMaxAggregateOutputType = {
   id: string | null
   memoryContextThreshold: number | null
+  maxOutputTokens: number | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -51,6 +55,7 @@ export type ChatSettingMaxAggregateOutputType = {
 export type ChatSettingCountAggregateOutputType = {
   id: number
   memoryContextThreshold: number
+  maxOutputTokens: number
   createdAt: number
   updatedAt: number
   _all: number
@@ -59,15 +64,18 @@ export type ChatSettingCountAggregateOutputType = {
 
 export type ChatSettingAvgAggregateInputType = {
   memoryContextThreshold?: true
+  maxOutputTokens?: true
 }
 
 export type ChatSettingSumAggregateInputType = {
   memoryContextThreshold?: true
+  maxOutputTokens?: true
 }
 
 export type ChatSettingMinAggregateInputType = {
   id?: true
   memoryContextThreshold?: true
+  maxOutputTokens?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -75,6 +83,7 @@ export type ChatSettingMinAggregateInputType = {
 export type ChatSettingMaxAggregateInputType = {
   id?: true
   memoryContextThreshold?: true
+  maxOutputTokens?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -82,6 +91,7 @@ export type ChatSettingMaxAggregateInputType = {
 export type ChatSettingCountAggregateInputType = {
   id?: true
   memoryContextThreshold?: true
+  maxOutputTokens?: true
   createdAt?: true
   updatedAt?: true
   _all?: true
@@ -176,6 +186,7 @@ export type ChatSettingGroupByArgs<ExtArgs extends runtime.Types.Extensions.Inte
 export type ChatSettingGroupByOutputType = {
   id: string
   memoryContextThreshold: number
+  maxOutputTokens: number | null
   createdAt: Date
   updatedAt: Date
   _count: ChatSettingCountAggregateOutputType | null
@@ -206,6 +217,7 @@ export type ChatSettingWhereInput = {
   NOT?: Prisma.ChatSettingWhereInput | Prisma.ChatSettingWhereInput[]
   id?: Prisma.StringFilter<"ChatSetting"> | string
   memoryContextThreshold?: Prisma.IntFilter<"ChatSetting"> | number
+  maxOutputTokens?: Prisma.IntNullableFilter<"ChatSetting"> | number | null
   createdAt?: Prisma.DateTimeFilter<"ChatSetting"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ChatSetting"> | Date | string
 }
@@ -213,6 +225,7 @@ export type ChatSettingWhereInput = {
 export type ChatSettingOrderByWithRelationInput = {
   id?: Prisma.SortOrder
   memoryContextThreshold?: Prisma.SortOrder
+  maxOutputTokens?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -223,6 +236,7 @@ export type ChatSettingWhereUniqueInput = Prisma.AtLeast<{
   OR?: Prisma.ChatSettingWhereInput[]
   NOT?: Prisma.ChatSettingWhereInput | Prisma.ChatSettingWhereInput[]
   memoryContextThreshold?: Prisma.IntFilter<"ChatSetting"> | number
+  maxOutputTokens?: Prisma.IntNullableFilter<"ChatSetting"> | number | null
   createdAt?: Prisma.DateTimeFilter<"ChatSetting"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"ChatSetting"> | Date | string
 }, "id">
@@ -230,6 +244,7 @@ export type ChatSettingWhereUniqueInput = Prisma.AtLeast<{
 export type ChatSettingOrderByWithAggregationInput = {
   id?: Prisma.SortOrder
   memoryContextThreshold?: Prisma.SortOrder
+  maxOutputTokens?: Prisma.SortOrderInput | Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
   _count?: Prisma.ChatSettingCountOrderByAggregateInput
@@ -245,6 +260,7 @@ export type ChatSettingScalarWhereWithAggregatesInput = {
   NOT?: Prisma.ChatSettingScalarWhereWithAggregatesInput | Prisma.ChatSettingScalarWhereWithAggregatesInput[]
   id?: Prisma.StringWithAggregatesFilter<"ChatSetting"> | string
   memoryContextThreshold?: Prisma.IntWithAggregatesFilter<"ChatSetting"> | number
+  maxOutputTokens?: Prisma.IntNullableWithAggregatesFilter<"ChatSetting"> | number | null
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ChatSetting"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"ChatSetting"> | Date | string
 }
@@ -252,6 +268,7 @@ export type ChatSettingScalarWhereWithAggregatesInput = {
 export type ChatSettingCreateInput = {
   id?: string
   memoryContextThreshold?: number
+  maxOutputTokens?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -259,6 +276,7 @@ export type ChatSettingCreateInput = {
 export type ChatSettingUncheckedCreateInput = {
   id?: string
   memoryContextThreshold?: number
+  maxOutputTokens?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -266,6 +284,7 @@ export type ChatSettingUncheckedCreateInput = {
 export type ChatSettingUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   memoryContextThreshold?: Prisma.IntFieldUpdateOperationsInput | number
+  maxOutputTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -273,6 +292,7 @@ export type ChatSettingUpdateInput = {
 export type ChatSettingUncheckedUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   memoryContextThreshold?: Prisma.IntFieldUpdateOperationsInput | number
+  maxOutputTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -280,6 +300,7 @@ export type ChatSettingUncheckedUpdateInput = {
 export type ChatSettingCreateManyInput = {
   id?: string
   memoryContextThreshold?: number
+  maxOutputTokens?: number | null
   createdAt?: Date | string
   updatedAt?: Date | string
 }
@@ -287,6 +308,7 @@ export type ChatSettingCreateManyInput = {
 export type ChatSettingUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   memoryContextThreshold?: Prisma.IntFieldUpdateOperationsInput | number
+  maxOutputTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -294,6 +316,7 @@ export type ChatSettingUpdateManyMutationInput = {
 export type ChatSettingUncheckedUpdateManyInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   memoryContextThreshold?: Prisma.IntFieldUpdateOperationsInput | number
+  maxOutputTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -301,17 +324,20 @@ export type ChatSettingUncheckedUpdateManyInput = {
 export type ChatSettingCountOrderByAggregateInput = {
   id?: Prisma.SortOrder
   memoryContextThreshold?: Prisma.SortOrder
+  maxOutputTokens?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type ChatSettingAvgOrderByAggregateInput = {
   memoryContextThreshold?: Prisma.SortOrder
+  maxOutputTokens?: Prisma.SortOrder
 }
 
 export type ChatSettingMaxOrderByAggregateInput = {
   id?: Prisma.SortOrder
   memoryContextThreshold?: Prisma.SortOrder
+  maxOutputTokens?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -319,12 +345,22 @@ export type ChatSettingMaxOrderByAggregateInput = {
 export type ChatSettingMinOrderByAggregateInput = {
   id?: Prisma.SortOrder
   memoryContextThreshold?: Prisma.SortOrder
+  maxOutputTokens?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
 
 export type ChatSettingSumOrderByAggregateInput = {
   memoryContextThreshold?: Prisma.SortOrder
+  maxOutputTokens?: Prisma.SortOrder
+}
+
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
 }
 
 
@@ -332,6 +368,7 @@ export type ChatSettingSumOrderByAggregateInput = {
 export type ChatSettingSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   memoryContextThreshold?: boolean
+  maxOutputTokens?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["chatSetting"]>
@@ -339,6 +376,7 @@ export type ChatSettingSelect<ExtArgs extends runtime.Types.Extensions.InternalA
 export type ChatSettingSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   memoryContextThreshold?: boolean
+  maxOutputTokens?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["chatSetting"]>
@@ -346,6 +384,7 @@ export type ChatSettingSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
 export type ChatSettingSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetSelect<{
   id?: boolean
   memoryContextThreshold?: boolean
+  maxOutputTokens?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }, ExtArgs["result"]["chatSetting"]>
@@ -353,11 +392,12 @@ export type ChatSettingSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
 export type ChatSettingSelectScalar = {
   id?: boolean
   memoryContextThreshold?: boolean
+  maxOutputTokens?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type ChatSettingOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "memoryContextThreshold" | "createdAt" | "updatedAt", ExtArgs["result"]["chatSetting"]>
+export type ChatSettingOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "memoryContextThreshold" | "maxOutputTokens" | "createdAt" | "updatedAt", ExtArgs["result"]["chatSetting"]>
 
 export type $ChatSettingPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "ChatSetting"
@@ -365,6 +405,7 @@ export type $ChatSettingPayload<ExtArgs extends runtime.Types.Extensions.Interna
   scalars: runtime.Types.Extensions.GetPayloadResult<{
     id: string
     memoryContextThreshold: number
+    maxOutputTokens: number | null
     createdAt: Date
     updatedAt: Date
   }, ExtArgs["result"]["chatSetting"]>
@@ -792,6 +833,7 @@ export interface Prisma__ChatSettingClient<T, Null = never, ExtArgs extends runt
 export interface ChatSettingFieldRefs {
   readonly id: Prisma.FieldRef<"ChatSetting", 'String'>
   readonly memoryContextThreshold: Prisma.FieldRef<"ChatSetting", 'Int'>
+  readonly maxOutputTokens: Prisma.FieldRef<"ChatSetting", 'Int'>
   readonly createdAt: Prisma.FieldRef<"ChatSetting", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"ChatSetting", 'DateTime'>
 }

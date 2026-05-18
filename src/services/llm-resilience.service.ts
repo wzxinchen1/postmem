@@ -45,8 +45,14 @@ export class LLMResilienceService {
   private static readonly BACKOFF_BASE_MS = 1000
 
   async invokeWithRetry(options: LLMInvokeOptions): Promise<LLMInvokeResult> {
-    const maxRetries = options.maxRetries ?? LLMResilienceService.DEFAULT_MAX_RETRIES
-    const timeoutMs = options.timeoutMs ?? LLMResilienceService.DEFAULT_TIMEOUT_MS
+    if (options.maxRetries === undefined || options.maxRetries === null) {
+      throw Errors.badRequest('invokeWithRetry 缺少 maxRetries 参数')
+    }
+    if (options.timeoutMs === undefined || options.timeoutMs === null) {
+      throw Errors.badRequest('invokeWithRetry 缺少 timeoutMs 参数')
+    }
+    const maxRetries = options.maxRetries
+    const timeoutMs = options.timeoutMs
     let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -94,7 +100,10 @@ export class LLMResilienceService {
     options: LLMInvokeOptions,
     validator: (parsed: unknown) => T
   ): Promise<ValidateResult<T>> {
-    const maxRetries = options.maxRetries ?? LLMResilienceService.DEFAULT_MAX_RETRIES
+    if (options.maxRetries === undefined || options.maxRetries === null) {
+      throw Errors.badRequest('invokeWithValidation 缺少 maxRetries 参数')
+    }
+    const maxRetries = options.maxRetries
     let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -129,8 +138,14 @@ export class LLMResilienceService {
   }
 
   async streamWithRetry(options: LLMStreamOptions): Promise<LLMStreamResult> {
-    const maxRetries = options.maxRetries ?? LLMResilienceService.DEFAULT_MAX_RETRIES
-    const timeoutMs = options.timeoutMs ?? LLMResilienceService.DEFAULT_TIMEOUT_MS
+    if (options.maxRetries === undefined || options.maxRetries === null) {
+      throw Errors.badRequest('streamWithRetry 缺少 maxRetries 参数')
+    }
+    if (options.timeoutMs === undefined || options.timeoutMs === null) {
+      throw Errors.badRequest('streamWithRetry 缺少 timeoutMs 参数')
+    }
+    const maxRetries = options.maxRetries
+    const timeoutMs = options.timeoutMs
     let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= maxRetries; attempt++) {
@@ -156,7 +171,7 @@ export class LLMResilienceService {
             completionTokens = chunk.response_metadata.eval_count || completionTokens
           }
 
-          const content = chunk.content || ''
+          const content = chunk.content ?? ''
           fullContent += content
 
           if (options.onChunk) {
@@ -275,16 +290,20 @@ export class LLMResilienceService {
 
   private extractUsage(response: any): TokenMetadata | undefined {
     if (response.usage_metadata) {
+      if (!('input_tokens' in response.usage_metadata)) throw Errors.internalError('usage_metadata 缺少 input_tokens 字段')
+      if (!('output_tokens' in response.usage_metadata)) throw Errors.internalError('usage_metadata 缺少 output_tokens 字段')
       return {
-        promptTokens: response.usage_metadata.input_tokens || 0,
-        completionTokens: response.usage_metadata.output_tokens || 0,
+        promptTokens: response.usage_metadata.input_tokens,
+        completionTokens: response.usage_metadata.output_tokens,
       }
     }
 
     if (response.response_metadata) {
+      if (!('prompt_eval_count' in response.response_metadata)) throw Errors.internalError('response_metadata 缺少 prompt_eval_count 字段')
+      if (!('eval_count' in response.response_metadata)) throw Errors.internalError('response_metadata 缺少 eval_count 字段')
       return {
-        promptTokens: response.response_metadata.prompt_eval_count || 0,
-        completionTokens: response.response_metadata.eval_count || 0,
+        promptTokens: response.response_metadata.prompt_eval_count,
+        completionTokens: response.response_metadata.eval_count,
       }
     }
 

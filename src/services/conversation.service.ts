@@ -42,15 +42,27 @@ export class ConversationService {
   }
 
   async addMessage(data: AddChatMessageRequest): Promise<ChatMessage> {
+    if (data.tokens === undefined) throw Errors.badRequest('消息缺少 tokens 字段')
+    if (data.totalTokens === undefined) throw Errors.badRequest('消息缺少 totalTokens 字段')
+    if (data.memoried === undefined) throw Errors.badRequest('消息缺少 memoried 字段')
+
+    const isWelcome = data.metadata?.isWelcome === true
+
+    if (data.role === 'assistant' && !isWelcome && !data.name) {
+      throw Errors.badRequest('assistant 消息必须指定模型名称 (name)')
+    }
+
+    const resolvedName = isWelcome ? (data.name ?? '聊天助手') : data.name
+
     return this.prisma.chatMessage.create({
       data: {
         conversationId: data.conversationId,
         role: data.role,
         content: data.content,
-        tokens: data.tokens || 0,
-        totalTokens: data.totalTokens || 0,
-        memoried: data.memoried || false,
-        metadata: data.metadata as any,
+        tokens: data.tokens,
+        totalTokens: data.totalTokens,
+        memoried: data.memoried,
+        metadata: { ...data.metadata as any, modelName: resolvedName },
       },
     }) as Promise<ChatMessage>
   }
@@ -61,8 +73,11 @@ export class ConversationService {
   }): Promise<{ conversations: Conversation[]; total: number; page: number; limit: number }> {
     logger.info('[Conversation] list', { page: options.page, limit: options.limit })
 
-    const page = options.page || 1
-    const limit = options.limit || 20
+    if (options.page === undefined) throw Errors.badRequest('缺少 page 参数')
+    if (options.limit === undefined) throw Errors.badRequest('缺少 limit 参数')
+
+    const page = options.page
+    const limit = options.limit
     const skip = (page - 1) * limit
 
     const [conversations, total] = await Promise.all([
@@ -151,8 +166,11 @@ export class ConversationService {
     page?: number
     limit?: number
   }): Promise<{ messages: ChatMessage[]; total: number; page: number; limit: number; conversationId: string }> {
-    const page = options.page || 1
-    const limit = options.limit || 50
+    if (options.page === undefined) throw Errors.badRequest('缺少 page 参数')
+    if (options.limit === undefined) throw Errors.badRequest('缺少 limit 参数')
+
+    const page = options.page
+    const limit = options.limit
     const skip = (page - 1) * limit
 
     logger.info('[ConversationService] listMessages 开始', { conversationId: options.conversationId, role: options.role, page, limit })
@@ -191,6 +209,7 @@ export class ConversationService {
         content: ConversationService.WELCOME_CONTENT,
         tokens: 0,
         totalTokens: 0,
+        memoried: false,
         metadata: { isWelcome: true },
       })
       messages = [welcomeMessage as any]

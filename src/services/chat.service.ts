@@ -78,7 +78,11 @@ export class ChatService {
 
     logger.info('[ChatService] chat 参数', { conversationId, newConversation, kbId, modelId })
 
-    let convId = conversationId || ''
+    if (!conversationId) {
+      throw Errors.badRequest('缺少 conversationId 参数')
+    }
+
+    let convId = conversationId
 
     if (!convId && newConversation) {
       const newConv = await this.conversationService.create({})
@@ -109,6 +113,8 @@ export class ChatService {
         role: 'user',
         content: lastMessage.content,
         tokens: Math.round(lastMessage.content.length / 1.5),
+        totalTokens: Math.round(lastMessage.content.length / 1.5),
+        memoried: false,
       })
       await this.sseService.emit({ type: 'messageId', role: 'user', id: userMessageId })
     }

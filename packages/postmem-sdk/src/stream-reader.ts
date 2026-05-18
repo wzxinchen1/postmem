@@ -1,16 +1,5 @@
-export type StreamEvent =
-  | { type: 'chunk'; content: string; model: { id: string; name: string } }
-  | { type: 'status'; status: StreamStatus }
-  | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
-  | { type: 'usage'; promptTokens: number; completionTokens: number }
-  | { type: 'error'; message: string }
-  | { type: 'done' }
-
-export type StreamStatus =
-  | 'searchingWeb'
-  | 'searchingMemory'
-  | 'summarizing'
-  | 'memoryProgress'
+import type { StreamEvent } from './types'
+import { PostMemError } from './types'
 
 interface StreamReaderConfig {
   baseUrl: string
@@ -30,7 +19,7 @@ export class StreamReader {
     onEvent: (event: StreamEvent) => void,
   ): Promise<void> {
     if (typeof onEvent !== 'function') {
-      throw new Error('onEvent callback is required')
+      throw PostMemError.validation('onEvent callback is required')
     }
 
     const controller = new AbortController()
@@ -42,12 +31,12 @@ export class StreamReader {
       })
 
       if (!response.ok) {
-        throw new Error(`Stream request failed: ${response.status}`)
+        throw new PostMemError(response.status, `Stream request failed: ${response.status}`)
       }
 
       const reader = response.body?.getReader()
       if (!reader) {
-        throw new Error('Failed to get response reader')
+        throw PostMemError.serverError('Failed to get response reader')
       }
 
       const decoder = new TextDecoder()

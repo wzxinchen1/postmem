@@ -30,6 +30,15 @@ export default createApiHandler<Deps>({
           }
         }
 
+        if (data.maxOutputTokens !== undefined && data.maxOutputTokens !== null) {
+          if (typeof data.maxOutputTokens !== 'number') {
+            return errorResponse(res, 'VALIDATION_ERROR', 'maxOutputTokens 必须是数字或 null', 400)
+          }
+          if (data.maxOutputTokens < 1 || data.maxOutputTokens > 100000) {
+            return errorResponse(res, 'VALIDATION_ERROR', 'maxOutputTokens 必须在 1-100000 之间，设为 null 表示不限制', 400)
+          }
+        }
+
         const setting = await deps.chatSettingService.update(data)
         return successResponse(res, { setting })
       },

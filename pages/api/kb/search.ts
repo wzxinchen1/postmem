@@ -25,8 +25,12 @@ export default createApiHandler<Deps>({
     }
 
     const settings = await deps.settingService.getAppSettings()
-    const topK = body.top_k ?? settings.defaultTopK
-    const contextWindow = body.context_window ?? settings.defaultContextWindow
+
+    if (body.top_k === undefined) throw Errors.badRequest('缺少必需字段: top_k')
+    if (body.context_window === undefined) throw Errors.badRequest('缺少必需字段: context_window')
+
+    const topK = body.top_k
+    const contextWindow = body.context_window
 
     if (typeof topK !== 'number' || topK < 1 || topK > 100) {
       throw Errors.badRequest('top_k 必须是 1-100 之间的数字')

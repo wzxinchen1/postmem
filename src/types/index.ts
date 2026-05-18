@@ -471,6 +471,7 @@ export interface AddChatMessageRequest {
   tokens?: number
   totalTokens?: number
   memoried?: boolean
+  name?: string
   metadata?: Record<string, unknown>
 }
 
@@ -517,11 +518,13 @@ export interface SearchNeedsResult {
 /**
  * SSE 流状态
  */
-export type StreamStatus =
-  | 'searchingWeb'
-  | 'searchingMemory'
-  | 'summarizing'
-  | 'memoryProgress'
+export enum StreamStatus {
+  SearchingWeb = 'searchingWeb',
+  SearchingMemory = 'searchingMemory',
+  Summarizing = 'summarizing',
+  MemoryProgress = 'memoryProgress',
+  Truncated = 'truncated',
+}
 
 /**
  * SSE 流事件
@@ -553,6 +556,7 @@ export interface WebPageInfo {
 export interface ChatSettingInfo {
   id: string
   memoryContextThreshold: number
+  maxOutputTokens?: number | null
   createdAt: Date
   updatedAt: Date
 }

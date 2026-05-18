@@ -87,15 +87,18 @@ export class ModelService {
       })
     }
 
+    if (data.isActive === undefined) throw Errors.badRequest('创建模型时缺少 isActive 字段')
+    if (data.isDefault === undefined) throw Errors.badRequest('创建模型时缺少 isDefault 字段')
+
     return this.prisma.model.create({
       data: {
         providerId: data.providerId,
         name: data.name,
         displayName: data.displayName,
         modelType: data.modelType,
-        config: data.config || {},
-        isActive: data.isActive ?? true,
-        isDefault: data.isDefault ?? false,
+        config: data.config ?? null,
+        isActive: data.isActive,
+        isDefault: data.isDefault,
       },
     }) as Promise<Model>
   }

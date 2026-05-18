@@ -1,5 +1,6 @@
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Vendor, CreateVendorRequest, UpdateVendorRequest } from '@/src/types'
+import { Errors } from '@/src/lib/errors'
 import { createModel } from './vendor-protocol.service'
 
 export class VendorService {
@@ -26,13 +27,15 @@ export class VendorService {
     if (data.factoryCode) {
       this.validateCode(data.factoryCode)
     }
+    if (data.isActive === undefined) throw Errors.badRequest('厂商缺少 isActive 字段')
+
     const vendor = await this.prisma.vendor.create({
       data: {
         name: data.name,
         chatModelClass: data.chatModelClass,
         embeddingModelClass: data.embeddingModelClass,
         factoryCode: data.factoryCode,
-        isActive: data.isActive ?? true,
+        isActive: data.isActive,
       },
     })
     return vendor as Vendor
@@ -83,10 +86,10 @@ export class VendorService {
 
   private validateCode(code: string): void {
     if (!code.includes('module.exports')) {
-      throw new Error('Factory code must export using module.exports')
+      throw Errors.badRequest('Factory code must export using module.exports')
     }
     if (!code.includes('createModel')) {
-      throw new Error('Factory code must have createModel method')
+      throw Errors.badRequest('Factory code must have createModel method')
     }
   }
 }

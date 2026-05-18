@@ -163,10 +163,11 @@ model WebPage {
 }
 
 model ChatSetting {
-  id                      String   @id @default(cuid())
-  memoryContextThreshold  Int      @default(50) @map("memory_context_threshold")
-  createdAt               DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
-  updatedAt               DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
+  id                      String    @id @default(cuid())
+  memoryContextThreshold  Int       @default(50) @map("memory_context_threshold")
+  maxOutputTokens         Int?      @map("max_output_tokens")
+  createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
+  updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 
   @@map("chat_settings")
 }

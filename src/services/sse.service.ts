@@ -1,10 +1,12 @@
 import { redis } from '@/src/lib/redis'
 
-export type StreamStatus =
-  | 'searchingWeb'
-  | 'searchingMemory'
-  | 'summarizing'
-  | 'memoryProgress'
+export enum StreamStatus {
+  SearchingWeb = 'searchingWeb',
+  SearchingMemory = 'searchingMemory',
+  Summarizing = 'summarizing',
+  MemoryProgress = 'memoryProgress',
+  Truncated = 'truncated',
+}
 
 export type StreamEvent =
   | { type: 'chunk'; content: string; model: { id: string; name: string } }

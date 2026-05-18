@@ -69,14 +69,14 @@ export class KBService {
     const kb = await this.prisma.knowledgeBase.create({
       data: {
         name: name.trim(),
-        description: description?.trim() || null,
+        description: description ? description.trim() : null,
       },
     })
 
     return {
       id: kb.id,
       name: kb.name,
-      description: kb.description || undefined,
+      description: kb.description ?? undefined,
       createdAt: kb.createdAt,
       updatedAt: kb.updatedAt,
     }
@@ -97,7 +97,7 @@ export class KBService {
     return {
       id: kb.id,
       name: kb.name,
-      description: kb.description || undefined,
+      description: kb.description ?? undefined,
       createdAt: kb.createdAt,
       updatedAt: kb.updatedAt,
     }
@@ -118,7 +118,7 @@ export class KBService {
     return {
       id: kb.id,
       name: kb.name,
-      description: kb.description || undefined,
+      description: kb.description ?? undefined,
       createdAt: kb.createdAt,
       updatedAt: kb.updatedAt,
     }
@@ -175,10 +175,14 @@ export class KBService {
     if (createPlans.length > 0) {
       onProgress({ type: 'status', message: `拟创建 ${createPlans.length} 个主题，正在合并去重...` })
 
-      const proposedTopics = createPlans.map((p) => ({
-        name: p.newTopicName!,
-        sampleContent: chunks[p.index]?.content || '',
-      }))
+      const proposedTopics = createPlans.map((p) => {
+        const chunk = chunks[p.index]
+        if (!chunk?.content) throw Errors.internalError(`片段 ${p.index} 缺少 content 字段`)
+        return {
+          name: p.newTopicName!,
+          sampleContent: chunk.content,
+        }
+      })
 
       const mergedTopics = await this.cutModelService.batchCreateTopics(proposedTopics, kbId)
 
@@ -351,8 +355,9 @@ export class KBService {
     }
     for (const p of plan.plans) {
       if (p.action === 'create' && p.newTopicName && !topicNameMap.has(p.newTopicName)) {
-        const sampleChunk = chunks[p.index]?.content || ''
-        const createInfo = await this.cutModelService.createTopicInfo(sampleChunk, kbId)
+        const sampleChunk = chunks[p.index]
+        if (!sampleChunk?.content) throw Errors.internalError(`片段 ${p.index} 缺少 content 字段`)
+        const createInfo = await this.cutModelService.createTopicInfo(sampleChunk.content, kbId)
         const newTopic = await this.prisma.topic.create({
           data: {
             kbId,
@@ -828,7 +833,7 @@ export class KBService {
       id: item.data.id,
       title: item.data.title,
       content: item.data.content,
-      score: item.cosineSim > 0 ? item.cosineSim : Math.min(1, item.tsRank || 0),
+      score: item.cosineSim > 0 ? item.cosineSim : Math.min(1, item.tsRank ?? 0),
       topicId,
       metadata: item.data.metadata,
       source: item.source,
@@ -947,7 +952,7 @@ export class KBService {
         kbId,
         kbName: kb.name,
         total: result._count.id,
-        lastUpdated: result._max.createdAt || undefined,
+        lastUpdated: result._max.createdAt ?? undefined,
       }
     } else {
       const knowledgeBases = await this.prisma.knowledgeBase.findMany({
@@ -966,11 +971,17 @@ export class KBService {
 
       const kbNames: Stats[] = knowledgeBases.map(kb => {
         const memStat = memoryStatsMap.get(kb.id)
+        if (!memStat) {
+          throw Errors.internalError(`知识库 "${kb.name}" 的统计数据缺失`)
+        }
+        if (memStat._count.id === null || memStat._count.id === undefined) {
+          throw Errors.internalError(`知识库 "${kb.name}" 的记录计数字段为空`)
+        }
         return {
           kbId: kb.id,
           kbName: kb.name,
-          total: memStat?._count.id || 0,
-          lastUpdated: memStat?._max.createdAt || kb.createdAt,
+          total: memStat._count.id,
+          lastUpdated: memStat._max.createdAt ?? kb.createdAt,
         }
       })
 

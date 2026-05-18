@@ -20,9 +20,11 @@ export default async function handler(req: any, res: any) {
     'Connection': 'keep-alive',
     'X-Accel-Buffering': 'no',
   })
+  res.flushHeaders()
 
   const keepAliveInterval = setInterval(() => {
     res.write(`event: keep-alive\ndata: ${Date.now()}\n\n`)
+    res.flush()
   }, KEEP_ALIVE_MS)
 
   req.on('close', () => {
@@ -49,6 +51,7 @@ export default async function handler(req: any, res: any) {
           const data = parsed.data
 
           res.write(`data: ${data}\n\n`)
+          res.flush()
 
           let streamEvent: any
           try {

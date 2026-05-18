@@ -20,9 +20,11 @@ export default createApiHandler<Deps>({
       throw Errors.badRequest('缺少必需字段: kbId')
     }
 
-    const page = body.page ?? 1
-    const settings = await deps.settingService.getAppSettings()
-    const limit = body.limit ?? settings.defaultPageSize
+    if (body.page === undefined) throw Errors.badRequest('缺少必需字段: page')
+    if (body.limit === undefined) throw Errors.badRequest('缺少必需字段: limit')
+
+    const page = body.page
+    const limit = body.limit
 
     if (typeof page !== 'number' || page < 1) {
       throw Errors.badRequest('page 必须是大于 0 的数字')

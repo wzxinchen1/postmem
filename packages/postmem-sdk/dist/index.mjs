@@ -1,3 +1,22 @@
+// src/types.ts
+var PostMemError = class _PostMemError extends Error {
+  constructor(status, body) {
+    super(`PostMem API error: ${status} ${body}`);
+    this.status = status;
+    this.body = body;
+    this.name = "PostMemError";
+  }
+  static validation(message) {
+    return new _PostMemError(400, message);
+  }
+  static notFound(message) {
+    return new _PostMemError(404, message);
+  }
+  static serverError(message) {
+    return new _PostMemError(500, message);
+  }
+};
+
 // src/stream-reader.ts
 var StreamReader = class {
   constructor(config) {
@@ -6,7 +25,7 @@ var StreamReader = class {
   }
   async consume(onEvent) {
     if (typeof onEvent !== "function") {
-      throw new Error("onEvent callback is required");
+      throw PostMemError.validation("onEvent callback is required");
     }
     const controller = new AbortController();
     const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
@@ -15,11 +34,11 @@ var StreamReader = class {
         signal: controller.signal
       });
       if (!response.ok) {
-        throw new Error(`Stream request failed: ${response.status}`);
+        throw new PostMemError(response.status, `Stream request failed: ${response.status}`);
       }
       const reader = response.body?.getReader();
       if (!reader) {
-        throw new Error("Failed to get response reader");
+        throw PostMemError.serverError("Failed to get response reader");
       }
       const decoder = new TextDecoder();
       let buffer = "";
@@ -52,16 +71,6 @@ var StreamReader = class {
   }
 };
 
-// src/types.ts
-var PostMemError = class extends Error {
-  constructor(status, body) {
-    super(`PostMem API error: ${status} ${body}`);
-    this.status = status;
-    this.body = body;
-    this.name = "PostMemError";
-  }
-};
-
 // src/client.ts
 var PostMemClient = class {
   constructor(config) {
@@ -78,6 +87,15 @@ var PostMemClient = class {
     return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
   }
   async chat(request) {
+    if (!request.messages || request.messages.length === 0) {
+      throw PostMemError.validation("messages \u4E0D\u80FD\u4E3A\u7A7A");
+    }
+    if (!request.modelId) {
+      throw PostMemError.validation("modelId \u4E0D\u80FD\u4E3A\u7A7A");
+    }
+    if (!request.kbId) {
+      throw PostMemError.validation("kbId \u4E0D\u80FD\u4E3A\u7A7A");
+    }
     const response = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -89,7 +107,7 @@ var PostMemClient = class {
     const body = await response.json();
     const conversationId = body.data?.conversationId ?? request.conversationId ?? "";
     if (!conversationId) {
-      throw new Error("No conversationId returned from server");
+      throw PostMemError.serverError("No conversationId returned from server");
     }
     return conversationId;
   }
@@ -172,7 +190,7 @@ var PostMemClient = class {
     if (params?.limit) query.set("limit", String(params.limit));
     const res = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/messages?${query}`);
     if (!res.ok) {
-      throw new Error(`Get messages failed: ${res.status}`);
+      throw new PostMemError(res.status, `Get messages failed: ${res.status}`);
     }
     const json = await res.json();
     return json.data;
@@ -183,7 +201,7 @@ var PostMemClient = class {
     if (params?.limit) query.set("limit", String(params.limit));
     const res = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/conversations?${query}`);
     if (!res.ok) {
-      throw new Error(`List conversations failed: ${res.status}`);
+      throw new PostMemError(res.status, `List conversations failed: ${res.status}`);
     }
     const json = await res.json();
     return json.data;
@@ -191,7 +209,7 @@ var PostMemClient = class {
   async getConversation(conversationId) {
     const res = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/conversations/${conversationId}`);
     if (!res.ok) {
-      throw new Error(`Get conversation failed: ${res.status}`);
+      throw new PostMemError(res.status, `Get conversation failed: ${res.status}`);
     }
     const json = await res.json();
     return json.data;
@@ -203,7 +221,7 @@ var PostMemClient = class {
       body: JSON.stringify({ metadata })
     });
     if (!res.ok) {
-      throw new Error(`Create conversation failed: ${res.status}`);
+      throw new PostMemError(res.status, `Create conversation failed: ${res.status}`);
     }
     const json = await res.json();
     return json.data;
@@ -213,7 +231,7 @@ var PostMemClient = class {
       method: "DELETE"
     });
     if (!res.ok) {
-      throw new Error(`Delete conversation failed: ${res.status}`);
+      throw new PostMemError(res.status, `Delete conversation failed: ${res.status}`);
     }
   }
 };

@@ -28,14 +28,14 @@ export default createApiHandler<Deps>({
       return errorResponse(res, 'BAD_REQUEST', 'kbId 不能为空')
     }
 
-    let convId = conversationId || ''
+    let convId: string
 
-    if (!convId && newConversation) {
+    if (conversationId) {
+      convId = conversationId
+    } else if (newConversation) {
       const newConv = await deps.conversationService.create({})
       convId = newConv.id
-    }
-
-    if (!convId) {
+    } else {
       const latest = await deps.conversationService.getLatest()
       if (latest) {
         convId = latest.id
@@ -63,7 +63,7 @@ export default createApiHandler<Deps>({
 
     deps.chatService.chat({
       messages: messages.map(m => ({
-        id: m.id || String(Date.now()),
+        id: m.id ? m.id : String(Date.now()),
         content: m.content,
       })),
       conversationId: convId,

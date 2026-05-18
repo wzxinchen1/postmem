@@ -9,6 +9,13 @@ import { SessionService } from '@/src/services/session.service'
 import { VendorService } from './vendor.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 
+interface CutModelDependencies {
+  prisma: PrismaClient
+  sessionService: SessionService
+  vendorService: VendorService
+  llmResilienceService: LLMResilienceService
+}
+
 export class CutModelService {
   private prisma: PrismaClient
   private sessionService: SessionService
@@ -18,11 +25,11 @@ export class CutModelService {
 
   private static readonly MAX_RETRIES = 5
 
-  constructor({ prisma, sessionService, llmResilienceService }: { prisma: PrismaClient; sessionService: SessionService; llmResilienceService: LLMResilienceService }) {
+  constructor({ prisma, sessionService, vendorService, llmResilienceService }: CutModelDependencies) {
     this.prisma = prisma
     this.sessionService = sessionService
+    this.vendorService = vendorService
     this.llmResilienceService = llmResilienceService
-    this.vendorService = new VendorService({ prisma })
   }
 
   private async getDefaultModel(): Promise<{ model: Model; provider: Provider }> {
@@ -55,7 +62,7 @@ export class CutModelService {
         id: model.id,
         providerId: model.providerId,
         name: model.name,
-        displayName: model.displayName || undefined,
+        displayName: model.displayName ?? undefined,
         modelType: model.modelType as ModelType,
         config: model.config as Record<string, unknown>,
         isActive: model.isActive,
@@ -78,8 +85,8 @@ export class CutModelService {
           createdAt: model.provider.vendor.createdAt,
           updatedAt: model.provider.vendor.updatedAt,
         },
-        apiKey: model.provider.apiKey || undefined,
-        baseUrl: model.provider.baseUrl || '',
+        apiKey: model.provider.apiKey ?? undefined,
+        baseUrl: model.provider.baseUrl ?? '',
         config: model.provider.config as Record<string, unknown>,
         isActive: model.provider.isActive,
         createdAt: model.provider.createdAt,
@@ -137,7 +144,12 @@ export class CutModelService {
     const content = response.content.toString()
 
     const messageMetadata: Record<string, unknown> = { model: model.name }
-    const additionalKwargs = response.additional_kwargs || {}
+
+    if (response.additional_kwargs == null) {
+      throw Errors.cutModelError(`LLM SDK 返回的 additional_kwargs 为 null，可能是 SDK 版本不兼容`)
+    }
+
+    const additionalKwargs = response.additional_kwargs
     if (additionalKwargs.reasoning_content) {
       messageMetadata.reasoning_content = additionalKwargs.reasoning_content
     }
@@ -263,11 +275,19 @@ export class CutModelService {
 
     await this.sessionService.complete(session.id)
 
-    return parsed.groups.map((group: any) => ({
-      messageIds: group.messageIds || [],
-      summary: group.summary,
-      isComplete: group.isComplete !== false,
-    }))
+    return parsed.groups.map((group: any) => {
+      if (group.messageIds == null) {
+        throw Errors.cutModelError('LLM 返回的 group 缺少 messageIds 字段')
+      }
+      if (!Array.isArray(group.messageIds)) {
+        throw Errors.cutModelError(`LLM 返回的 messageIds 不是数组，实际类型: ${typeof group.messageIds}`)
+      }
+      return {
+        messageIds: group.messageIds,
+        summary: group.summary,
+        isComplete: group.isComplete !== false,
+      }
+    })
   }
 
   async analyzeTextGroups(text: string, kbId?: string): Promise<MessageGroup[]> {
@@ -350,7 +370,7 @@ export class CutModelService {
 
     return parsed.chunks.map((chunk: any, i: number) => ({
       index: i,
-      title: (chunk.title || `片段${i}`).trim(),
+      title: (chunk.title ?? `片段${i}`).trim(),
       content: chunk.content.trim(),
     }))
   }
@@ -423,14 +443,14 @@ export class CutModelService {
       mergedContent = parsed.mergedContent!.trim()
     }
 
-    return { action, reason: parsed.reason || '', targetMemoryId, mergedContent }
+    return { action, reason: parsed.reason ?? '', targetMemoryId, mergedContent }
   }
 
   async getModelInfo(): Promise<{ provider: string; model: string }> {
     const { model, provider } = await this.getDefaultModel()
     return {
       provider: provider.name,
-      model: model.displayName || model.name,
+      model: model.displayName ?? model.name,
     }
   }
 
@@ -480,7 +500,7 @@ export class CutModelService {
     return {
       action: parsed.action as 'select' | 'create',
       topicName: parsed.topicName,
-      reason: parsed.reason || '',
+      reason: parsed.reason ?? '',
     }
   }
 
@@ -574,7 +594,7 @@ export class CutModelService {
       .filter((t: any) => t.name && t.name.trim().length > 0)
       .map((t: any) => ({
         name: t.name.trim(),
-        description: t.description?.trim() || '',
+        description: t.description ? t.description.trim() : '',
       }))
   }
 
@@ -659,7 +679,7 @@ export class CutModelService {
       action: p.action as 'select' | 'create',
       topicName: p.topicName,
       newTopicName: p.newTopicName,
-      reason: p.reason || '',
+      reason: p.reason ?? '',
     }))
 
     return { plans }

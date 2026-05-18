@@ -33,13 +33,13 @@ export class PostMemClient {
     request: ChatRequest,
   ): Promise<string> {
     if (!request.messages || request.messages.length === 0) {
-      throw new Error('messages 不能为空')
+      throw PostMemError.validation('messages 不能为空')
     }
     if (!request.modelId) {
-      throw new Error('modelId 不能为空')
+      throw PostMemError.validation('modelId 不能为空')
     }
     if (!request.kbId) {
-      throw new Error('kbId 不能为空')
+      throw PostMemError.validation('kbId 不能为空')
     }
 
     const response = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/completions`, {
@@ -55,7 +55,7 @@ export class PostMemClient {
     const body = await response.json()
     const conversationId = body.data?.conversationId ?? request.conversationId ?? ''
     if (!conversationId) {
-      throw new Error('No conversationId returned from server')
+      throw PostMemError.serverError('No conversationId returned from server')
     }
 
     return conversationId
@@ -156,7 +156,7 @@ export class PostMemClient {
 
     const res = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/messages?${query}`)
     if (!res.ok) {
-      throw new Error(`Get messages failed: ${res.status}`)
+      throw new PostMemError(res.status, await res.text())
     }
     const json = await res.json()
     return json.data
@@ -171,7 +171,7 @@ export class PostMemClient {
 
     const res = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/conversations?${query}`)
     if (!res.ok) {
-      throw new Error(`List conversations failed: ${res.status}`)
+      throw new PostMemError(res.status, `List conversations failed: ${res.status}`)
     }
     const json = await res.json()
     return json.data
@@ -180,7 +180,7 @@ export class PostMemClient {
   async getConversation(conversationId: string): Promise<Conversation> {
     const res = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/conversations/${conversationId}`)
     if (!res.ok) {
-      throw new Error(`Get conversation failed: ${res.status}`)
+      throw new PostMemError(res.status, `Get conversation failed: ${res.status}`)
     }
     const json = await res.json()
     return json.data
@@ -193,7 +193,7 @@ export class PostMemClient {
       body: JSON.stringify({ metadata }),
     })
     if (!res.ok) {
-      throw new Error(`Create conversation failed: ${res.status}`)
+      throw new PostMemError(res.status, `Create conversation failed: ${res.status}`)
     }
     const json = await res.json()
     return json.data
@@ -204,7 +204,7 @@ export class PostMemClient {
       method: 'DELETE',
     })
     if (!res.ok) {
-      throw new Error(`Delete conversation failed: ${res.status}`)
+      throw new PostMemError(res.status, `Delete conversation failed: ${res.status}`)
     }
   }
 }

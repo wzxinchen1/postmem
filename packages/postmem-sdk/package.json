@@ -1,6 +1,6 @@
 {
   "name": "postmem-sdk",
-  "version": "1.0.5",
+  "version": "1.0.7",
   "description": "PostMem client SDK - chat with HTTP SSE streaming",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",

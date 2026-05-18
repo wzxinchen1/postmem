@@ -7,7 +7,8 @@ export class ChatModelFactory {
     modelName: string,
     temperature: number,
     apiKey?: string | null,
-    baseUrl?: string | null
+    baseUrl?: string | null,
+    maxOutputTokens?: number | null
   ): ChatOpenAI {
     if (!modelName) {
       throw new Error('modelName is required')
@@ -37,6 +38,7 @@ export class ChatModelFactory {
       model: actualModelName,
       temperature,
       apiKey,
+      ...(maxOutputTokens ? { maxTokens: maxOutputTokens } : {}),
       configuration: {
         baseURL: baseUrl,
       },

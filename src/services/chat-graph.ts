@@ -13,6 +13,7 @@ import { SSEService } from '@/src/services/sse.service'
 import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
 import { KBService } from '@/src/services/kb.service'
+import { Errors } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
 import { createId } from '@paralleldrive/cuid2'
 import { logger } from '@/src/lib/logger'
@@ -68,11 +69,13 @@ function createNodes(deps: GraphDependencies) {
       throw new Error('模型对应的提供商不存在')
     }
 
+    const chatSetting = await deps.chatSettingService.get()
     const agent = deps.chatModelFactory.createAgent(
       model.name,
       0.7,
       provider.apiKey,
-      provider.baseUrl
+      provider.baseUrl,
+      chatSetting.maxOutputTokens
     )
 
     await deps.kbService.getKnowledgeBaseById(state.kbId)
@@ -186,7 +189,7 @@ function createNodes(deps: GraphDependencies) {
       const content = typeof msg.content === 'string'
         ? msg.content
         : Array.isArray(msg.content)
-          ? msg.content.map(c => typeof c === 'string' ? c : (c as any).text || '').join('')
+          ? msg.content.map(c => typeof c === 'string' ? c : ((c as any).text ?? '')).join('')
           : ''
       return {
         role: msg instanceof HumanMessage ? 'user' as const : 'assistant'as const,
@@ -220,9 +223,10 @@ function createNodes(deps: GraphDependencies) {
           `链接：${w.url}\n标题：${w.title}\n正文：${w.content}`
         ).join('\n\n')
       } else {
-        searchResult = cachedWebpages.map(w =>
-          `链接：${w.url}\n标题：${w.title || ''}\n正文：${w.content}`
-        ).join('\n\n')
+        searchResult = cachedWebpages.map(w => {
+          if (!w.title) throw Errors.internalError(`网页 ${w.url} 缺少标题`)
+          return `链接：${w.url}\n标题：${w.title}\n正文：${w.content}`
+        }).join('\n\n')
       }
 
       await deps.sseService.emit({ type: 'status', status: 'searchingWeb' })
@@ -268,6 +272,7 @@ function createNodes(deps: GraphDependencies) {
     let fullContent = ''
     let promptTokens = 0
     let completionTokens = 0
+    let finishReason = ''
 
     const stream = await state.agent.stream(state.finalMessages)
 
@@ -276,11 +281,12 @@ function createNodes(deps: GraphDependencies) {
         promptTokens = chunk.usage_metadata.input_tokens || promptTokens
         completionTokens = chunk.usage_metadata.output_tokens || completionTokens
       } else if (chunk.response_metadata) {
-        promptTokens = chunk.response_metadata.prompt_eval_count || promptTokens
-        completionTokens = chunk.response_metadata.eval_count || completionTokens
+        promptTokens = chunk.response_metadata.prompt_eval_count ?? promptTokens
+        completionTokens = chunk.response_metadata.eval_count ?? completionTokens
+        finishReason = chunk.response_metadata?.finish_reason ?? ''
       }
 
-      const content = chunk.content || ''
+      const content = chunk.content ?? ''
       fullContent += content
 
       if (content) {
@@ -295,7 +301,12 @@ function createNodes(deps: GraphDependencies) {
       }
     }
 
-    logger.info('[ChatGraph] streamLLM 完成', { promptTokens, completionTokens })
+    if (finishReason === 'length') {
+      logger.warn('[ChatGraph] 输出因达到 maxTokens 被截断', { conversationId: state.conversationId, completionTokens })
+      await deps.sseService.emit({ type: 'status', status: 'truncated' })
+    }
+
+    logger.info('[ChatGraph] streamLLM 完成', { promptTokens, completionTokens, finishReason })
 
     return {
       fullContent,
@@ -319,6 +330,8 @@ function createNodes(deps: GraphDependencies) {
       content: state.fullContent,
       tokens: state.completionTokens,
       totalTokens: state.promptTokens + state.completionTokens,
+      memoried: false,
+      name: state.modelName,
     })
 
     await deps.sseService.emit({

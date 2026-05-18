@@ -6,13 +6,27 @@ export class PostMemError extends Error {
     super(`PostMem API error: ${status} ${body}`)
     this.name = 'PostMemError'
   }
+
+  static validation(message: string): PostMemError {
+    return new PostMemError(400, message)
+  }
+
+  static notFound(message: string): PostMemError {
+    return new PostMemError(404, message)
+  }
+
+  static serverError(message: string): PostMemError {
+    return new PostMemError(500, message)
+  }
 }
 
-export type StreamStatus =
-  | 'searchingWeb'
-  | 'searchingMemory'
-  | 'summarizing'
-  | 'memoryProgress'
+export enum StreamStatus {
+  SearchingWeb = 'searchingWeb',
+  SearchingMemory = 'searchingMemory',
+  Summarizing = 'summarizing',
+  MemoryProgress = 'memoryProgress',
+  Truncated = 'truncated',
+}
 
 export type StreamEvent =
   | { type: 'chunk'; content: string; model: { id: string; name: string } }
