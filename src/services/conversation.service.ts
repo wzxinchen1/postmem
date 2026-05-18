@@ -52,6 +52,12 @@ export class ConversationService {
       throw Errors.badRequest('assistant 消息必须指定模型名称 (name)')
     }
 
+    const isSystemMessage = data.role === 'system'
+    const isUserMessage = data.role === 'user'
+    if (!isWelcome && !isSystemMessage && !isUserMessage && data.tokens <= 0) {
+      throw Errors.internalError(`非系统/欢迎/user消息的 tokens 必须 > 0，当前值=${data.tokens}，role=${data.role}，content长度=${data.content.length}`)
+    }
+
     const resolvedName = isWelcome ? (data.name ?? '聊天助手') : data.name
 
     return this.prisma.chatMessage.create({
@@ -157,6 +163,13 @@ export class ConversationService {
     await this.prisma.chatMessage.update({
       where: { id: messageId },
       data: { memoried: true },
+    })
+  }
+
+  async updateMessageTokens(messageId: string, tokens: number, totalTokens: number): Promise<void> {
+    await this.prisma.chatMessage.update({
+      where: { id: messageId },
+      data: { tokens, totalTokens },
     })
   }
 

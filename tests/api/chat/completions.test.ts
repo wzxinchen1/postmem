@@ -30,7 +30,8 @@ describe.sequential('POST /api/chat/completions', () => {
 
     expect(result.conversationId).toBeTruthy()
     expect(result.fullContent).toBeTruthy()
-    expect(result.promptTokens).toBeGreaterThan(0)
+    expect(result.error).toBeUndefined()
+    expect(result.userTokens).toBeGreaterThan(0)
     expect(result.completionTokens).toBeGreaterThan(0)
 
     const conversations = await client.listConversations()
@@ -107,7 +108,7 @@ describe.sequential('POST /api/chat/completions', () => {
     expect(ttfb).toBeLessThanOrEqual(10_000)
   })
 
-  it('用例7: 流事件包含 chunk → usage → done 序列', async () => {
+  it('用例7: 流事件包含 chunk → done（含 token 计数）序列', async () => {
     const events: StreamEvent[] = []
 
     const handle = await client.chat(
@@ -118,14 +119,16 @@ describe.sequential('POST /api/chat/completions', () => {
 
     const types = events.map((e) => e.type)
     expect(types).toContain('chunk')
-    expect(types).toContain('usage')
     expect(types).toContain('done')
 
     const chunkIndex = types.indexOf('chunk')
-    const usageIndex = types.indexOf('usage')
     const doneIndex = types.indexOf('done')
-    expect(chunkIndex).toBeLessThan(usageIndex)
-    expect(usageIndex).toBeLessThan(doneIndex)
+    expect(chunkIndex).toBeLessThan(doneIndex)
+
+    const doneEvent = events.find((e) => e.type === 'done') as any
+    expect(doneEvent.error).toBeUndefined()
+    expect(doneEvent.userTokens).toBeGreaterThan(0)
+    expect(doneEvent.completionTokens).toBeGreaterThan(0)
   })
 
   it('用例8: 流事件包含 messageId（user + assistant）', async () => {

@@ -25,16 +25,20 @@ export enum StreamStatus {
   SearchingMemory = 'searchingMemory',
   Summarizing = 'summarizing',
   MemoryProgress = 'memoryProgress',
+}
+
+export enum DoneReason {
   Truncated = 'truncated',
+  InsufficientBalance = 'insufficient_balance',
+  ContentFiltered = 'content_filtered',
 }
 
 export type StreamEvent =
   | { type: 'chunk'; content: string; model: { id: string; name: string } }
   | { type: 'status'; status: StreamStatus }
   | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
-  | { type: 'usage'; promptTokens: number; completionTokens: number }
   | { type: 'error'; message: string }
-  | { type: 'done' }
+  | { type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number }
 
 export interface ChatMessageInput {
   id: string
@@ -72,8 +76,11 @@ export interface Conversation {
 export interface ChatResult {
   conversationId: string
   fullContent: string
-  promptTokens: number
-  completionTokens: number
+  error?: string
+  userTokens?: number
+  userTotalTokens?: number
+  totalTokens?: number
+  completionTokens?: number
 }
 
 export interface PostMemConfig {

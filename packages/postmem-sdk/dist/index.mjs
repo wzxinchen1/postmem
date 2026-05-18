@@ -114,8 +114,11 @@ var PostMemClient = class {
   async consume(onEvent, options) {
     if (onEvent) {
       let fullContent = "";
-      let promptTokens = 0;
-      let completionTokens = 0;
+      let error;
+      let userTokens;
+      let userTotalTokens;
+      let totalTokens;
+      let completionTokens;
       let conversationId = "";
       await this.streamReader.consume((event) => {
         onEvent(event);
@@ -123,13 +126,16 @@ var PostMemClient = class {
           case "chunk":
             fullContent += event.content;
             break;
-          case "usage":
-            promptTokens = event.promptTokens;
+          case "done":
+            error = event.error ?? void 0;
+            userTokens = event.userTokens;
+            userTotalTokens = event.userTotalTokens;
+            totalTokens = event.totalTokens;
             completionTokens = event.completionTokens;
             break;
         }
       });
-      return { conversationId, fullContent, promptTokens, completionTokens };
+      return { conversationId, fullContent, error, userTokens, userTotalTokens, totalTokens, completionTokens };
     }
     const encoder = new TextEncoder();
     const reader = this.streamReader;
@@ -190,7 +196,7 @@ var PostMemClient = class {
     if (params?.limit) query.set("limit", String(params.limit));
     const res = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/messages?${query}`);
     if (!res.ok) {
-      throw new PostMemError(res.status, `Get messages failed: ${res.status}`);
+      throw new PostMemError(res.status, await res.text());
     }
     const json = await res.json();
     return json.data;

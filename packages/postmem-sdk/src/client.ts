@@ -67,8 +67,11 @@ export class PostMemClient {
   ): Promise<Response | ChatResult> {
     if (onEvent) {
       let fullContent = ''
-      let promptTokens = 0
-      let completionTokens = 0
+      let error: string | undefined
+      let userTokens: number | undefined
+      let userTotalTokens: number | undefined
+      let totalTokens: number | undefined
+      let completionTokens: number | undefined
       let conversationId = ''
 
       await this.streamReader.consume((event) => {
@@ -78,14 +81,17 @@ export class PostMemClient {
           case 'chunk':
             fullContent += event.content
             break
-          case 'usage':
-            promptTokens = event.promptTokens
+          case 'done':
+            error = event.error ?? undefined
+            userTokens = event.userTokens
+            userTotalTokens = event.userTotalTokens
+            totalTokens = event.totalTokens
             completionTokens = event.completionTokens
             break
         }
       })
 
-      return { conversationId, fullContent, promptTokens, completionTokens }
+      return { conversationId, fullContent, error, userTokens, userTotalTokens, totalTokens, completionTokens }
     }
 
     const encoder = new TextEncoder()

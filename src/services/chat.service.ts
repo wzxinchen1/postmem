@@ -112,8 +112,8 @@ export class ChatService {
         conversationId: convId,
         role: 'user',
         content: lastMessage.content,
-        tokens: Math.round(lastMessage.content.length / 1.5),
-        totalTokens: Math.round(lastMessage.content.length / 1.5),
+        tokens: 0,
+        totalTokens: 0,
         memoried: false,
       })
       await this.sseService.emit({ type: 'messageId', role: 'user', id: userMessageId })
@@ -146,8 +146,11 @@ export class ChatService {
         agent: null as any,
         modelName: '',
         fullContent: '',
-        promptTokens: 0,
+        userTokens: 0,
+        userTotalTokens: 0,
+        totalTokens: 0,
         completionTokens: 0,
+        finishReason: '',
         searchResult: '',
         memoryText: '',
         cancelled: false,

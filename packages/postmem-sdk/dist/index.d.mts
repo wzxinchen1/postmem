@@ -10,8 +10,12 @@ declare enum StreamStatus {
     SearchingWeb = "searchingWeb",
     SearchingMemory = "searchingMemory",
     Summarizing = "summarizing",
-    MemoryProgress = "memoryProgress",
-    Truncated = "truncated"
+    MemoryProgress = "memoryProgress"
+}
+declare enum DoneReason {
+    Truncated = "truncated",
+    InsufficientBalance = "insufficient_balance",
+    ContentFiltered = "content_filtered"
 }
 type StreamEvent = {
     type: 'chunk';
@@ -28,14 +32,16 @@ type StreamEvent = {
     role: 'user' | 'assistant';
     id: string;
 } | {
-    type: 'usage';
-    promptTokens: number;
-    completionTokens: number;
-} | {
     type: 'error';
     message: string;
 } | {
     type: 'done';
+    reason?: DoneReason;
+    error?: string;
+    userTokens?: number;
+    userTotalTokens?: number;
+    totalTokens?: number;
+    completionTokens?: number;
 };
 interface ChatMessageInput {
     id: string;
@@ -69,8 +75,11 @@ interface Conversation {
 interface ChatResult {
     conversationId: string;
     fullContent: string;
-    promptTokens: number;
-    completionTokens: number;
+    error?: string;
+    userTokens?: number;
+    userTotalTokens?: number;
+    totalTokens?: number;
+    completionTokens?: number;
 }
 interface PostMemConfig {
     baseUrl: string;

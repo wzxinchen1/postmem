@@ -9,7 +9,7 @@ import { SearchService } from '@/src/services/chat-search.service'
 import { ChatMemoryService } from '@/src/services/chat-memory.service'
 import { ChatSettingService } from '@/src/services/chat-setting.service'
 import { ChatModelFactory } from '@/src/services/chat-model-factory.service'
-import { SSEService } from '@/src/services/sse.service'
+import { SSEService, DoneReason } from '@/src/services/sse.service'
 import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
 import { KBService } from '@/src/services/kb.service'
@@ -17,6 +17,23 @@ import { Errors } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
 import { createId } from '@paralleldrive/cuid2'
 import { logger } from '@/src/lib/logger'
+
+const BALANCE_ERROR_PATTERNS = [
+  /insufficient.?balance/i,
+  /billing/i,
+  /quota.exceeded/i,
+  /payment.required/i,
+  /account.deactivated/i,
+  /credit.exhausted/i,
+  /no.remaining.credit/i,
+]
+
+function isInsufficientBalanceError(err: unknown): boolean {
+  if (!(err instanceof Error)) return false
+  const message = err.message
+  const status = (err as any).status ?? (err as any).statusCode
+  return status === 402 || BALANCE_ERROR_PATTERNS.some(p => p.test(message))
+}
 
 export enum ChatNode {
   Init = 'init',
@@ -33,8 +50,11 @@ const ChatGraphState = Annotation.Root({
   agent: Annotation<ChatOpenAI>,
   modelName: Annotation<string>,
   fullContent: Annotation<string>({ reducer: (a, b) => a + b, default: () => '' }),
-  promptTokens: Annotation<number>,
+  userTokens: Annotation<number>,
+  userTotalTokens: Annotation<number>,
+  totalTokens: Annotation<number>,
   completionTokens: Annotation<number>,
+  finishReason: Annotation<string>,
   searchResult: Annotation<string>,
   memoryText: Annotation<string>,
   cancelled: Annotation<boolean>,
@@ -192,7 +212,7 @@ function createNodes(deps: GraphDependencies) {
           ? msg.content.map(c => typeof c === 'string' ? c : ((c as any).text ?? '')).join('')
           : ''
       return {
-        role: msg instanceof HumanMessage ? 'user' as const : 'assistant'as const,
+        role: msg instanceof HumanMessage ? 'user' as const : 'assistant' as const,
         content
       }
     })
@@ -270,48 +290,108 @@ function createNodes(deps: GraphDependencies) {
     await deps.sseService.emit({ type: 'messageId', role: 'assistant', id: aiMessageId })
 
     let fullContent = ''
-    let promptTokens = 0
+    let apiTotalPromptTokens = 0
     let completionTokens = 0
     let finishReason = ''
 
-    const stream = await state.agent.stream(state.finalMessages)
+    try {
+      const stream = await state.agent.stream(state.finalMessages)
 
-    for await (const chunk of stream) {
-      if (chunk.usage_metadata) {
-        promptTokens = chunk.usage_metadata.input_tokens || promptTokens
-        completionTokens = chunk.usage_metadata.output_tokens || completionTokens
-      } else if (chunk.response_metadata) {
-        promptTokens = chunk.response_metadata.prompt_eval_count ?? promptTokens
-        completionTokens = chunk.response_metadata.eval_count ?? completionTokens
-        finishReason = chunk.response_metadata?.finish_reason ?? ''
-      }
-
-      const content = chunk.content ?? ''
-      fullContent += content
-
-      if (content) {
-        if (await deps.sseService.isCancelled(state.conversationId)) {
-          break
+      for await (const chunk of stream) {
+        if (chunk.usage_metadata) {
+          const meta = chunk.usage_metadata as any
+          logger.info('[ChatGraph] 原始 usage_metadata', { raw: JSON.stringify(meta) })
+          apiTotalPromptTokens = meta.input_tokens || apiTotalPromptTokens
+          const rawOutputTokens = meta.output_tokens || 0
+          const reasoningTokens = meta.output_token_details?.reasoning ?? 0
+          completionTokens = rawOutputTokens - reasoningTokens
+        } else if (chunk.response_metadata) {
+          const meta = chunk.response_metadata as any
+          apiTotalPromptTokens = Number(meta.prompt_eval_count ?? 0)
+          completionTokens = Number(meta.eval_count ?? 0)
+          finishReason = String(meta.finish_reason ?? '')
         }
-        await deps.sseService.emit({
-          type: 'chunk',
-          content,
-          model: { id: state.modelId, name: state.modelName },
-        })
+
+        const content = chunk.content ?? ''
+        fullContent += content
+
+        if (content) {
+          if (await deps.sseService.isCancelled(state.conversationId)) {
+            break
+          }
+          await deps.sseService.emit({
+            type: 'chunk',
+            content,
+            model: { id: state.modelId, name: state.modelName },
+          })
+        }
       }
+    } catch (err) {
+      if (isInsufficientBalanceError(err)) {
+        logger.error('[ChatGraph] 提供商 API 欠费', { conversationId: state.conversationId, errorMessage: (err as Error).message })
+        await deps.sseService.emit({ type: 'done', reason: DoneReason.InsufficientBalance })
+      }
+      throw err
+    }
+
+    const chatMessages = await deps.conversationService.getMessages(state.conversationId)
+    const historyMessages = chatMessages.filter(m => !m.memoried && !m.metadata?.isWelcome)
+
+    logger.info('[ChatGraph] 倒减开始', {
+      apiInputTokens: apiTotalPromptTokens,
+      messageCount: chatMessages.length,
+      historyCount: historyMessages.length,
+    })
+
+    let remaining = apiTotalPromptTokens
+    for (const m of historyMessages) {
+      const before = remaining
+      remaining -= m.tokens
+      logger.info('[ChatGraph] 倒减步骤', {
+        msgId: m.id,
+        role: m.role,
+        subtract: m.tokens,
+        before,
+        after: remaining,
+      })
+    }
+
+    const userTokens = remaining
+    const userTotalTokens = apiTotalPromptTokens
+    const totalTokens = apiTotalPromptTokens + completionTokens
+
+    logger.info('[ChatGraph] 倒减结果', {
+      apiInputTokens: apiTotalPromptTokens,
+      userTokens,
+      userTotalTokens,
+      totalTokens,
+    })
+
+    const allMessages = await deps.conversationService.getMessages(state.conversationId)
+    const lastUserMsg = [...allMessages].reverse().find(m => m.role === 'user')
+    if (lastUserMsg) {
+      await deps.conversationService.updateMessageTokens(lastUserMsg.id, userTokens, userTotalTokens)
     }
 
     if (finishReason === 'length') {
       logger.warn('[ChatGraph] 输出因达到 maxTokens 被截断', { conversationId: state.conversationId, completionTokens })
-      await deps.sseService.emit({ type: 'status', status: 'truncated' })
+      await deps.sseService.emit({ type: 'done', reason: DoneReason.Truncated, userTokens, userTotalTokens, totalTokens, completionTokens })
     }
 
-    logger.info('[ChatGraph] streamLLM 完成', { promptTokens, completionTokens, finishReason })
+    if (finishReason === 'content_filter' || finishReason === 'sensitive') {
+      logger.warn('[ChatGraph] 输出因内容审核被拦截', { conversationId: state.conversationId, finishReason })
+      await deps.sseService.emit({ type: 'done', reason: DoneReason.ContentFiltered, userTokens, userTotalTokens, totalTokens, completionTokens })
+    }
+
+    logger.info('[ChatGraph] streamLLM 完成', { userTokens, userTotalTokens, totalTokens, completionTokens, finishReason })
 
     return {
       fullContent,
-      promptTokens,
+      userTokens,
+      userTotalTokens,
+      totalTokens,
       completionTokens,
+      finishReason,
     }
   }
 
@@ -329,19 +409,29 @@ function createNodes(deps: GraphDependencies) {
       role: 'assistant',
       content: state.fullContent,
       tokens: state.completionTokens,
-      totalTokens: state.promptTokens + state.completionTokens,
+      totalTokens: state.totalTokens,
       memoried: false,
       name: state.modelName,
     })
 
+    const tokenError =
+      !state.userTokens ? 'userTokens' :
+        !state.userTotalTokens ? 'userTotalTokens' :
+          !state.totalTokens ? 'totalTokens' :
+            !state.completionTokens ? 'completionTokens' : null
+
     await deps.sseService.emit({
-      type: 'usage',
-      promptTokens: state.promptTokens,
-      completionTokens: state.completionTokens,
+      type: 'done',
+      error: tokenError
+        ? `内部错误：${tokenError} 缺失或为0 (${tokenError}=${(state as any)[tokenError]})`
+        : undefined,
+      userTokens: state.userTokens ?? undefined,
+      userTotalTokens: state.userTotalTokens ?? undefined,
+      totalTokens: state.totalTokens ?? undefined,
+      completionTokens: state.completionTokens ?? undefined,
     })
 
     await deps.sseService.clearProcessing(state.conversationId)
-    await deps.sseService.emit({ type: 'done' })
 
     await new Promise(resolve => setTimeout(resolve, 1000))
     await deps.sseService.clearMessageStream()

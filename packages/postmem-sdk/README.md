@@ -43,7 +43,7 @@ const result = await client.chat(
 )
 
 console.log(`\nconversationId: ${result.conversationId}`)
-console.log(`promptTokens: ${result.promptTokens}, completionTokens: ${result.completionTokens}`)
+console.log(`userTokens: ${result.userTokens}, userTotalTokens: ${result.userTotalTokens}, totalTokens: ${result.totalTokens}, completionTokens: ${result.completionTokens}`)
 
 // 续聊
 const result2 = await client.chat({
@@ -82,7 +82,7 @@ await client.disconnect()
 | `request.regenerateMessageId` | `string?` | 重新生成的消息 ID |
 | `onEvent` | `(StreamEvent) => void?` | 流事件回调 |
 
-返回 `ChatResult`：`{ conversationId, fullContent, promptTokens, completionTokens }`
+返回 `ChatResult`：`{ conversationId, fullContent, userTokens, userTotalTokens, totalTokens, completionTokens }`
 
 ### `client.cancel(conversationId)`
 
@@ -119,7 +119,7 @@ await client.disconnect()
 | `chunk` | `content`, `model` | LLM 流式输出片段 |
 | `status` | `status` | 状态通知（searchingWeb/searchingMemory/summarizing/memoryProgress） |
 | `messageId` | `role`, `id` | 消息 ID 通知 |
-| `usage` | `promptTokens`, `completionTokens` | Token 用量 |
+| `usage` | `userTokens`, `userTotalTokens`, `totalTokens`, `completionTokens` | Token 用量 |
 | `error` | `message` | 错误 |
 | `done` | - | 流结束 |
 
