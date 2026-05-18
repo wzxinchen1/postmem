@@ -40,16 +40,6 @@ interface ChatRequest {
     modelId: string;
     kbId: string;
 }
-interface ChatHandle {
-    conversationId: string;
-    done: Promise<ChatResult>;
-}
-interface ChatResult {
-    conversationId: string;
-    fullContent: string;
-    promptTokens: number;
-    completionTokens: number;
-}
 interface ChatMessage {
     id: string;
     conversationId: string;
@@ -84,7 +74,8 @@ declare class PostMemClient {
     private requestTimeout;
     constructor(config: PostMemConfig);
     private fetchWithTimeout;
-    chat(request: ChatRequest, onEvent?: (event: StreamEvent) => void): Promise<ChatHandle>;
+    chat(request: ChatRequest): Promise<string>;
+    consume(onEvent: (event: StreamEvent) => void): Promise<void>;
     cancel(conversationId: string): Promise<void>;
     getMessages(conversationId: string, params?: {
         page?: number;
@@ -113,12 +104,8 @@ declare class PostMemClient {
 declare class StreamReader {
     private redis;
     constructor(config: PostMemConfig['redis']);
-    consume(conversationId: string, onEvent: (event: StreamEvent) => void): Promise<{
-        fullContent: string;
-        promptTokens: number;
-        completionTokens: number;
-    }>;
+    consume(onEvent: (event: StreamEvent) => void): Promise<void>;
     disconnect(): Promise<void>;
 }
 
-export { type ChatHandle, type ChatMessage, type ChatMessageInput, type ChatRequest, type ChatResult, type Conversation, PostMemClient, type PostMemConfig, PostMemError, type StreamEvent, StreamReader, type StreamStatus };
+export { type ChatMessage, type ChatMessageInput, type ChatRequest, type Conversation, PostMemClient, type PostMemConfig, PostMemError, type StreamEvent, StreamReader, type StreamStatus };

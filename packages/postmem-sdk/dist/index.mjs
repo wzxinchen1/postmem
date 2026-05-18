@@ -1,6 +1,6 @@
 // src/stream-reader.ts
 import Redis from "ioredis";
-var STREAM_KEY_PREFIX = "chat:";
+var GLOBAL_STREAM_KEY = "chat:global";
 var POLL_INTERVAL_MS = 200;
 var StreamReader = class {
   constructor(config) {
@@ -13,14 +13,13 @@ var StreamReader = class {
       maxRetriesPerRequest: null
     });
   }
-  async consume(conversationId, onEvent) {
-    const redisKey = `${STREAM_KEY_PREFIX}${conversationId}`;
+  async consume(onEvent) {
+    if (typeof onEvent !== "function") {
+      throw new Error("onEvent callback is required");
+    }
     let lastId = "0-0";
-    let fullContent = "";
-    let promptTokens = 0;
-    let completionTokens = 0;
     while (true) {
-      const result = await this.redis.xread("STREAMS", redisKey, lastId);
+      const result = await this.redis.xread("STREAMS", GLOBAL_STREAM_KEY, lastId);
       if (result && result.length > 0) {
         const [, messages] = result[0];
         for (const [msgId, fields] of messages) {
@@ -31,16 +30,6 @@ var StreamReader = class {
           }
           const event = JSON.parse(parsed.data);
           onEvent(event);
-          if (event.type === "chunk") {
-            fullContent += event.content;
-          }
-          if (event.type === "usage") {
-            promptTokens = event.promptTokens;
-            completionTokens = event.completionTokens;
-          }
-          if (event.type === "done" || event.type === "error") {
-            return { fullContent, promptTokens, completionTokens };
-          }
         }
       }
       await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
@@ -73,7 +62,7 @@ var PostMemClient = class {
     const timer = setTimeout(() => controller.abort(), this.requestTimeout);
     return fetch(url, { ...options, signal: controller.signal }).finally(() => clearTimeout(timer));
   }
-  async chat(request, onEvent) {
+  async chat(request) {
     const response = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/completions`, {
       method: "POST",
       headers: { "Content-Type": "application/json" },
@@ -87,15 +76,10 @@ var PostMemClient = class {
     if (!conversationId) {
       throw new Error("No conversationId returned from server");
     }
-    const done = this.streamReader.consume(conversationId, (event) => {
-      onEvent?.(event);
-    }).then(({ fullContent, promptTokens, completionTokens }) => ({
-      conversationId,
-      fullContent,
-      promptTokens,
-      completionTokens
-    }));
-    return { conversationId, done };
+    return conversationId;
+  }
+  async consume(onEvent) {
+    await this.streamReader.consume(onEvent);
   }
   async cancel(conversationId) {
     const response = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/cancel`, {

@@ -6,8 +6,6 @@ export type {
   StreamEvent,
   ChatMessageInput,
   ChatRequest,
-  ChatResult,
-  ChatHandle,
   ChatMessage,
   Conversation,
   PostMemConfig,

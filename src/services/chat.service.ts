@@ -10,6 +10,7 @@ import { ModelService } from '@/src/services/model.service'
 import { KBService } from '@/src/services/kb.service'
 import { createChatGraph } from '@/src/services/chat-graph'
 import { logger } from '@/src/lib/logger'
+import { createId } from '@paralleldrive/cuid2'
 import type { ChatCompletionRequest } from '@/src/types'
 
 export interface ChatResult {
@@ -102,19 +103,19 @@ export class ChatService {
 
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
-      const userMessageId = String(Date.now())
+      const userMessageId = createId()
       await this.conversationService.addMessage({
         conversationId: convId,
         role: 'user',
         content: lastMessage.content,
         tokens: Math.round(lastMessage.content.length / 1.5),
       })
-      await this.sseService.emit(convId, { type: 'messageId', role: 'user', id: userMessageId })
+      await this.sseService.emit({ type: 'messageId', role: 'user', id: userMessageId })
     }
 
     if (await this.sseService.isCancelled(convId)) {
       await this.sseService.clearCancelled(convId)
-      await this.sseService.emit(convId, { type: 'done' })
+      await this.sseService.emit({ type: 'done' })
       return null
     }
 

@@ -15,13 +15,12 @@ export type StreamEvent =
   | { type: 'done' }
 
 export class SSEService {
-  private readonly messageKeyPrefix = 'chat:'
+  private readonly globalMessageKey = 'chat:global'
   private readonly cancelKeyPrefix = 'chat:cancel:'
   private readonly processingKeyPrefix = 'chat:processing:'
 
-  async emit(conversationId: string, event: StreamEvent): Promise<void> {
-    const key = `${this.messageKeyPrefix}${conversationId}`
-    await redis.xadd(key, '*', 'event', 'message', 'data', JSON.stringify(event))
+  async emit(event: StreamEvent): Promise<void> {
+    await redis.xadd(this.globalMessageKey, '*', 'event', 'message', 'data', JSON.stringify(event))
   }
 
   async isCancelled(conversationId: string): Promise<boolean> {
@@ -40,9 +39,8 @@ export class SSEService {
     await redis.del(key)
   }
 
-  async clearMessageStream(conversationId: string): Promise<void> {
-    const key = `${this.messageKeyPrefix}${conversationId}`
-    await redis.del(key)
+  async clearMessageStream(): Promise<void> {
+    await redis.del(this.globalMessageKey)
   }
 
   async setProcessing(conversationId: string): Promise<void> {

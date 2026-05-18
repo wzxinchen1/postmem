@@ -14,6 +14,7 @@ import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
 import { KBService } from '@/src/services/kb.service'
 import { Prompts } from '@/src/lib/prompts'
+import { createId } from '@paralleldrive/cuid2'
 import { logger } from '@/src/lib/logger'
 
 export enum ChatNode {
@@ -202,7 +203,7 @@ function createNodes(deps: GraphDependencies) {
     let memoryText = ''
 
     if (searchNeeds.needSearchWeb && searchNeeds.webKeywords.length > 0) {
-      await deps.sseService.emit(state.conversationId, { type: 'status', status: 'searchingWeb' })
+      await deps.sseService.emit({ type: 'status', status: 'searchingWeb' })
 
       const cachedWebpages = await deps.searchService.getCachedWebpages(searchNeeds.webKeywords)
 
@@ -224,11 +225,11 @@ function createNodes(deps: GraphDependencies) {
         ).join('\n\n')
       }
 
-      await deps.sseService.emit(state.conversationId, { type: 'status', status: 'searchingWeb' })
+      await deps.sseService.emit({ type: 'status', status: 'searchingWeb' })
     }
 
     if (searchNeeds.needSearchMemory && searchNeeds.memoryQuery) {
-      await deps.sseService.emit(state.conversationId, { type: 'status', status: 'searchingMemory' })
+      await deps.sseService.emit({ type: 'status', status: 'searchingMemory' })
 
       const similarSummaries = await deps.chatMemoryService.searchSimilar(
         state.kbId,
@@ -236,7 +237,7 @@ function createNodes(deps: GraphDependencies) {
       )
       memoryText = similarSummaries.map(s => s.content).join('\n\n')
 
-      await deps.sseService.emit(state.conversationId, { type: 'status', status: 'searchingMemory' })
+      await deps.sseService.emit({ type: 'status', status: 'searchingMemory' })
     }
 
     const systemPrompt = Prompts.chatSystemRole(
@@ -261,8 +262,8 @@ function createNodes(deps: GraphDependencies) {
       return {}
     }
 
-    const aiMessageId = String(Date.now())
-    await deps.sseService.emit(state.conversationId, { type: 'messageId', role: 'assistant', id: aiMessageId })
+    const aiMessageId = createId()
+    await deps.sseService.emit({ type: 'messageId', role: 'assistant', id: aiMessageId })
 
     let fullContent = ''
     let promptTokens = 0
@@ -286,7 +287,7 @@ function createNodes(deps: GraphDependencies) {
         if (await deps.sseService.isCancelled(state.conversationId)) {
           break
         }
-        await deps.sseService.emit(state.conversationId, {
+        await deps.sseService.emit({
           type: 'chunk',
           content,
           model: { id: state.modelId, name: state.modelName },
@@ -306,8 +307,8 @@ function createNodes(deps: GraphDependencies) {
   async function finalizeNode(state: ChatState): Promise<Partial<ChatState>> {
     if (state.cancelled) {
       await deps.sseService.clearProcessing(state.conversationId)
-      await deps.sseService.emit(state.conversationId, { type: 'done' })
-      await deps.sseService.clearMessageStream(state.conversationId)
+      await deps.sseService.emit({ type: 'done' })
+      await deps.sseService.clearMessageStream()
       await deps.sseService.clearCancelled(state.conversationId)
       return {}
     }
@@ -320,17 +321,17 @@ function createNodes(deps: GraphDependencies) {
       totalTokens: state.promptTokens + state.completionTokens,
     })
 
-    await deps.sseService.emit(state.conversationId, {
+    await deps.sseService.emit({
       type: 'usage',
       promptTokens: state.promptTokens,
       completionTokens: state.completionTokens,
     })
 
     await deps.sseService.clearProcessing(state.conversationId)
-    await deps.sseService.emit(state.conversationId, { type: 'done' })
+    await deps.sseService.emit({ type: 'done' })
 
     await new Promise(resolve => setTimeout(resolve, 1000))
-    await deps.sseService.clearMessageStream(state.conversationId)
+    await deps.sseService.clearMessageStream()
     await deps.sseService.clearCancelled(state.conversationId)
 
     logger.info('[ChatGraph] finalize 完成', { conversationId: state.conversationId })

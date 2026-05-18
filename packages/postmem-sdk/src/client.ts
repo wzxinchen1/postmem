@@ -3,8 +3,6 @@ import { PostMemError } from './types'
 import type {
   PostMemConfig,
   ChatRequest,
-  ChatResult,
-  ChatHandle,
   StreamEvent,
   ChatMessage,
   Conversation,
@@ -29,8 +27,7 @@ export class PostMemClient {
 
   async chat(
     request: ChatRequest,
-    onEvent?: (event: StreamEvent) => void,
-  ): Promise<ChatHandle> {
+  ): Promise<string> {
     const response = await this.fetchWithTimeout(`${this.baseUrl}/api/chat/completions`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -47,16 +44,13 @@ export class PostMemClient {
       throw new Error('No conversationId returned from server')
     }
 
-    const done = this.streamReader.consume(conversationId, (event) => {
-      onEvent?.(event)
-    }).then(({ fullContent, promptTokens, completionTokens }) => ({
-      conversationId,
-      fullContent,
-      promptTokens,
-      completionTokens,
-    }))
+    return conversationId
+  }
 
-    return { conversationId, done }
+  async consume(
+    onEvent: (event: StreamEvent) => void,
+  ): Promise<void> {
+    await this.streamReader.consume(onEvent)
   }
 
   async cancel(conversationId: string): Promise<void> {

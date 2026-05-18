@@ -36,18 +36,6 @@ export interface ChatRequest {
   kbId: string
 }
 
-export interface ChatHandle {
-  conversationId: string
-  done: Promise<ChatResult>
-}
-
-export interface ChatResult {
-  conversationId: string
-  fullContent: string
-  promptTokens: number
-  completionTokens: number
-}
-
 export interface ChatMessage {
   id: string
   conversationId: string

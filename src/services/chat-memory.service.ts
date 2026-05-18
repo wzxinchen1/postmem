@@ -51,7 +51,7 @@ export class ChatMemoryService {
     kbId: string,
     agent: ChatOpenAI
   ): Promise<string[]> {
-    await this.sseService.emit(conversationId, { type: 'status', status: 'summarizing' })
+    await this.sseService.emit({ type: 'status', status: 'summarizing' })
 
     const ingestMessages: IngestMessage[] = messages.map(m => ({
       id: String(m.id),
@@ -61,7 +61,7 @@ export class ChatMemoryService {
 
     const memorizedIds = await this.ingestMessages(kbId, ingestMessages, conversationId)
 
-    await this.sseService.emit(conversationId, { type: 'status', status: 'summarizing' })
+    await this.sseService.emit({ type: 'status', status: 'summarizing' })
 
     return memorizedIds
   }
@@ -152,7 +152,7 @@ export class ChatMemoryService {
         }
 
         if (event.message) {
-          await this.sseService.emit(conversationId, { type: 'status', status: 'memoryProgress' })
+          await this.sseService.emit({ type: 'status', status: 'memoryProgress' })
         }
       }
     }
