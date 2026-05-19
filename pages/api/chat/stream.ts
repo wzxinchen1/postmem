@@ -48,6 +48,8 @@ export default async function handler(req: any, res: any) {
     'Connection': 'keep-alive',
     'X-Accel-Buffering': 'no',
   })
+
+  
   res.flushHeaders()
 
   const keepAliveInterval = setInterval(() => {

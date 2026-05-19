@@ -1,6 +1,7 @@
 import { PrismaClient, Prisma } from '@/src/generated/prisma/client/client'
 import { Errors } from '@/src/lib/errors'
 import { logger } from '@/src/lib/logger'
+import { createId } from '@paralleldrive/cuid2'
 import type {
   SearchResult,
   SearchSource,
@@ -259,8 +260,8 @@ export class KBService {
         const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
         const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
-          INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
-          VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
+          INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
+          VALUES (${createId()}, ${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
                   ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
           RETURNING id
         `
@@ -407,8 +408,8 @@ export class KBService {
         const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
         const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
-          INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
-          VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
+          INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
+          VALUES (${createId()}, ${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
                   ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
           RETURNING id
         `
@@ -443,8 +444,8 @@ export class KBService {
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
       const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
-        INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
-        VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
+        INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
+        VALUES (${createId()}, ${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
                 ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
         RETURNING id
       `
@@ -461,8 +462,9 @@ export class KBService {
 /**
  * 知识入库 - 消息列表方式
  *
- * 存储方式：零 LLM 调用，每条消息原文完整存储
- * 去重策略：每条消息先搜索相似记忆，LLM 判断是否有增量价值
+ * 存储方式：将全部消息组合为完整对话文本，LLM切分+重写一步到位
+ *           每个片段语义完整连贯，标题由LLM生成
+ * 去重策略：每个分块先搜索相似记忆，LLM 判断是否有增量价值
  */
   async ingestMessages(kbId: string, messages: IngestMessage[]): Promise<IngestMessagesResponse> {
     const settings = await this.settingService.getAppSettings()
@@ -480,33 +482,86 @@ export class KBService {
 
     await this.getKnowledgeBaseById(kbId)
 
+    const conversationText = messages
+      .map((msg) => {
+        const roleLabel = msg.role === 'user' ? '用户' : msg.role === 'assistant' ? '助手' : '系统'
+        return `${roleLabel}: ${msg.content}`
+      })
+      .join('\n\n')
+
+    const chunks = await this.cutModelService.cutAndRewrite(conversationText, kbId)
+
+    const existingTopics = await this.prisma.topic.findMany({
+      where: { kbId },
+      select: { id: true, name: true, description: true },
+    })
+
+    const plan = await this.cutModelService.batchResolveTopics(chunks, existingTopics, kbId)
+
+    const topicNameMap = new Map<string, string>()
+    for (const t of existingTopics) {
+      topicNameMap.set(t.name, t.id)
+    }
+    for (const p of plan.plans) {
+      if (p.action === 'create' && p.newTopicName && !topicNameMap.has(p.newTopicName)) {
+        const sampleChunk = chunks[p.index]
+        if (!sampleChunk?.content) throw Errors.internalError(`片段 ${p.index} 缺少 content 字段`)
+        const createInfo = await this.cutModelService.createTopicInfo(sampleChunk.content, kbId)
+        const newTopic = await this.prisma.topic.create({
+          data: {
+            kbId,
+            name: p.newTopicName,
+            description: createInfo.description,
+          },
+        })
+        topicNameMap.set(p.newTopicName, newTopic.id)
+      }
+    }
+
     const memoryIds: string[] = []
-    const memorizedMessageIds: string[] = []
+    const memorizedMessageIds = messages.map((m) => m.id)
+    const thisBatchIds = new Set<string>()
 
-    for (const msg of messages) {
-      const roleLabel = msg.role === 'user' ? '用户' : msg.role === 'assistant' ? '助手' : '系统'
-      const content = `${roleLabel}: ${msg.content}`
+    for (const chunk of chunks) {
+      const planItem = plan.plans.find((p) => p.index === chunk.index)
+      if (!planItem) {
+        throw Errors.internalError(`片段 ${chunk.index} 缺少主题规划`)
+      }
 
-      const topicId = await this.resolveTopic(kbId, content)
+      let topicId: string
+      if (planItem.action === 'select' && planItem.topicName) {
+        const tid = topicNameMap.get(planItem.topicName)
+        if (!tid) {
+          throw Errors.internalError(`主题 "${planItem.topicName}" 未找到`)
+        }
+        topicId = tid
+      } else {
+        const tid = planItem.newTopicName ? topicNameMap.get(planItem.newTopicName) : undefined
+        if (!tid) {
+          throw Errors.internalError(`片段 ${chunk.index} 的主题创建失败`)
+        }
+        topicId = tid
+      }
 
-      const similarMemories = await this.searchInTopic(kbId, content, 3)
+      let similarMemories = await this.searchInTopic(kbId, chunk.content, 3)
+      similarMemories = similarMemories.filter((m) => !thisBatchIds.has(m.id))
 
       if (similarMemories.length === 0) {
-        const embedding = await this.embeddingService.generateEmbedding(content)
+        const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
         const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
-          INSERT INTO memories (kb_id, topic_id, content, embedding, metadata)
-          VALUES (${kbId}, ${topicId}, ${content}, ${`[${embedding.join(',')}]`}::vector,
-                  ${JSON.stringify({ cutModel: 'verbatim', messageId: msg.id, role: msg.role })}::jsonb)
+          INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
+          VALUES (${createId()}, ${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
+                  ${JSON.stringify({ cutModel: 'cut-and-rewrite', source: 'chat-memory' })}::jsonb)
           RETURNING id
         `
         memoryIds.push(inserted[0].id)
-        memorizedMessageIds.push(msg.id)
+        thisBatchIds.add(inserted[0].id)
         continue
       }
 
       const result = await this.cutModelService.shouldIngestChunk(
-        content,
+        chunk.content,
         similarMemories.map((m) => ({ id: m.id, content: m.content, score: m.score })),
         kbId
       )
@@ -526,20 +581,20 @@ export class KBService {
         `
 
         memoryIds.push(result.targetMemoryId)
-        memorizedMessageIds.push(msg.id)
+        thisBatchIds.add(result.targetMemoryId)
         continue
       }
 
-      const embedding = await this.embeddingService.generateEmbedding(content)
+      const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
       const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
-        INSERT INTO memories (kb_id, topic_id, content, embedding, metadata)
-        VALUES (${kbId}, ${topicId}, ${content}, ${`[${embedding.join(',')}]`}::vector,
-                ${JSON.stringify({ cutModel: 'verbatim', messageId: msg.id, role: msg.role })}::jsonb)
-          RETURNING id
-        `
-        memoryIds.push(inserted[0].id)
-        memorizedMessageIds.push(msg.id)
+        INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
+        VALUES (${createId()}, ${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
+                ${JSON.stringify({ cutModel: 'cut-and-rewrite', source: 'chat-memory' })}::jsonb)
+        RETURNING id
+      `
+      memoryIds.push(inserted[0].id)
+      thisBatchIds.add(inserted[0].id)
     }
 
     return {
