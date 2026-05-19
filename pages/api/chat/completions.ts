@@ -93,5 +93,13 @@ export default createApiHandler<Deps>({
     })
 
     return successResponse(res, { conversationId: convId })
-  }
+  },
 })
+
+export const config = {
+  api: {
+    bodyParser: {
+      sizeLimit: '10mb',
+    },
+  },
+}

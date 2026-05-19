@@ -75,10 +75,7 @@ export class ProviderService {
       modelType,
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
-      config: {
-        ...provider.config,
-        ...config,
-      },
+      config: config ?? {},
     })
   }
 
@@ -86,7 +83,6 @@ export class ProviderService {
    * 创建提供商
    */
   async create(data: CreateProviderRequest): Promise<Provider> {
-    if (data.config === undefined) throw Errors.badRequest('提供商缺少 config 字段')
     if (data.isActive === undefined) throw Errors.badRequest('提供商缺少 isActive 字段')
 
     const provider = await this.prisma.provider.create({
@@ -95,7 +91,6 @@ export class ProviderService {
         vendorId: data.vendorId,
         apiKey: data.apiKey ?? null,
         baseUrl: data.baseUrl,
-        config: data.config as any,
         isActive: data.isActive,
       } as any,
       include: { vendor: true },
@@ -112,7 +107,6 @@ export class ProviderService {
       ...(data.vendorId !== undefined && { vendorId: data.vendorId }),
       ...(data.apiKey !== undefined && { apiKey: data.apiKey }),
       ...(data.baseUrl !== undefined && { baseUrl: data.baseUrl }),
-      ...(data.config !== undefined && { config: data.config }),
       ...(data.isActive !== undefined && { isActive: data.isActive }),
     }
     return this.prisma.provider.update({

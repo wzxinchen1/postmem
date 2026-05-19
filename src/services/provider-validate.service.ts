@@ -86,7 +86,7 @@ export class ProviderValidateService {
     }
 
     try {
-      const response = await fetch(`${baseUrl}/v1/models`, {
+      const response = await fetch(`${baseUrl}/models`, {
         headers: apiKey ? { Authorization: `Bearer ${apiKey}` } : {},
         signal: AbortSignal.timeout(10000),
       })

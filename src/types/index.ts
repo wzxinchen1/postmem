@@ -278,7 +278,6 @@ export interface Provider {
   vendor?: Vendor
   apiKey?: string
   baseUrl: string
-  config: Record<string, unknown>
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -308,7 +307,6 @@ export interface CreateProviderRequest {
   vendorId: string
   apiKey?: string
   baseUrl: string
-  config?: Record<string, unknown>
   isActive?: boolean
 }
 
@@ -320,7 +318,6 @@ export interface UpdateProviderRequest {
   vendorId?: string
   apiKey?: string
   baseUrl?: string
-  config?: Record<string, unknown>
   isActive?: boolean
 }
 

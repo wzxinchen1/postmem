@@ -16,6 +16,7 @@ class DeepSeekChatModel extends BaseChatModel {
     this.thinkingEnabled = params.config?.reasoning === true && params.config?.reasoningEffort !== 'none'
     this.maxTokens = params.config?.maxTokens
     this.temperature = params.config?.temperature ?? 1
+    this.capabilities = params.config?.capabilities || []
   }
 
   _llmType() {
@@ -53,7 +54,16 @@ class DeepSeekChatModel extends BaseChatModel {
         }
         return msg
       }
-      if (role === 'human') return { role: 'user', content: m.content }
+      if (role === 'human') {
+        if (Array.isArray(m.content)) {
+          if (this.capabilities.includes('vision')) {
+            return { role: 'user', content: m.content }
+          }
+          const textParts = m.content.filter(c => c.type === 'text')
+          return { role: 'user', content: textParts.map(c => c.text).join('\\n') }
+        }
+        return { role: 'user', content: m.content }
+      }
       if (role === 'tool') return { role: 'tool', content: m.content }
       return { role: 'user', content: String(m.content) }
     })

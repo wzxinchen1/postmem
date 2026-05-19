@@ -9,13 +9,14 @@ interface CreateAgentParams {
   temperature?: number
   reasoning?: boolean
   reasoningEffort?: string
+  config?: Record<string, unknown>
 }
 
 export class ChatModelFactory {
   private agents: Map<string, unknown> = new Map()
 
   createAgent(vendor: Vendor, params: CreateAgentParams): unknown {
-    const { model, apiKey, baseUrl, maxTokens, temperature = 0.7, reasoning, reasoningEffort } = params
+    const { model, apiKey, baseUrl, maxTokens, temperature = 0.7, reasoning, reasoningEffort, config } = params
 
     if (!model) {
       throw new Error('modelName is required')
@@ -44,6 +45,7 @@ export class ChatModelFactory {
         ...(maxTokens ? { maxTokens } : {}),
         ...(typeof reasoning === 'boolean' ? { reasoning } : {}),
         ...(reasoningEffort ? { reasoningEffort } : {}),
+        ...config,
       },
     })
 

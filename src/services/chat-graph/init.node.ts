@@ -34,6 +34,7 @@ export function createInitNode(deps: GraphDependencies) {
       maxTokens: chatSetting.maxOutputTokens,
       reasoning: !!hasReasoning,
       reasoningEffort: hasReasoning ? state.thinkingEffort : undefined,
+      config: { capabilities: model.capabilities },
     })
 
     await deps.kbService.getKnowledgeBaseById(state.kbId)

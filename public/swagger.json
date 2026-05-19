@@ -3286,7 +3286,6 @@
           "name",
           "vendorId",
           "baseUrl",
-          "config",
           "isActive",
           "createdAt",
           "updatedAt"
@@ -3315,10 +3314,6 @@
           "baseUrl": {
             "type": "string",
             "description": "baseUrl"
-          },
-          "config": {
-            "type": "object",
-            "description": "config"
           },
           "isActive": {
             "type": "boolean",
@@ -3423,10 +3418,6 @@
             "type": "string",
             "description": "baseUrl"
           },
-          "config": {
-            "type": "object",
-            "description": "config"
-          },
           "isActive": {
             "type": "boolean",
             "description": "isActive"
@@ -3451,10 +3442,6 @@
           "baseUrl": {
             "type": "string",
             "description": "baseUrl"
-          },
-          "config": {
-            "type": "object",
-            "description": "config"
           },
           "isActive": {
             "type": "boolean",

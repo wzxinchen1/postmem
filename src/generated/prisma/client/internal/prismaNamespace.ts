@@ -1537,7 +1537,6 @@ export const ProviderScalarFieldEnum = {
   name: 'name',
   apiKey: 'apiKey',
   baseUrl: 'baseUrl',
-  config: 'config',
   isActive: 'isActive',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt',

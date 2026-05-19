@@ -41,6 +41,7 @@ export function createRecognizeImageNode(deps: GraphDependencies) {
       model: visionModel.name,
       apiKey: visionProvider.apiKey,
       baseUrl: visionProvider.baseUrl,
+      config: { capabilities: visionModel.capabilities, reasoning: false },
     })
 
     const imageContents = [

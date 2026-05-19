@@ -116,7 +116,8 @@ export class ChatService {
       images = lastMessage.images ?? []
       urls = lastMessage.urls ?? []
       const userMessageId = createId()
-      await this.conversationService.addMessage({
+      await this.conversationService.addMessageWithId({
+        id: userMessageId,
         conversationId: convId,
         role: 'user',
         content: lastMessage.content,

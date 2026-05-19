@@ -51,7 +51,6 @@ export type ProviderCountAggregateOutputType = {
   name: number
   apiKey: number
   baseUrl: number
-  config: number
   isActive: number
   createdAt: number
   updatedAt: number
@@ -87,7 +86,6 @@ export type ProviderCountAggregateInputType = {
   name?: true
   apiKey?: true
   baseUrl?: true
-  config?: true
   isActive?: true
   createdAt?: true
   updatedAt?: true
@@ -172,7 +170,6 @@ export type ProviderGroupByOutputType = {
   name: string
   apiKey: string | null
   baseUrl: string
-  config: runtime.JsonValue
   isActive: boolean
   createdAt: Date
   updatedAt: Date
@@ -205,7 +202,6 @@ export type ProviderWhereInput = {
   name?: Prisma.StringFilter<"Provider"> | string
   apiKey?: Prisma.StringNullableFilter<"Provider"> | string | null
   baseUrl?: Prisma.StringFilter<"Provider"> | string
-  config?: Prisma.JsonFilter<"Provider">
   isActive?: Prisma.BoolFilter<"Provider"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
@@ -219,7 +215,6 @@ export type ProviderOrderByWithRelationInput = {
   name?: Prisma.SortOrder
   apiKey?: Prisma.SortOrderInput | Prisma.SortOrder
   baseUrl?: Prisma.SortOrder
-  config?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -236,7 +231,6 @@ export type ProviderWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.ProviderWhereInput | Prisma.ProviderWhereInput[]
   apiKey?: Prisma.StringNullableFilter<"Provider"> | string | null
   baseUrl?: Prisma.StringFilter<"Provider"> | string
-  config?: Prisma.JsonFilter<"Provider">
   isActive?: Prisma.BoolFilter<"Provider"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
@@ -250,7 +244,6 @@ export type ProviderOrderByWithAggregationInput = {
   name?: Prisma.SortOrder
   apiKey?: Prisma.SortOrderInput | Prisma.SortOrder
   baseUrl?: Prisma.SortOrder
-  config?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -268,7 +261,6 @@ export type ProviderScalarWhereWithAggregatesInput = {
   name?: Prisma.StringWithAggregatesFilter<"Provider"> | string
   apiKey?: Prisma.StringNullableWithAggregatesFilter<"Provider"> | string | null
   baseUrl?: Prisma.StringWithAggregatesFilter<"Provider"> | string
-  config?: Prisma.JsonWithAggregatesFilter<"Provider">
   isActive?: Prisma.BoolWithAggregatesFilter<"Provider"> | boolean
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"Provider"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"Provider"> | Date | string
@@ -280,7 +272,6 @@ export type ProviderCreateInput = {
   name: string
   apiKey?: string | null
   baseUrl: string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -293,7 +284,6 @@ export type ProviderUncheckedCreateInput = {
   name: string
   apiKey?: string | null
   baseUrl: string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -306,7 +296,6 @@ export type ProviderUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -319,7 +308,6 @@ export type ProviderUncheckedUpdateInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -332,7 +320,6 @@ export type ProviderCreateManyInput = {
   name: string
   apiKey?: string | null
   baseUrl: string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -344,7 +331,6 @@ export type ProviderUpdateManyMutationInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -355,7 +341,6 @@ export type ProviderUncheckedUpdateManyInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -377,7 +362,6 @@ export type ProviderCountOrderByAggregateInput = {
   name?: Prisma.SortOrder
   apiKey?: Prisma.SortOrder
   baseUrl?: Prisma.SortOrder
-  config?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -472,7 +456,6 @@ export type ProviderCreateWithoutVendorInput = {
   name: string
   apiKey?: string | null
   baseUrl: string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -484,7 +467,6 @@ export type ProviderUncheckedCreateWithoutVendorInput = {
   name: string
   apiKey?: string | null
   baseUrl: string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -525,7 +507,6 @@ export type ProviderScalarWhereInput = {
   name?: Prisma.StringFilter<"Provider"> | string
   apiKey?: Prisma.StringNullableFilter<"Provider"> | string | null
   baseUrl?: Prisma.StringFilter<"Provider"> | string
-  config?: Prisma.JsonFilter<"Provider">
   isActive?: Prisma.BoolFilter<"Provider"> | boolean
   createdAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"Provider"> | Date | string
@@ -537,7 +518,6 @@ export type ProviderCreateWithoutModelsInput = {
   name: string
   apiKey?: string | null
   baseUrl: string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -549,7 +529,6 @@ export type ProviderUncheckedCreateWithoutModelsInput = {
   name: string
   apiKey?: string | null
   baseUrl: string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -577,7 +556,6 @@ export type ProviderUpdateWithoutModelsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -589,7 +567,6 @@ export type ProviderUncheckedUpdateWithoutModelsInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -601,7 +578,6 @@ export type ProviderCreateManyVendorInput = {
   name: string
   apiKey?: string | null
   baseUrl: string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -612,7 +588,6 @@ export type ProviderUpdateWithoutVendorInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -624,7 +599,6 @@ export type ProviderUncheckedUpdateWithoutVendorInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -636,7 +610,6 @@ export type ProviderUncheckedUpdateManyWithoutVendorInput = {
   name?: Prisma.StringFieldUpdateOperationsInput | string
   apiKey?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   baseUrl?: Prisma.StringFieldUpdateOperationsInput | string
-  config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -678,7 +651,6 @@ export type ProviderSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs
   name?: boolean
   apiKey?: boolean
   baseUrl?: boolean
-  config?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -693,7 +665,6 @@ export type ProviderSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exte
   name?: boolean
   apiKey?: boolean
   baseUrl?: boolean
-  config?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -706,7 +677,6 @@ export type ProviderSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exte
   name?: boolean
   apiKey?: boolean
   baseUrl?: boolean
-  config?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -719,14 +689,13 @@ export type ProviderSelectScalar = {
   name?: boolean
   apiKey?: boolean
   baseUrl?: boolean
-  config?: boolean
   isActive?: boolean
   createdAt?: boolean
   updatedAt?: boolean
   vendorId?: boolean
 }
 
-export type ProviderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "apiKey" | "baseUrl" | "config" | "isActive" | "createdAt" | "updatedAt" | "vendorId", ExtArgs["result"]["provider"]>
+export type ProviderOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "name" | "apiKey" | "baseUrl" | "isActive" | "createdAt" | "updatedAt" | "vendorId", ExtArgs["result"]["provider"]>
 export type ProviderInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   models?: boolean | Prisma.Provider$modelsArgs<ExtArgs>
   vendor?: boolean | Prisma.VendorDefaultArgs<ExtArgs>
@@ -750,7 +719,6 @@ export type $ProviderPayload<ExtArgs extends runtime.Types.Extensions.InternalAr
     name: string
     apiKey: string | null
     baseUrl: string
-    config: runtime.JsonValue
     isActive: boolean
     createdAt: Date
     updatedAt: Date
@@ -1184,7 +1152,6 @@ export interface ProviderFieldRefs {
   readonly name: Prisma.FieldRef<"Provider", 'String'>
   readonly apiKey: Prisma.FieldRef<"Provider", 'String'>
   readonly baseUrl: Prisma.FieldRef<"Provider", 'String'>
-  readonly config: Prisma.FieldRef<"Provider", 'Json'>
   readonly isActive: Prisma.FieldRef<"Provider", 'Boolean'>
   readonly createdAt: Prisma.FieldRef<"Provider", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"Provider", 'DateTime'>
