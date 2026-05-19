@@ -16,57 +16,92 @@ var PostMemError = class _PostMemError extends Error {
     return new _PostMemError(500, message);
   }
 };
+var StreamStatus = /* @__PURE__ */ ((StreamStatus2) => {
+  StreamStatus2["SearchingWeb"] = "searchingWeb";
+  StreamStatus2["SearchingMemory"] = "searchingMemory";
+  StreamStatus2["Summarizing"] = "summarizing";
+  StreamStatus2["MemoryProgress"] = "memoryProgress";
+  StreamStatus2["Thinking"] = "thinking";
+  return StreamStatus2;
+})(StreamStatus || {});
+var ThinkingEffort = /* @__PURE__ */ ((ThinkingEffort2) => {
+  ThinkingEffort2["None"] = "none";
+  ThinkingEffort2["Minimal"] = "minimal";
+  ThinkingEffort2["Low"] = "low";
+  ThinkingEffort2["Medium"] = "medium";
+  ThinkingEffort2["High"] = "high";
+  ThinkingEffort2["XHigh"] = "xhigh";
+  return ThinkingEffort2;
+})(ThinkingEffort || {});
+var DoneReason = /* @__PURE__ */ ((DoneReason2) => {
+  DoneReason2["Truncated"] = "truncated";
+  DoneReason2["InsufficientBalance"] = "insufficient_balance";
+  DoneReason2["ContentFiltered"] = "content_filtered";
+  return DoneReason2;
+})(DoneReason || {});
 
 // src/stream-reader.ts
 var StreamReader = class {
   constructor(config) {
     this.baseUrl = config.baseUrl.replace(/\/+$/, "");
-    this.requestTimeout = config.requestTimeout ?? 3e5;
+    this.requestTimeout = config.requestTimeout ?? 0;
   }
-  async consume(onEvent) {
+  async consume(onEvent, options) {
     if (typeof onEvent !== "function") {
       throw PostMemError.validation("onEvent callback is required");
     }
-    const controller = new AbortController();
-    const timeoutId = setTimeout(() => controller.abort(), this.requestTimeout);
-    try {
-      const response = await fetch(`${this.baseUrl}/api/chat/stream`, {
-        signal: controller.signal
-      });
-      if (!response.ok) {
-        throw new PostMemError(response.status, `Stream request failed: ${response.status}`);
+    const externalSignal = options?.signal;
+    if (externalSignal?.aborted) return;
+    let retryDelay = 1e3;
+    while (true) {
+      if (externalSignal?.aborted) return;
+      const controller = new AbortController();
+      if (this.requestTimeout > 0) {
+        setTimeout(() => controller.abort(), this.requestTimeout);
       }
-      const reader = response.body?.getReader();
-      if (!reader) {
-        throw PostMemError.serverError("Failed to get response reader");
+      if (externalSignal) {
+        if (externalSignal.aborted) return;
+        externalSignal.addEventListener("abort", () => controller.abort(), { once: true });
       }
-      const decoder = new TextDecoder();
-      let buffer = "";
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split("\n");
-        buffer = lines.pop() || "";
-        for (const line of lines) {
-          const trimmed = line.trim();
-          if (!trimmed.startsWith("data:")) continue;
-          const jsonStr = trimmed.slice(5).trim();
-          if (!jsonStr || jsonStr === "[DONE]") continue;
-          let event;
-          try {
-            event = JSON.parse(jsonStr);
-          } catch {
-            continue;
-          }
-          onEvent(event);
-          if (event.type === "done" || event.type === "error") {
-            return;
+      try {
+        const response = await fetch(`${this.baseUrl}/api/chat/stream`, {
+          signal: controller.signal
+        });
+        if (!response.ok) {
+          throw new PostMemError(response.status, `Stream request failed: ${response.status}`);
+        }
+        const reader = response.body?.getReader();
+        if (!reader) {
+          throw PostMemError.serverError("Failed to get response reader");
+        }
+        const decoder = new TextDecoder();
+        let buffer = "";
+        retryDelay = 1e3;
+        while (true) {
+          const { done, value } = await reader.read();
+          if (done) break;
+          buffer += decoder.decode(value, { stream: true });
+          const lines = buffer.split("\n");
+          buffer = lines.pop() || "";
+          for (const line of lines) {
+            const trimmed = line.trim();
+            if (!trimmed.startsWith("data:")) continue;
+            const jsonStr = trimmed.slice(5).trim();
+            if (!jsonStr || jsonStr === "[DONE]") continue;
+            let event;
+            try {
+              event = JSON.parse(jsonStr);
+            } catch {
+              continue;
+            }
+            onEvent(event);
           }
         }
+      } catch {
+        if (externalSignal?.aborted) return;
       }
-    } finally {
-      clearTimeout(timeoutId);
+      await new Promise((resolve) => setTimeout(resolve, retryDelay));
+      retryDelay = Math.min(retryDelay * 2, 3e4);
     }
   }
 };
@@ -134,7 +169,7 @@ var PostMemClient = class {
             completionTokens = event.completionTokens;
             break;
         }
-      });
+      }, { signal: options?.signal });
       return { conversationId, fullContent, error, userTokens, userTotalTokens, totalTokens, completionTokens };
     }
     const encoder = new TextEncoder();
@@ -242,8 +277,11 @@ var PostMemClient = class {
   }
 };
 export {
+  DoneReason,
   PostMemClient,
   PostMemError,
-  StreamReader
+  StreamReader,
+  StreamStatus,
+  ThinkingEffort
 };
 //# sourceMappingURL=index.mjs.map

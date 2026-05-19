@@ -18,19 +18,20 @@ export function createInitNode(deps: GraphDependencies) {
     }
 
     const chatSetting = await deps.chatSettingService.get()
+    const hasReasoning = state.thinkingEffort !== undefined && state.thinkingEffort !== 'none'
     logger.info('[ChatGraph] init 创建模型', {
       modelId: state.modelId,
       modelName: model.name,
-      enableThinking: state.enableThinking,
       thinkingEffort: state.thinkingEffort,
+      hasReasoning,
     })
     const agent = deps.chatModelFactory.createAgent(provider.vendor, {
       model: model.name,
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
       maxTokens: chatSetting.maxOutputTokens,
-      reasoning: state.enableThinking ?? true,
-      reasoningEffort: state.thinkingEffort,
+      reasoning: !!hasReasoning,
+      reasoningEffort: hasReasoning ? state.thinkingEffort : undefined,
     })
 
     await deps.kbService.getKnowledgeBaseById(state.kbId)

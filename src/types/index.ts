@@ -485,7 +485,6 @@ export interface ChatCompletionRequest {
   regenerateMessageId?: string
   modelId: string
   kbId: string
-  enableThinking?: boolean
   thinkingEffort?: ThinkingEffort
 }
 

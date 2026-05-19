@@ -1,6 +1,6 @@
 export { PostMemClient } from './client'
 export { StreamReader } from './stream-reader'
-export { PostMemError } from './types'
+export { PostMemError, DoneReason, StreamStatus, ThinkingEffort } from './types'
 export type {
   ChatMessageInput,
   ChatRequest,
@@ -9,4 +9,4 @@ export type {
   PostMemConfig,
   ChatResult,
 } from './types'
-export type { StreamStatus, StreamEvent } from './types'
+export type { StreamEvent } from './types'

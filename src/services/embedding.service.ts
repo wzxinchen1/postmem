@@ -79,15 +79,6 @@ export class EmbeddingService {
   }
 
   async healthCheck(): Promise<boolean> {
-    const { provider } = await this.getDefaultModel()
-
-    if (provider.baseUrl.includes('localhost:11434')) {
-      const response = await fetch(`${provider.baseUrl}/api/tags`, {
-        method: 'GET',
-      })
-      return response.ok
-    }
-
     return true
   }
 

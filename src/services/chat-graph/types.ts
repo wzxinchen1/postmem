@@ -24,8 +24,7 @@ export const ChatGraphState = Annotation.Root({
   searchResult: Annotation<string>,
   memoryText: Annotation<string>,
   cancelled: Annotation<boolean>,
-  enableThinking: Annotation<boolean>,
-  thinkingEffort: Annotation<string>,
+  thinkingEffort: Annotation<string | undefined>,
   langchainMessages: Annotation<(HumanMessage | AIMessage)[]>,
   finalMessages: Annotation<(SystemMessage | HumanMessage | AIMessage)[]>},
 )

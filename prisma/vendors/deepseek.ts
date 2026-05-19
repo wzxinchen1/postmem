@@ -13,6 +13,7 @@ class DeepSeekChatModel extends BaseChatModel {
     this.baseUrl = params.baseUrl || 'https://api.deepseek.com'
     this.reasoning = params.config?.reasoning !== false
     this.reasoningEffort = params.config?.reasoningEffort
+    this.thinkingEnabled = params.config?.reasoning === true && params.config?.reasoningEffort !== 'none'
     this.maxTokens = params.config?.maxTokens
     this.temperature = params.config?.temperature ?? 1
   }
@@ -34,7 +35,7 @@ class DeepSeekChatModel extends BaseChatModel {
   }
 
   _buildThinkingBody() {
-    if (!this.reasoning || this.reasoningEffort === 'none') return undefined
+    if (!this.reasoning || !this.reasoningEffort || this.reasoningEffort === 'none') return undefined
     const mapped = this._mapReasoningEffort(this.reasoningEffort)
     const body = { type: 'enabled' }
     if (mapped) body.reasoning_effort = mapped
@@ -88,11 +89,12 @@ class DeepSeekChatModel extends BaseChatModel {
     const msg = choice.message
 
     const additionalKwargs = {}
-    if (msg.reasoning_content) {
+    if (this.thinkingEnabled && msg.reasoning_content) {
       additionalKwargs.reasoning_content = msg.reasoning_content
     }
 
     const usage = data.usage || {}
+    const reasoningTokens = usage.completion_tokens_details?.reasoning_tokens || 0
     return {
       generations: [{
         text: msg.content || '',
@@ -103,6 +105,9 @@ class DeepSeekChatModel extends BaseChatModel {
             input_tokens: usage.prompt_tokens || 0,
             output_tokens: usage.completion_tokens || 0,
             total_tokens: usage.total_tokens || 0,
+            output_token_details: {
+              reasoning: reasoningTokens,
+            },
           },
         }),
       }],
@@ -149,6 +154,7 @@ class DeepSeekChatModel extends BaseChatModel {
         if (!trimmed || !trimmed.startsWith('data: ')) continue
         if (trimmed === 'data: [DONE]') {
           if (finalUsage) {
+            const reasoningTokens = finalUsage.completion_tokens_details?.reasoning_tokens || 0
             yield new ChatGenerationChunk({
               message: new AIMessageChunk({
                 content: '',
@@ -156,6 +162,9 @@ class DeepSeekChatModel extends BaseChatModel {
                   input_tokens: finalUsage.prompt_tokens || 0,
                   output_tokens: finalUsage.completion_tokens || 0,
                   total_tokens: finalUsage.total_tokens || 0,
+                  output_token_details: {
+                    reasoning: reasoningTokens,
+                  },
                 },
               }),
             })
@@ -170,7 +179,7 @@ class DeepSeekChatModel extends BaseChatModel {
 
           if (data.usage) finalUsage = data.usage
 
-          if (delta.reasoning_content) {
+          if (this.thinkingEnabled && delta.reasoning_content) {
             yield new ChatGenerationChunk({
               message: new AIMessageChunk({
                 content: delta.reasoning_content,

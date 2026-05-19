@@ -15,7 +15,7 @@ export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['chatService', 'conversationService', 'sseService'],
   handler: async (req, res, deps) => {
-    const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId, enableThinking, thinkingEffort } = req.body
+    const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId, thinkingEffort } = req.body
 
     if (!messages || !Array.isArray(messages) || messages.length === 0) {
       return errorResponse(res, 'BAD_REQUEST', 'messages 不能为空')
@@ -72,7 +72,6 @@ export default createApiHandler<Deps>({
       regenerateMessageId,
       modelId,
       kbId,
-      enableThinking,
       thinkingEffort,
     }).then(() => {
       logger.info('[completions] chat completed')

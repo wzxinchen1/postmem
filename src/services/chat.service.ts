@@ -74,8 +74,7 @@ export class ChatService {
       regenerateMessageId,
       modelId,
       kbId,
-      enableThinking = true,
-      thinkingEffort = '',
+      thinkingEffort,
     } = params
 
     logger.info('[ChatService] chat 参数', { conversationId, newConversation, kbId, modelId })
@@ -156,7 +155,6 @@ export class ChatService {
         searchResult: '',
         memoryText: '',
         cancelled: false,
-        enableThinking,
         thinkingEffort,
         langchainMessages: [],
         finalMessages: [],

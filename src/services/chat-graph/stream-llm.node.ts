@@ -20,7 +20,6 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
     try {
       logger.info('[ChatGraph] streamLLM 开始', {
         conversationId: state.conversationId,
-        enableThinking: (state as any).enableThinking,
         thinkingEffort: (state as any).thinkingEffort,
         finalMessageCount: state.finalMessages.length,
       })
@@ -37,19 +36,15 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
           const rawOutputTokens = meta.output_tokens || 0
           const reasoningTokens = meta.output_token_details?.reasoning ?? 0
           completionTokens = rawOutputTokens - reasoningTokens
-        } else if (chunk.response_metadata) {
-          const meta = chunk.response_metadata as any
-          apiTotalPromptTokens = Number(meta.prompt_eval_count ?? 0)
-          completionTokens = Number(meta.eval_count ?? 0)
-          finishReason = String(meta.finish_reason ?? '')
+        }else{
+          logger.info('[ChatGraph] 意外格式，原始 chunk', { raw: JSON.stringify(chunk) })
         }
 
         if (chunk.additional_kwargs?.type === 'reasoning') {
           const thinkingContent = chunk.content ?? ''
           if (thinkingContent) {
             thinkingCount++
-            logger.debug('[ChatGraph] thinking chunk', { index: thinkingCount, contentLength: thinkingContent.length, content: thinkingContent.slice(0, 100) })
-            if (await deps.sseService.isCancelled(state.conversationId)) {
+           if (await deps.sseService.isCancelled(state.conversationId)) {
               break
             }
             await deps.sseService.emit({ type: 'thinking', content: thinkingContent })
@@ -62,7 +57,6 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
 
         if (content) {
           chunkCount++
-          logger.debug('[ChatGraph] content chunk', { index: chunkCount, contentLength: content.length, content: content.slice(0, 100) })
           if (await deps.sseService.isCancelled(state.conversationId)) {
             break
           }

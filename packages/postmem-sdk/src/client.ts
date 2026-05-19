@@ -89,7 +89,7 @@ export class PostMemClient {
             completionTokens = event.completionTokens
             break
         }
-      })
+      }, { signal: options?.signal })
 
       return { conversationId, fullContent, error, userTokens, userTotalTokens, totalTokens, completionTokens }
     }

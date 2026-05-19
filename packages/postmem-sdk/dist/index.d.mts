@@ -66,7 +66,6 @@ interface ChatRequest {
     regenerateMessageId?: string;
     modelId: string;
     kbId: string;
-    enableThinking?: boolean;
     thinkingEffort?: ThinkingEffort;
 }
 interface ChatMessage {
@@ -143,7 +142,9 @@ declare class StreamReader {
     private baseUrl;
     private requestTimeout;
     constructor(config: StreamReaderConfig);
-    consume(onEvent: (event: StreamEvent) => void): Promise<void>;
+    consume(onEvent: (event: StreamEvent) => void, options?: {
+        signal?: AbortSignal;
+    }): Promise<void>;
 }
 
-export { type ChatMessage, type ChatMessageInput, type ChatRequest, type ChatResult, type Conversation, PostMemClient, type PostMemConfig, PostMemError, type StreamEvent, StreamReader, StreamStatus };
+export { type ChatMessage, type ChatMessageInput, type ChatRequest, type ChatResult, type Conversation, DoneReason, PostMemClient, type PostMemConfig, PostMemError, type StreamEvent, StreamReader, StreamStatus, ThinkingEffort };
