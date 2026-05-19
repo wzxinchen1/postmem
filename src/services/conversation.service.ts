@@ -160,6 +160,40 @@ export class ConversationService {
     })
   }
 
+  async addMessageWithId(data: AddChatMessageRequest & { id: string }): Promise<ChatMessage> {
+    if (data.tokens === undefined) throw Errors.badRequest('消息缺少 tokens 字段')
+    if (data.totalTokens === undefined) throw Errors.badRequest('消息缺少 totalTokens 字段')
+    if (data.memoried === undefined) throw Errors.badRequest('消息缺少 memoried 字段')
+
+    const isWelcome = data.metadata?.isWelcome === true
+
+    if (data.role === 'assistant' && !isWelcome && !data.name) {
+      throw Errors.badRequest('assistant 消息必须指定模型名称 (name)')
+    }
+
+    const isSystemMessage = data.role === 'system'
+    const isUserMessage = data.role === 'user'
+    if (!isWelcome && !isSystemMessage && !isUserMessage && data.tokens <= 0) {
+      throw Errors.internalError(`非系统/欢迎/user消息的 tokens 必须 > 0，当前值=${data.tokens}，role=${data.role}，content长度=${data.content.length}`)
+    }
+
+    const resolvedName = isWelcome ? (data.name ?? '聊天助手') : data.name
+
+    return this.prisma.chatMessage.create({
+      data: {
+        id: data.id,
+        conversationId: data.conversationId,
+        role: data.role,
+        content: data.content,
+        tokens: data.tokens,
+        totalTokens: data.totalTokens,
+        reasoningTokens: data.reasoningTokens,
+        memoried: data.memoried,
+        metadata: { ...data.metadata as any, modelName: resolvedName },
+      },
+    }) as Promise<ChatMessage>
+  }
+
   async markMessageMemoried(messageId: string): Promise<void> {
     await this.prisma.chatMessage.update({
       where: { id: messageId },

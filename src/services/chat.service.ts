@@ -108,15 +108,27 @@ export class ChatService {
 
     if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
-      const userMessageId = createId()
-      await this.conversationService.addMessage({
-        conversationId: convId,
-        role: 'user',
-        content: lastMessage.content,
-        tokens: 0,
-        totalTokens: 0,
-        memoried: false,
-      })
+      const userMessageId = regenerateMessageId || createId()
+      if (regenerateMessageId) {
+        await this.conversationService.addMessageWithId({
+          id: userMessageId,
+          conversationId: convId,
+          role: 'user',
+          content: lastMessage.content,
+          tokens: 0,
+          totalTokens: 0,
+          memoried: false,
+        })
+      } else {
+        await this.conversationService.addMessage({
+          conversationId: convId,
+          role: 'user',
+          content: lastMessage.content,
+          tokens: 0,
+          totalTokens: 0,
+          memoried: false,
+        })
+      }
       await this.sseService.emit({ type: 'messageId', role: 'user', id: userMessageId })
     }
 
