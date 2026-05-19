@@ -1,4 +1,5 @@
 import type { ChatState, GraphDependencies } from './types'
+import { DoneReason } from '@/src/services/sse.service'
 import { logger } from '@/src/lib/logger'
 
 export function createFinalizeNode(deps: GraphDependencies) {
@@ -17,6 +18,7 @@ export function createFinalizeNode(deps: GraphDependencies) {
       content: state.fullContent,
       tokens: state.completionTokens,
       totalTokens: state.totalTokens,
+      reasoningTokens: state.reasoningTokens,
       memoried: false,
       name: state.modelName,
     })
@@ -27,8 +29,16 @@ export function createFinalizeNode(deps: GraphDependencies) {
           !state.totalTokens ? 'totalTokens' :
             !state.completionTokens ? 'completionTokens' : null
 
+    let reason: DoneReason | undefined
+    if (state.finishReason === 'length') {
+      reason = DoneReason.Truncated
+    } else if (state.finishReason === 'content_filter' || state.finishReason === 'sensitive') {
+      reason = DoneReason.ContentFiltered
+    }
+
     await deps.sseService.emit({
       type: 'done',
+      reason,
       error: tokenError
         ? `内部错误：${tokenError} 缺失或为0 (${tokenError}=${(state as any)[tokenError]})`
         : undefined,
@@ -36,6 +46,7 @@ export function createFinalizeNode(deps: GraphDependencies) {
       userTotalTokens: state.userTotalTokens ?? undefined,
       totalTokens: state.totalTokens ?? undefined,
       completionTokens: state.completionTokens ?? undefined,
+      reasoningTokens: state.reasoningTokens ?? undefined,
     })
 
     await deps.sseService.clearProcessing(state.conversationId)

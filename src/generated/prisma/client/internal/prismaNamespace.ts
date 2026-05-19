@@ -1603,6 +1603,7 @@ export const ChatMessageScalarFieldEnum = {
   content: 'content',
   tokens: 'tokens',
   totalTokens: 'totalTokens',
+  reasoningTokens: 'reasoningTokens',
   memoried: 'memoried',
   metadata: 'metadata',
   createdAt: 'createdAt'

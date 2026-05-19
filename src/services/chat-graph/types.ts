@@ -20,6 +20,7 @@ export const ChatGraphState = Annotation.Root({
   userTotalTokens: Annotation<number>,
   totalTokens: Annotation<number>,
   completionTokens: Annotation<number>,
+  reasoningTokens: Annotation<number>,
   finishReason: Annotation<string>,
   searchResult: Annotation<string>,
   memoryText: Annotation<string>,

@@ -72,6 +72,7 @@ export class PostMemClient {
       let userTotalTokens: number | undefined
       let totalTokens: number | undefined
       let completionTokens: number | undefined
+      let reasoningTokens: number | undefined
       let conversationId = ''
 
       await this.streamReader.consume((event) => {
@@ -87,11 +88,12 @@ export class PostMemClient {
             userTotalTokens = event.userTotalTokens
             totalTokens = event.totalTokens
             completionTokens = event.completionTokens
+            reasoningTokens = event.reasoningTokens
             break
         }
       }, { signal: options?.signal })
 
-      return { conversationId, fullContent, error, userTokens, userTotalTokens, totalTokens, completionTokens }
+      return { conversationId, fullContent, error, userTokens, userTotalTokens, totalTokens, completionTokens, reasoningTokens }
     }
 
     const encoder = new TextEncoder()

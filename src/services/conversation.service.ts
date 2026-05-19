@@ -67,6 +67,7 @@ export class ConversationService {
         content: data.content,
         tokens: data.tokens,
         totalTokens: data.totalTokens,
+        reasoningTokens: data.reasoningTokens,
         memoried: data.memoried,
         metadata: { ...data.metadata as any, modelName: resolvedName },
       },

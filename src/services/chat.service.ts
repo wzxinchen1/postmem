@@ -151,6 +151,7 @@ export class ChatService {
         userTotalTokens: 0,
         totalTokens: 0,
         completionTokens: 0,
+        reasoningTokens: 0,
         finishReason: '',
         searchResult: '',
         memoryText: '',

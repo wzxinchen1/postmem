@@ -29,11 +29,13 @@ export type AggregateChatMessage = {
 export type ChatMessageAvgAggregateOutputType = {
   tokens: number | null
   totalTokens: number | null
+  reasoningTokens: number | null
 }
 
 export type ChatMessageSumAggregateOutputType = {
   tokens: number | null
   totalTokens: number | null
+  reasoningTokens: number | null
 }
 
 export type ChatMessageMinAggregateOutputType = {
@@ -43,6 +45,7 @@ export type ChatMessageMinAggregateOutputType = {
   content: string | null
   tokens: number | null
   totalTokens: number | null
+  reasoningTokens: number | null
   memoried: boolean | null
   createdAt: Date | null
 }
@@ -54,6 +57,7 @@ export type ChatMessageMaxAggregateOutputType = {
   content: string | null
   tokens: number | null
   totalTokens: number | null
+  reasoningTokens: number | null
   memoried: boolean | null
   createdAt: Date | null
 }
@@ -65,6 +69,7 @@ export type ChatMessageCountAggregateOutputType = {
   content: number
   tokens: number
   totalTokens: number
+  reasoningTokens: number
   memoried: number
   metadata: number
   createdAt: number
@@ -75,11 +80,13 @@ export type ChatMessageCountAggregateOutputType = {
 export type ChatMessageAvgAggregateInputType = {
   tokens?: true
   totalTokens?: true
+  reasoningTokens?: true
 }
 
 export type ChatMessageSumAggregateInputType = {
   tokens?: true
   totalTokens?: true
+  reasoningTokens?: true
 }
 
 export type ChatMessageMinAggregateInputType = {
@@ -89,6 +96,7 @@ export type ChatMessageMinAggregateInputType = {
   content?: true
   tokens?: true
   totalTokens?: true
+  reasoningTokens?: true
   memoried?: true
   createdAt?: true
 }
@@ -100,6 +108,7 @@ export type ChatMessageMaxAggregateInputType = {
   content?: true
   tokens?: true
   totalTokens?: true
+  reasoningTokens?: true
   memoried?: true
   createdAt?: true
 }
@@ -111,6 +120,7 @@ export type ChatMessageCountAggregateInputType = {
   content?: true
   tokens?: true
   totalTokens?: true
+  reasoningTokens?: true
   memoried?: true
   metadata?: true
   createdAt?: true
@@ -210,6 +220,7 @@ export type ChatMessageGroupByOutputType = {
   content: string
   tokens: number
   totalTokens: number
+  reasoningTokens: number | null
   memoried: boolean
   metadata: runtime.JsonValue
   createdAt: Date
@@ -245,6 +256,7 @@ export type ChatMessageWhereInput = {
   content?: Prisma.StringFilter<"ChatMessage"> | string
   tokens?: Prisma.IntFilter<"ChatMessage"> | number
   totalTokens?: Prisma.IntFilter<"ChatMessage"> | number
+  reasoningTokens?: Prisma.IntNullableFilter<"ChatMessage"> | number | null
   memoried?: Prisma.BoolFilter<"ChatMessage"> | boolean
   metadata?: Prisma.JsonFilter<"ChatMessage">
   createdAt?: Prisma.DateTimeFilter<"ChatMessage"> | Date | string
@@ -258,6 +270,7 @@ export type ChatMessageOrderByWithRelationInput = {
   content?: Prisma.SortOrder
   tokens?: Prisma.SortOrder
   totalTokens?: Prisma.SortOrder
+  reasoningTokens?: Prisma.SortOrderInput | Prisma.SortOrder
   memoried?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -274,6 +287,7 @@ export type ChatMessageWhereUniqueInput = Prisma.AtLeast<{
   content?: Prisma.StringFilter<"ChatMessage"> | string
   tokens?: Prisma.IntFilter<"ChatMessage"> | number
   totalTokens?: Prisma.IntFilter<"ChatMessage"> | number
+  reasoningTokens?: Prisma.IntNullableFilter<"ChatMessage"> | number | null
   memoried?: Prisma.BoolFilter<"ChatMessage"> | boolean
   metadata?: Prisma.JsonFilter<"ChatMessage">
   createdAt?: Prisma.DateTimeFilter<"ChatMessage"> | Date | string
@@ -287,6 +301,7 @@ export type ChatMessageOrderByWithAggregationInput = {
   content?: Prisma.SortOrder
   tokens?: Prisma.SortOrder
   totalTokens?: Prisma.SortOrder
+  reasoningTokens?: Prisma.SortOrderInput | Prisma.SortOrder
   memoried?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -307,6 +322,7 @@ export type ChatMessageScalarWhereWithAggregatesInput = {
   content?: Prisma.StringWithAggregatesFilter<"ChatMessage"> | string
   tokens?: Prisma.IntWithAggregatesFilter<"ChatMessage"> | number
   totalTokens?: Prisma.IntWithAggregatesFilter<"ChatMessage"> | number
+  reasoningTokens?: Prisma.IntNullableWithAggregatesFilter<"ChatMessage"> | number | null
   memoried?: Prisma.BoolWithAggregatesFilter<"ChatMessage"> | boolean
   metadata?: Prisma.JsonWithAggregatesFilter<"ChatMessage">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ChatMessage"> | Date | string
@@ -318,6 +334,7 @@ export type ChatMessageCreateInput = {
   content: string
   tokens?: number
   totalTokens?: number
+  reasoningTokens?: number | null
   memoried?: boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -331,6 +348,7 @@ export type ChatMessageUncheckedCreateInput = {
   content: string
   tokens?: number
   totalTokens?: number
+  reasoningTokens?: number | null
   memoried?: boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -342,6 +360,7 @@ export type ChatMessageUpdateInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   tokens?: Prisma.IntFieldUpdateOperationsInput | number
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -355,6 +374,7 @@ export type ChatMessageUncheckedUpdateInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   tokens?: Prisma.IntFieldUpdateOperationsInput | number
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -367,6 +387,7 @@ export type ChatMessageCreateManyInput = {
   content: string
   tokens?: number
   totalTokens?: number
+  reasoningTokens?: number | null
   memoried?: boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -378,6 +399,7 @@ export type ChatMessageUpdateManyMutationInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   tokens?: Prisma.IntFieldUpdateOperationsInput | number
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -390,6 +412,7 @@ export type ChatMessageUncheckedUpdateManyInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   tokens?: Prisma.IntFieldUpdateOperationsInput | number
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -412,6 +435,7 @@ export type ChatMessageCountOrderByAggregateInput = {
   content?: Prisma.SortOrder
   tokens?: Prisma.SortOrder
   totalTokens?: Prisma.SortOrder
+  reasoningTokens?: Prisma.SortOrder
   memoried?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -420,6 +444,7 @@ export type ChatMessageCountOrderByAggregateInput = {
 export type ChatMessageAvgOrderByAggregateInput = {
   tokens?: Prisma.SortOrder
   totalTokens?: Prisma.SortOrder
+  reasoningTokens?: Prisma.SortOrder
 }
 
 export type ChatMessageMaxOrderByAggregateInput = {
@@ -429,6 +454,7 @@ export type ChatMessageMaxOrderByAggregateInput = {
   content?: Prisma.SortOrder
   tokens?: Prisma.SortOrder
   totalTokens?: Prisma.SortOrder
+  reasoningTokens?: Prisma.SortOrder
   memoried?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -440,6 +466,7 @@ export type ChatMessageMinOrderByAggregateInput = {
   content?: Prisma.SortOrder
   tokens?: Prisma.SortOrder
   totalTokens?: Prisma.SortOrder
+  reasoningTokens?: Prisma.SortOrder
   memoried?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -447,6 +474,7 @@ export type ChatMessageMinOrderByAggregateInput = {
 export type ChatMessageSumOrderByAggregateInput = {
   tokens?: Prisma.SortOrder
   totalTokens?: Prisma.SortOrder
+  reasoningTokens?: Prisma.SortOrder
 }
 
 export type ChatMessageCreateNestedManyWithoutConversationInput = {
@@ -499,12 +527,21 @@ export type IntFieldUpdateOperationsInput = {
   divide?: number
 }
 
+export type NullableIntFieldUpdateOperationsInput = {
+  set?: number | null
+  increment?: number
+  decrement?: number
+  multiply?: number
+  divide?: number
+}
+
 export type ChatMessageCreateWithoutConversationInput = {
   id?: string
   role: string
   content: string
   tokens?: number
   totalTokens?: number
+  reasoningTokens?: number | null
   memoried?: boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -516,6 +553,7 @@ export type ChatMessageUncheckedCreateWithoutConversationInput = {
   content: string
   tokens?: number
   totalTokens?: number
+  reasoningTokens?: number | null
   memoried?: boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -557,6 +595,7 @@ export type ChatMessageScalarWhereInput = {
   content?: Prisma.StringFilter<"ChatMessage"> | string
   tokens?: Prisma.IntFilter<"ChatMessage"> | number
   totalTokens?: Prisma.IntFilter<"ChatMessage"> | number
+  reasoningTokens?: Prisma.IntNullableFilter<"ChatMessage"> | number | null
   memoried?: Prisma.BoolFilter<"ChatMessage"> | boolean
   metadata?: Prisma.JsonFilter<"ChatMessage">
   createdAt?: Prisma.DateTimeFilter<"ChatMessage"> | Date | string
@@ -568,6 +607,7 @@ export type ChatMessageCreateManyConversationInput = {
   content: string
   tokens?: number
   totalTokens?: number
+  reasoningTokens?: number | null
   memoried?: boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
@@ -579,6 +619,7 @@ export type ChatMessageUpdateWithoutConversationInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   tokens?: Prisma.IntFieldUpdateOperationsInput | number
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -590,6 +631,7 @@ export type ChatMessageUncheckedUpdateWithoutConversationInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   tokens?: Prisma.IntFieldUpdateOperationsInput | number
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -601,6 +643,7 @@ export type ChatMessageUncheckedUpdateManyWithoutConversationInput = {
   content?: Prisma.StringFieldUpdateOperationsInput | string
   tokens?: Prisma.IntFieldUpdateOperationsInput | number
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
+  reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -615,6 +658,7 @@ export type ChatMessageSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   content?: boolean
   tokens?: boolean
   totalTokens?: boolean
+  reasoningTokens?: boolean
   memoried?: boolean
   metadata?: boolean
   createdAt?: boolean
@@ -628,6 +672,7 @@ export type ChatMessageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   content?: boolean
   tokens?: boolean
   totalTokens?: boolean
+  reasoningTokens?: boolean
   memoried?: boolean
   metadata?: boolean
   createdAt?: boolean
@@ -641,6 +686,7 @@ export type ChatMessageSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   content?: boolean
   tokens?: boolean
   totalTokens?: boolean
+  reasoningTokens?: boolean
   memoried?: boolean
   metadata?: boolean
   createdAt?: boolean
@@ -654,12 +700,13 @@ export type ChatMessageSelectScalar = {
   content?: boolean
   tokens?: boolean
   totalTokens?: boolean
+  reasoningTokens?: boolean
   memoried?: boolean
   metadata?: boolean
   createdAt?: boolean
 }
 
-export type ChatMessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversationId" | "role" | "content" | "tokens" | "totalTokens" | "memoried" | "metadata" | "createdAt", ExtArgs["result"]["chatMessage"]>
+export type ChatMessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversationId" | "role" | "content" | "tokens" | "totalTokens" | "reasoningTokens" | "memoried" | "metadata" | "createdAt", ExtArgs["result"]["chatMessage"]>
 export type ChatMessageInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
 }
@@ -682,6 +729,7 @@ export type $ChatMessagePayload<ExtArgs extends runtime.Types.Extensions.Interna
     content: string
     tokens: number
     totalTokens: number
+    reasoningTokens: number | null
     memoried: boolean
     metadata: runtime.JsonValue
     createdAt: Date
@@ -1115,6 +1163,7 @@ export interface ChatMessageFieldRefs {
   readonly content: Prisma.FieldRef<"ChatMessage", 'String'>
   readonly tokens: Prisma.FieldRef<"ChatMessage", 'Int'>
   readonly totalTokens: Prisma.FieldRef<"ChatMessage", 'Int'>
+  readonly reasoningTokens: Prisma.FieldRef<"ChatMessage", 'Int'>
   readonly memoried: Prisma.FieldRef<"ChatMessage", 'Boolean'>
   readonly metadata: Prisma.FieldRef<"ChatMessage", 'Json'>
   readonly createdAt: Prisma.FieldRef<"ChatMessage", 'DateTime'>

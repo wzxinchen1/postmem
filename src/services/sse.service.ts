@@ -19,7 +19,7 @@ export type StreamEvent =
   | { type: 'status'; status: StreamStatus }
   | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
   | { type: 'error'; message: string }
-  | { type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number }
+  | { type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number; reasoningTokens?: number }
 
 export class SSEService {
   private readonly globalMessageKey = 'chat:global'

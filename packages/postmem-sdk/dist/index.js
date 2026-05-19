@@ -185,6 +185,7 @@ var PostMemClient = class {
       let userTotalTokens;
       let totalTokens;
       let completionTokens;
+      let reasoningTokens;
       let conversationId = "";
       await this.streamReader.consume((event) => {
         onEvent(event);
@@ -198,10 +199,11 @@ var PostMemClient = class {
             userTotalTokens = event.userTotalTokens;
             totalTokens = event.totalTokens;
             completionTokens = event.completionTokens;
+            reasoningTokens = event.reasoningTokens;
             break;
         }
       }, { signal: options?.signal });
-      return { conversationId, fullContent, error, userTokens, userTotalTokens, totalTokens, completionTokens };
+      return { conversationId, fullContent, error, userTokens, userTotalTokens, totalTokens, completionTokens, reasoningTokens };
     }
     const encoder = new TextEncoder();
     const reader = this.streamReader;

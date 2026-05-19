@@ -15,6 +15,7 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
     let fullContent = ''
     let apiTotalPromptTokens = 0
     let completionTokens = 0
+    let reasoningTokens = 0
     let finishReason = ''
 
     try {
@@ -34,10 +35,13 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
           logger.info('[ChatGraph] 原始 usage_metadata', { raw: JSON.stringify(meta) })
           apiTotalPromptTokens = meta.input_tokens || apiTotalPromptTokens
           const rawOutputTokens = meta.output_tokens || 0
-          const reasoningTokens = meta.output_token_details?.reasoning ?? 0
+          reasoningTokens = meta.output_token_details?.reasoning ?? 0
           completionTokens = rawOutputTokens - reasoningTokens
-        }else{
-          logger.info('[ChatGraph] 意外格式，原始 chunk', { raw: JSON.stringify(chunk) })
+        }
+
+        if (chunk.response_metadata?.finish_reason) {
+          finishReason = chunk.response_metadata.finish_reason
+          logger.info('[ChatGraph] 收到 finish_reason', { finishReason })
         }
 
         if (chunk.additional_kwargs?.type === 'reasoning') {
@@ -94,13 +98,14 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
 
     const userTokens = remaining
     const userTotalTokens = apiTotalPromptTokens
-    const totalTokens = apiTotalPromptTokens + completionTokens
+    const totalTokens = apiTotalPromptTokens + completionTokens + reasoningTokens
 
     logger.info('[ChatGraph] 倒减结果', {
       apiInputTokens: apiTotalPromptTokens,
       userTokens,
       userTotalTokens,
       totalTokens,
+      reasoningTokens,
     })
 
     const allMessages = await deps.conversationService.getMessages(state.conversationId)
@@ -111,15 +116,13 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
 
     if (finishReason === 'length') {
       logger.warn('[ChatGraph] 输出因达到 maxTokens 被截断', { conversationId: state.conversationId, completionTokens })
-      await deps.sseService.emit({ type: 'done', reason: DoneReason.Truncated, userTokens, userTotalTokens, totalTokens, completionTokens })
     }
 
     if (finishReason === 'content_filter' || finishReason === 'sensitive') {
       logger.warn('[ChatGraph] 输出因内容审核被拦截', { conversationId: state.conversationId, finishReason })
-      await deps.sseService.emit({ type: 'done', reason: DoneReason.ContentFiltered, userTokens, userTotalTokens, totalTokens, completionTokens })
     }
 
-    logger.info('[ChatGraph] streamLLM 完成', { userTokens, userTotalTokens, totalTokens, completionTokens, finishReason })
+    logger.info('[ChatGraph] streamLLM 完成', { userTokens, userTotalTokens, totalTokens, completionTokens, reasoningTokens, finishReason })
 
     return {
       fullContent,
@@ -127,6 +130,7 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
       userTotalTokens,
       totalTokens,
       completionTokens,
+      reasoningTokens,
       finishReason,
     }
   }

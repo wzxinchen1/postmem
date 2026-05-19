@@ -880,6 +880,7 @@ id, conversationId, role, content, tokens, totalTokens, memoried, metadata, crea
 - `content`*: string
 - `tokens`*: number
 - `totalTokens`*: number
+- `reasoningTokens`?: number
 - `memoried`*: boolean
 - `metadata`*: unknown
 - `createdAt`*: Date

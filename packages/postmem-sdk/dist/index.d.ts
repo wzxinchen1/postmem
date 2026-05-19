@@ -54,6 +54,7 @@ type StreamEvent = {
     userTotalTokens?: number;
     totalTokens?: number;
     completionTokens?: number;
+    reasoningTokens?: number;
 };
 interface ChatMessageInput {
     id: string;
@@ -75,6 +76,7 @@ interface ChatMessage {
     content: string;
     tokens: number;
     totalTokens: number;
+    reasoningTokens?: number;
     memoried: boolean;
     metadata: Record<string, unknown>;
     createdAt: string;
@@ -93,6 +95,7 @@ interface ChatResult {
     userTotalTokens?: number;
     totalTokens?: number;
     completionTokens?: number;
+    reasoningTokens?: number;
 }
 interface PostMemConfig {
     baseUrl: string;

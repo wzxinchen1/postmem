@@ -49,7 +49,7 @@ export type StreamEvent =
   | { type: 'status'; status: StreamStatus }
   | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
   | { type: 'error'; message: string }
-  | { type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number }
+  | { type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number; reasoningTokens?: number }
 
 export interface ChatMessageInput {
   id: string
@@ -73,6 +73,7 @@ export interface ChatMessage {
   content: string
   tokens: number
   totalTokens: number
+  reasoningTokens?: number
   memoried: boolean
   metadata: Record<string, unknown>
   createdAt: string
@@ -93,6 +94,7 @@ export interface ChatResult {
   userTotalTokens?: number
   totalTokens?: number
   completionTokens?: number
+  reasoningTokens?: number
 }
 
 export interface PostMemConfig {

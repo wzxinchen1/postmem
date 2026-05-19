@@ -3684,6 +3684,10 @@
             "type": "number",
             "description": "totalTokens"
           },
+          "reasoningTokens": {
+            "type": "number",
+            "description": "reasoningTokens"
+          },
           "memoried": {
             "type": "boolean",
             "description": "memoried"

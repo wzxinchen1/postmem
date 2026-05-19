@@ -101,6 +101,9 @@ class DeepSeekChatModel extends BaseChatModel {
         message: new AIMessage({
           content: msg.content || '',
           additional_kwargs: additionalKwargs,
+          response_metadata: choice.finish_reason
+            ? { finish_reason: choice.finish_reason }
+            : undefined,
           usage_metadata: {
             input_tokens: usage.prompt_tokens || 0,
             output_tokens: usage.completion_tokens || 0,
@@ -143,6 +146,7 @@ class DeepSeekChatModel extends BaseChatModel {
     const decoder = new TextDecoder()
     let buffer = ''
     let finalUsage = null
+    let finalFinishReason = null
 
     for await (const chunk of response.body) {
       buffer += decoder.decode(chunk, { stream: true })
@@ -166,6 +170,9 @@ class DeepSeekChatModel extends BaseChatModel {
                     reasoning: reasoningTokens,
                   },
                 },
+                response_metadata: finalFinishReason
+                  ? { finish_reason: finalFinishReason }
+                  : undefined,
               }),
             })
           }
@@ -174,10 +181,12 @@ class DeepSeekChatModel extends BaseChatModel {
 
         try {
           const data = JSON.parse(trimmed.slice(6))
-          const delta = data.choices?.[0]?.delta
+          const choice = data.choices?.[0]
+          const delta = choice?.delta
           if (!delta) continue
 
           if (data.usage) finalUsage = data.usage
+          if (choice.finish_reason) finalFinishReason = choice.finish_reason
 
           if (this.thinkingEnabled && delta.reasoning_content) {
             yield new ChatGenerationChunk({

@@ -427,6 +427,7 @@ export interface ChatMessage {
   content: string
   tokens: number
   totalTokens: number
+  reasoningTokens?: number
   memoried: boolean
   metadata: Record<string, unknown>
   createdAt: Date
@@ -470,6 +471,7 @@ export interface AddChatMessageRequest {
   content: string
   tokens?: number
   totalTokens?: number
+  reasoningTokens?: number
   memoried?: boolean
   name?: string
   metadata?: Record<string, unknown>
@@ -550,7 +552,7 @@ export type StreamEvent =
   | { type: 'status'; status: StreamStatus }
   | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
   | { type: 'error'; message: string }
-  | { type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number }
+  | { type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number; reasoningTokens?: number }
 
 /**
  * 网页缓存

@@ -247,6 +247,7 @@ export interface ChatMessage {
   content: string
   tokens: number
   totalTokens: number
+  reasoningTokens?: number
   memoried: boolean
   metadata: Record<string, unknown>
   createdAt: string
