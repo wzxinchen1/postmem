@@ -11,7 +11,7 @@ import { KBService } from '@/src/services/kb.service'
 import { createChatGraph } from '@/src/services/chat-graph'
 import { logger } from '@/src/lib/logger'
 import { createId } from '@paralleldrive/cuid2'
-import type { ChatCompletionRequest } from '@/src/types'
+import type { ChatCompletionRequest, ChatMessageImage } from '@/src/types'
 
 export interface ChatResult {
   conversationId: string
@@ -102,33 +102,30 @@ export class ChatService {
 
     await this.sseService.setProcessing(convId)
 
-    if (regenerateMessageId) {
-      await this.conversationService.removeMessagesAfter(convId, regenerateMessageId)
-    }
+    let images: ChatMessageImage[] = []
+    let urls: string[] = []
 
-    if (messages.length > 0) {
+    if (regenerateMessageId) {
+      const originalMessage = await this.conversationService.getMessage(regenerateMessageId)
+      images = originalMessage?.images as ChatMessageImage[] ?? []
+      urls = originalMessage?.urls as string[] ?? []
+
+      await this.conversationService.removeMessagesAfter(convId, regenerateMessageId)
+    } else if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
-      const userMessageId = regenerateMessageId || createId()
-      if (regenerateMessageId) {
-        await this.conversationService.addMessageWithId({
-          id: userMessageId,
-          conversationId: convId,
-          role: 'user',
-          content: lastMessage.content,
-          tokens: 0,
-          totalTokens: 0,
-          memoried: false,
-        })
-      } else {
-        await this.conversationService.addMessage({
-          conversationId: convId,
-          role: 'user',
-          content: lastMessage.content,
-          tokens: 0,
-          totalTokens: 0,
-          memoried: false,
-        })
-      }
+      images = lastMessage.images ?? []
+      urls = lastMessage.urls ?? []
+      const userMessageId = createId()
+      await this.conversationService.addMessage({
+        conversationId: convId,
+        role: 'user',
+        content: lastMessage.content,
+        tokens: 0,
+        totalTokens: 0,
+        memoried: false,
+        images: lastMessage.images,
+        urls: lastMessage.urls,
+      })
       await this.sseService.emit({ type: 'messageId', role: 'user', id: userMessageId })
     }
 
@@ -171,6 +168,11 @@ export class ChatService {
         thinkingEffort,
         langchainMessages: [],
         finalMessages: [],
+        images,
+        urls,
+        hasVisionCapability: false,
+        recognizedText: '',
+        fetchedUrlContent: '',
       })
 
       if (result.cancelled) {

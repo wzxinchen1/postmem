@@ -37,22 +37,24 @@ interface Model {
   providerId: number
   name: string
   displayName?: string
-  modelType: string
+  capabilities: string[]
   config: Record<string, unknown>
   isActive: boolean
   isDefault: boolean
 }
 
-const MODEL_TYPES = [
-  { value: 'embedding', label: 'Embedding' },
-  { value: 'chat', label: 'Chat' },
+const MODEL_CAPABILITIES = [
+  { value: 'chat', label: '对话' },
+  { value: 'reasoning', label: '思考' },
+  { value: 'embedding', label: '嵌入' },
+  { value: 'vision', label: '视觉' },
 ]
 
 interface ModelFormData {
   providerId: number
   name: string
   displayName: string
-  modelType: string
+  capabilities: string[]
   isActive: boolean
   isDefault: boolean
 }
@@ -79,7 +81,7 @@ export default function ProvidersPage() {
     providerId: 0,
     name: '',
     displayName: '',
-    modelType: 'embedding',
+    capabilities: ['chat'],
     isActive: true,
     isDefault: false,
   })
@@ -312,7 +314,7 @@ export default function ProvidersPage() {
       providerId: provider.id,
       name: '',
       displayName: '',
-      modelType: 'embedding',
+      capabilities: ['chat'],
       isActive: true,
       isDefault: false,
     })
@@ -374,7 +376,7 @@ export default function ProvidersPage() {
           providerId: modelForm.providerId,
           name: modelForm.name,
           displayName: modelForm.displayName || undefined,
-          modelType: modelForm.modelType,
+          capabilities: modelForm.capabilities,
           isActive: modelForm.isActive,
           isDefault: modelForm.isDefault,
         }),
@@ -435,7 +437,7 @@ export default function ProvidersPage() {
       providerId: provider.id,
       name: model.name,
       displayName: model.displayName || '',
-      modelType: model.modelType,
+      capabilities: model.capabilities,
       isActive: model.isActive,
       isDefault: model.isDefault,
     })
@@ -477,7 +479,7 @@ export default function ProvidersPage() {
       providerId: providers.length > 0 ? providers[0].id : 0,
       name: '',
       displayName: '',
-      modelType: 'embedding',
+      capabilities: ['chat'],
       isActive: true,
       isDefault: false,
     })
@@ -486,8 +488,8 @@ export default function ProvidersPage() {
     form.resetFields()
   }
 
-  const getModelTypeLabel = (type: string) => {
-    return MODEL_TYPES.find(t => t.value === type)?.label || type
+  const getCapabilityLabels = (capabilities: string[]) => {
+    return capabilities.map(c => MODEL_CAPABILITIES.find(t => t.value === c)?.label || c).join(', ')
   }
 
   const collapseItems = providers.map(provider => ({
@@ -551,8 +553,8 @@ export default function ProvidersPage() {
               <Card key={model.id} size="small">
                 <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                   <Space>
-                    <Tag color={model.modelType === 'embedding' ? 'blue' : 'green'}>
-                      {model.modelType === 'embedding' ? '📊' : '💬'}
+                    <Tag color={model.capabilities.includes('reasoning') ? 'orange' : model.capabilities.includes('vision') ? 'purple' : model.capabilities.includes('embedding') ? 'blue' : 'green'}>
+                      {model.capabilities.includes('reasoning') ? '🧠' : model.capabilities.includes('vision') ? '👁️' : model.capabilities.includes('embedding') ? '📊' : '💬'}
                     </Tag>
                     <Space direction="vertical" size={0}>
                       <Space>
@@ -560,7 +562,7 @@ export default function ProvidersPage() {
                         {model.isDefault && <Tag color="blue">默认</Tag>}
                       </Space>
                       <Text type="secondary" style={{ fontSize: 12 }}>
-                        {model.name} · {getModelTypeLabel(model.modelType)}
+                        {model.name} · {getCapabilityLabels(model.capabilities)}
                       </Text>
                     </Space>
                   </Space>
@@ -801,11 +803,13 @@ export default function ProvidersPage() {
               placeholder="可选，用于友好显示"
             />
           </Form.Item>
-          <Form.Item label="模型类型" required>
+          <Form.Item label="模型能力" required>
             <Select
-              value={modelForm.modelType}
-              onChange={(value) => setModelForm({ ...modelForm, modelType: value })}
-              options={MODEL_TYPES}
+              mode="multiple"
+              value={modelForm.capabilities}
+              onChange={(values) => setModelForm({ ...modelForm, capabilities: values })}
+              options={MODEL_CAPABILITIES}
+              placeholder="请选择模型能力"
             />
           </Form.Item>
           <Form.Item>

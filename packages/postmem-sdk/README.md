@@ -117,7 +117,7 @@ await client.disconnect()
 | type | 字段 | 说明 |
 |------|------|------|
 | `chunk` | `content`, `model` | LLM 流式输出片段 |
-| `status` | `status` | 状态通知（searchingWeb/searchingMemory/summarizing/memoryProgress） |
+| `status` | `status` | 状态通知（searchingWeb/searchingMemory/summarizing/memoryProgress/recognizing/fetchingUrl） |
 | `messageId` | `role`, `id` | 消息 ID 通知 |
 | `usage` | `userTokens`, `userTotalTokens`, `totalTokens`, `completionTokens` | Token 用量 |
 | `error` | `message` | 错误 |

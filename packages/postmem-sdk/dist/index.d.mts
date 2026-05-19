@@ -11,7 +11,9 @@ declare enum StreamStatus {
     SearchingMemory = "searchingMemory",
     Summarizing = "summarizing",
     MemoryProgress = "memoryProgress",
-    Thinking = "thinking"
+    Thinking = "thinking",
+    Recognizing = "recognizing",
+    FetchingUrl = "fetchingUrl"
 }
 declare enum ThinkingEffort {
     None = "none",
@@ -59,6 +61,12 @@ type StreamEvent = {
 interface ChatMessageInput {
     id: string;
     content: string;
+    images?: ChatMessageImage[];
+    urls?: string[];
+}
+interface ChatMessageImage {
+    url: string;
+    mimeType?: string;
 }
 interface ChatRequest {
     messages: ChatMessageInput[];
@@ -78,6 +86,8 @@ interface ChatMessage {
     totalTokens: number;
     reasoningTokens?: number;
     memoried: boolean;
+    images?: ChatMessageImage[];
+    urls?: string[];
     metadata: Record<string, unknown>;
     createdAt: string;
 }
@@ -150,4 +160,4 @@ declare class StreamReader {
     }): Promise<void>;
 }
 
-export { type ChatMessage, type ChatMessageInput, type ChatRequest, type ChatResult, type Conversation, DoneReason, PostMemClient, type PostMemConfig, PostMemError, type StreamEvent, StreamReader, StreamStatus, ThinkingEffort };
+export { type ChatMessage, type ChatMessageImage, type ChatMessageInput, type ChatRequest, type ChatResult, type Conversation, DoneReason, PostMemClient, type PostMemConfig, PostMemError, type StreamEvent, StreamReader, StreamStatus, ThinkingEffort };

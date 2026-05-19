@@ -20,16 +20,18 @@ interface Model {
   providerId: number
   name: string
   displayName?: string
-  modelType: string
+  capabilities: string[]
   config: Record<string, unknown>
   isActive: boolean
   isDefault: boolean
   provider?: Provider
 }
 
-const MODEL_TYPES = [
-  { value: 'embedding', label: 'Embedding' },
-  { value: 'chat', label: 'Chat' },
+const MODEL_CAPABILITIES = [
+  { value: 'chat', label: '对话' },
+  { value: 'reasoning', label: '思考' },
+  { value: 'embedding', label: '嵌入' },
+  { value: 'vision', label: '视觉' },
 ]
 
 export default function ModelsPage() {
@@ -42,7 +44,7 @@ export default function ModelsPage() {
     providerId: '',
     name: '',
     displayName: '',
-    modelType: 'embedding',
+    capabilities: ['chat'] as string[],
     isActive: true,
     isDefault: false,
   })
@@ -161,7 +163,7 @@ export default function ModelsPage() {
           providerId: Number(formData.providerId),
           name: formData.name,
           displayName: formData.displayName || undefined,
-          modelType: formData.modelType,
+          capabilities: formData.capabilities,
           isActive: formData.isActive,
           isDefault: formData.isDefault,
         }),
@@ -222,7 +224,7 @@ export default function ModelsPage() {
       providerId: model.providerId.toString(),
       name: model.name,
       displayName: model.displayName || '',
-      modelType: model.modelType,
+      capabilities: model.capabilities,
       isActive: model.isActive,
       isDefault: model.isDefault,
     })
@@ -264,7 +266,7 @@ export default function ModelsPage() {
       providerId: providers.length > 0 ? providers[0].id.toString() : '',
       name: '',
       displayName: '',
-      modelType: 'embedding',
+      capabilities: ['chat'],
       isActive: true,
       isDefault: false,
     })
@@ -273,8 +275,8 @@ export default function ModelsPage() {
     form.resetFields()
   }
 
-  const getModelTypeLabel = (type: string) => {
-    return MODEL_TYPES.find(t => t.value === type)?.label || type
+  const getCapabilityLabels = (capabilities: string[]) => {
+    return capabilities.map(c => MODEL_CAPABILITIES.find(t => t.value === c)?.label || c).join(', ')
   }
 
   const getProviderName = (providerId: number) => {
@@ -317,14 +319,14 @@ export default function ModelsPage() {
             <Card key={model.id}>
               <Space style={{ width: '100%', justifyContent: 'space-between' }}>
                 <Space>
-                  <Tag color="blue">{model.modelType === 'embedding' ? '📊' : model.modelType === 'chat' ? '💬' : '⚡'}</Tag>
+                  <Tag color="blue">{model.capabilities.includes('reasoning') ? '🧠' : model.capabilities.includes('vision') ? '👁️' : model.capabilities.includes('embedding') ? '📊' : '💬'}</Tag>
                   <Space direction="vertical" size={0}>
                     <Space>
                       <Text strong>{model.displayName || model.name}</Text>
                       {model.isDefault && <Tag color="blue">默认</Tag>}
                     </Space>
                     <Text type="secondary" style={{ fontSize: 12 }}>
-                      {model.name} · {getProviderName(model.providerId)} · {getModelTypeLabel(model.modelType)}
+                      {model.name} · {getProviderName(model.providerId)} · {getCapabilityLabels(model.capabilities)}
                     </Text>
                   </Space>
                 </Space>
@@ -410,11 +412,13 @@ export default function ModelsPage() {
               placeholder="可选，用于友好显示"
             />
           </Form.Item>
-          <Form.Item label="模型类型" required>
+          <Form.Item label="模型能力" required>
             <Select
-              value={formData.modelType}
-              onChange={(value) => setFormData({ ...formData, modelType: value })}
-              options={MODEL_TYPES}
+              mode="multiple"
+              value={formData.capabilities}
+              onChange={(values) => setFormData({ ...formData, capabilities: values })}
+              options={MODEL_CAPABILITIES}
+              placeholder="请选择模型能力"
             />
           </Form.Item>
           <Form.Item>

@@ -972,7 +972,12 @@ export class KBService {
       const kbNames: Stats[] = knowledgeBases.map(kb => {
         const memStat = memoryStatsMap.get(kb.id)
         if (!memStat) {
-          throw Errors.internalError(`知识库 "${kb.name}" 的统计数据缺失`)
+          return {
+            kbId: kb.id,
+            kbName: kb.name,
+            total: 0,
+            lastUpdated: kb.createdAt,
+          }
         }
         if (memStat._count.id === null || memStat._count.id === undefined) {
           throw Errors.internalError(`知识库 "${kb.name}" 的记录计数字段为空`)

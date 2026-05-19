@@ -238,7 +238,7 @@ export type ProviderType = 'openai' | 'anthropic' | 'local' | 'custom'
 /**
  * 模型类型
  */
-export type ModelType = 'embedding' | 'chat'
+export type ModelCapability = 'chat' | 'embedding' | 'vision' | 'reasoning'
 
 /**
  * 厂商工厂接口 - 创建 LangChain 模型实例（Chat 或 Embedding）
@@ -292,7 +292,7 @@ export interface Model {
   providerId: string
   name: string
   displayName?: string
-  modelType: ModelType
+  capabilities: ModelCapability[]
   config: Record<string, unknown>
   isActive: boolean
   isDefault: boolean
@@ -353,7 +353,7 @@ export interface CreateModelRequest {
   providerId: string
   name: string
   displayName?: string
-  modelType: ModelType
+  capabilities: ModelCapability[]
   config?: Record<string, unknown>
   isActive?: boolean
   isDefault?: boolean
@@ -365,7 +365,7 @@ export interface CreateModelRequest {
 export interface UpdateModelRequest {
   name?: string
   displayName?: string
-  modelType?: ModelType
+  capabilities?: ModelCapability[]
   config?: Record<string, unknown>
   isActive?: boolean
   isDefault?: boolean
@@ -429,6 +429,8 @@ export interface ChatMessage {
   totalTokens: number
   reasoningTokens?: number
   memoried: boolean
+  images?: ChatMessageImage[]
+  urls?: string[]
   metadata: Record<string, unknown>
   createdAt: Date
 }
@@ -474,6 +476,8 @@ export interface AddChatMessageRequest {
   reasoningTokens?: number
   memoried?: boolean
   name?: string
+  images?: ChatMessageImage[]
+  urls?: string[]
   metadata?: Record<string, unknown>
 }
 
@@ -496,6 +500,16 @@ export interface ChatCompletionRequest {
 export interface ChatMessageInput {
   id: string
   content: string
+  images?: ChatMessageImage[]
+  urls?: string[]
+}
+
+/**
+ * 聊天消息图片
+ */
+export interface ChatMessageImage {
+  url: string
+  mimeType?: string
 }
 
 /**
@@ -526,6 +540,8 @@ export enum StreamStatus {
   SearchingMemory = 'searchingMemory',
   Summarizing = 'summarizing',
   MemoryProgress = 'memoryProgress',
+  Recognizing = 'recognizing',
+  FetchingUrl = 'fetchingUrl',
 }
 
 export enum ThinkingEffort {
@@ -636,7 +652,7 @@ export interface ModelTreeNode {
   id: string
   name: string
   displayName: string
-  modelType: ModelType
+  capabilities: ModelCapability[]
   isDefault: boolean
   isActive: boolean
 }

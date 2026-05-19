@@ -82,17 +82,21 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
     }
 
     const chatMessages = await deps.conversationService.getMessages(state.conversationId)
-    const historyMessages = chatMessages.filter(m => !m.memoried && !m.metadata?.isWelcome)
+    const allHistory = chatMessages.filter(m => !m.memoried && !m.metadata?.isWelcome)
+    const lastUserMsgIndex = allHistory.findLastIndex(m => m.role === 'user')
+    const historyMessages = lastUserMsgIndex !== -1
+      ? allHistory.slice(0, lastUserMsgIndex)
+      : allHistory
 
     logger.info('[ChatGraph] 倒减开始', {
       apiInputTokens: apiTotalPromptTokens,
       messageCount: chatMessages.length,
       historyCount: historyMessages.length,
+      allHistoryCount: allHistory.length,
     })
 
     let remaining = apiTotalPromptTokens
     for (const m of historyMessages) {
-      const before = remaining
       remaining -= m.tokens
     }
 

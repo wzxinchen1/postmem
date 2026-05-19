@@ -3,6 +3,7 @@ import type {
   Model,
   CreateModelRequest,
   UpdateModelRequest,
+  ModelCapability,
 } from '@/src/types'
 import { Errors } from '@/src/lib/errors'
 
@@ -59,14 +60,14 @@ export class ModelService {
   }
 
   /**
-   * 获取默认模型
+   * 根据能力获取默认模型
    */
-  async getDefault(modelType?: string): Promise<Model | null> {
+  async getDefaultByCapability(capability: ModelCapability): Promise<Model | null> {
     return this.prisma.model.findFirst({
       where: {
         isDefault: true,
         isActive: true,
-        ...(modelType && { modelType }),
+        capabilities: { has: capability },
       },
       include: {
         provider: true,
@@ -79,9 +80,10 @@ export class ModelService {
    */
   async create(data: CreateModelRequest): Promise<Model> {
     if (data.isDefault) {
+      const primaryCapability = this.getPrimaryCapability(data.capabilities)
       await this.prisma.model.updateMany({
         where: {
-          modelType: data.modelType,
+          capabilities: { has: primaryCapability },
           isDefault: true,
         },
         data: { isDefault: false },
@@ -96,7 +98,7 @@ export class ModelService {
         providerId: data.providerId,
         name: data.name,
         displayName: data.displayName,
-        modelType: data.modelType,
+        capabilities: data.capabilities,
         config: data.config ?? null,
         isActive: data.isActive,
         isDefault: data.isDefault,
@@ -113,9 +115,11 @@ export class ModelService {
         where: { id },
       })
       if (model) {
+        const capabilities = (data.capabilities ?? model.capabilities) as ModelCapability[]
+        const primaryCapability = this.getPrimaryCapability(capabilities)
         await this.prisma.model.updateMany({
           where: {
-            modelType: model.modelType,
+            capabilities: { has: primaryCapability },
             isDefault: true,
             id: { not: id },
           },
@@ -129,7 +133,7 @@ export class ModelService {
       data: {
         ...(data.name && { name: data.name }),
         ...(data.displayName !== undefined && { displayName: data.displayName }),
-        ...(data.modelType && { modelType: data.modelType }),
+        ...(data.capabilities && { capabilities: data.capabilities }),
         ...(data.config && { config: data.config }),
         ...(data.isActive !== undefined && { isActive: data.isActive }),
         ...(data.isDefault !== undefined && { isDefault: data.isDefault }),
@@ -158,5 +162,13 @@ export class ModelService {
       },
     })
     return count > 0
+  }
+
+  private getPrimaryCapability(capabilities: ModelCapability[]): ModelCapability {
+    if (capabilities.includes('chat')) return 'chat'
+    if (capabilities.includes('reasoning')) return 'reasoning'
+    if (capabilities.includes('vision')) return 'vision'
+    if (capabilities.includes('embedding')) return 'embedding'
+    throw Errors.badRequest('模型必须至少具备一种能力（chat/reasoning/vision/embedding）才能设为默认')
   }
 }

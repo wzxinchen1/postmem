@@ -53,6 +53,8 @@ var StreamStatus = /* @__PURE__ */ ((StreamStatus2) => {
   StreamStatus2["Summarizing"] = "summarizing";
   StreamStatus2["MemoryProgress"] = "memoryProgress";
   StreamStatus2["Thinking"] = "thinking";
+  StreamStatus2["Recognizing"] = "recognizing";
+  StreamStatus2["FetchingUrl"] = "fetchingUrl";
   return StreamStatus2;
 })(StreamStatus || {});
 var ThinkingEffort = /* @__PURE__ */ ((ThinkingEffort2) => {

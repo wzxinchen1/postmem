@@ -30,8 +30,8 @@ export default createApiHandler<Deps>({
       POST: async (deps) => {
         const data = req.body as CreateModelRequest
 
-        if (!data.providerId || !data.name || !data.modelType) {
-          return errorResponse(res, 'VALIDATION_ERROR', '提供商 ID、名称和模型类型为必填项', 400)
+        if (!data.providerId || !data.name || !data.capabilities || !Array.isArray(data.capabilities) || data.capabilities.length === 0) {
+          return errorResponse(res, 'VALIDATION_ERROR', '提供商 ID、名称和能力标签为必填项', 400)
         }
 
         const exists = await deps.modelService.exists(data.providerId, data.name)

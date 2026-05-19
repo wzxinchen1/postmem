@@ -5,6 +5,8 @@ export enum StreamStatus {
   SearchingMemory = 'searchingMemory',
   Summarizing = 'summarizing',
   MemoryProgress = 'memoryProgress',
+  Recognizing = 'recognizing',
+  FetchingUrl = 'fetchingUrl',
 }
 
 export enum DoneReason {

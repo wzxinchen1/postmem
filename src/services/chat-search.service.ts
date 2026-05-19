@@ -184,13 +184,15 @@ export class SearchService {
     }
   }
 
-  private async extractWebContent(url: string): Promise<string | null> {
+  async fetchUrlContent(url: string): Promise<{ content: string | null; status: number | null; error: string | null }> {
     try {
       const response = await fetch(url, {
         signal: AbortSignal.timeout(10000),
       })
 
-      if (!response.ok) return null
+      if (!response.ok) {
+        return { content: null, status: response.status, error: `HTTP ${response.status} ${response.statusText}` }
+      }
 
       const contentType = response.headers.get('content-type')
       const isPdf = contentType ? (contentType.includes('application/pdf') || url.endsWith('.pdf')) : url.endsWith('.pdf')
@@ -202,9 +204,12 @@ export class SearchService {
           const pdfParse = await import('pdf-parse' as any)
           const pdfData = await (pdfParse as any).default(buffer)
           const content = pdfData.text.replace(/\s+/g, ' ').trim().slice(0, 5000)
-          return content.length > 100 ? content : null
-        } catch {
-          return null
+          if (content.length <= 100) {
+            return { content: null, status: response.status, error: 'PDF 内容过短，可能为扫描件或空文档' }
+          }
+          return { content, status: response.status, error: null }
+        } catch (err) {
+          return { content: null, status: response.status, error: `PDF 解析失败: ${err instanceof Error ? err.message : String(err)}` }
         }
       }
 
@@ -217,10 +222,18 @@ export class SearchService {
         .trim()
         .slice(0, 5000)
 
-      return content.length > 100 ? content : null
-    } catch {
-      return null
+      if (content.length <= 100) {
+        return { content: null, status: response.status, error: '网页正文内容过短，可能为空页面或需登录' }
+      }
+      return { content, status: response.status, error: null }
+    } catch (err) {
+      return { content: null, status: null, error: err instanceof Error ? err.message : String(err) }
     }
+  }
+
+  private async extractWebContent(url: string): Promise<string | null> {
+    const result = await this.fetchUrlContent(url)
+    return result.content
   }
 
   private validateSearchNeedsResult(parsed: unknown): SearchNeedsResult {

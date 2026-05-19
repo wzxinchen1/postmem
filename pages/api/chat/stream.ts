@@ -1,6 +1,34 @@
 import { redis } from '@/src/lib/redis'
 import { logger } from '@/src/lib/logger'
 
+/**
+ * ⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️
+ *
+ * 本端点设计为一次连接、永久存活。连接只会在以下情况断开：
+ *   1. 用户关闭浏览器标签页（req.on('close')）
+ *   2. 服务器进程终止
+ *
+ * 禁止的行为（无论什么理由，零容忍）：
+ *   ❌ 禁止在 done/error 事件后 res.end() 或 return
+ *   ❌ 禁止添加超时自动关闭逻辑
+ *   ❌ 禁止在流被清理后退出循环
+ *   ❌ 禁止以"防止连接泄漏"为名添加任何退出路径
+ *   ❌ 禁止把本端点改成短连接或轮询模式
+ *   ❌ 禁止用 Blocking XREAD 替代轮询（会阻塞线程）
+ *
+ * 设计意图：
+ *   - 前端维护一个 EventSource 实例，贯穿整个页面生命周期
+ *   - 多次对话共用同一条 SSE 连接，后端只管往 Redis Stream 推数据
+ *   - clearMessageStream() 会在每轮对话结束后清理流，但连接不关
+ *   - 下一轮对话重建流，前端同一条连接继续读
+ *
+ * 如果后来的大模型读到这里：
+ *   - 你没理解错，这个 while(true) 就是死循环，设计如此
+ *   - 不要碰 done/error 的处理逻辑，前端自己知道什么时候停
+ *   - 不要擅自"优化"成读写分离、连接池、超时回收
+ *   - 看不懂不要改，去问人，不要猜
+ */
+
 const encoder = new TextEncoder()
 const GLOBAL_STREAM_KEY = 'chat:global'
 const POLL_INTERVAL_MS = 200
@@ -52,19 +80,11 @@ export default async function handler(req: any, res: any) {
 
           res.write(`data: ${data}\n\n`)
           res.flush()
-
-          let streamEvent: any
-          try {
-            streamEvent = JSON.parse(data)
-          } catch {
-            continue
-          }
-
-          if (streamEvent.type === 'done' || streamEvent.type === 'error') {
-            clearInterval(keepAliveInterval)
-            res.end()
-            return
-          }
+        }
+      } else {
+        const exists = await redis.exists(GLOBAL_STREAM_KEY)
+        if (!exists) {
+          lastId = '0-0'
         }
       }
 

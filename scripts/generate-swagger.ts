@@ -195,7 +195,7 @@ function parseEndpoint(
     const descMap: Record<string, { description: string; type: string; default?: unknown }> = {
       includeInactive: { description: '是否包含已禁用的项', type: 'boolean', default: false },
       providerId: { description: '按提供商ID筛选', type: 'string' },
-      modelType: { description: '模型类型', type: 'string', enum: ['chat', 'embedding'] },
+      capability: { description: '模型能力', type: 'string', enum: ['chat', 'embedding', 'vision'] },
       kbId: { description: '按知识库筛选', type: 'string' },
       status: { description: '按状态筛选', type: 'string', enum: ['pending', 'completed', 'failed'] },
       page: { description: '页码', type: 'integer', default: 1 },
@@ -276,11 +276,16 @@ function extractSSEEvents(content: string): ApiEndpoint['sse'] {
   return { description: 'SSE 流式响应', eventTypes: [{ name: 'message', description: '流式消息事件' }] }
 }
 
-function parseTypesFile(): TypeSchema[] {
+interface TypeAliasSchema {
+  name: string
+  values: string[]
+}
+
+function parseTypesFile(): { schemas: TypeSchema[]; aliases: TypeAliasSchema[] } {
   const content = fs.readFileSync(TYPES_FILE, 'utf-8')
   const schemas: TypeSchema[] = []
+  const aliases: TypeAliasSchema[] = []
 
-  // 匹配所有 export interface / export type
   const interfaceRegex = /export\s+(interface|type)\s+(\w+)\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/g
   
   let match
@@ -318,7 +323,18 @@ function parseTypesFile(): TypeSchema[] {
     schemas.push({ name, properties })
   }
 
-  return schemas
+  const aliasRegex = /export\s+type\s+(\w+)\s*=\s*([^;{\n]+)/g
+  let aliasMatch
+  while ((aliasMatch = aliasRegex.exec(content)) !== null) {
+    const name = aliasMatch[1]
+    const valueStr = aliasMatch[2].trim()
+    const values = valueStr.split('|').map(v => v.trim().replace(/'/g, '')).filter(v => v.length > 0)
+    if (values.length > 0) {
+      aliases.push({ name, values })
+    }
+  }
+
+  return { schemas, aliases }
 }
 
 /**
@@ -387,7 +403,7 @@ function isCustomType(typeName: string, allTypes: TypeSchema[]): boolean {
   return allTypes.some(t => t.name === typeName)
 }
 
-function typeToSwaggerType(typeStr: string, types?: TypeSchema[]): { type: string; items?: any; enum?: string[]; $ref?: string } {
+function typeToSwaggerType(typeStr: string, types?: TypeSchema[], aliases?: TypeAliasSchema[]): { type: string; items?: any; enum?: string[]; $ref?: string } {
   const baseMap: Record<string, string> = {
     'string': 'string',
     'number': 'number',
@@ -399,17 +415,24 @@ function typeToSwaggerType(typeStr: string, types?: TypeSchema[]): { type: strin
 
   if (typeStr.startsWith('array[')) {
     const itemType = typeStr.slice(6, -1)
-    return { type: 'array', items: typeToSwaggerType(itemType, types) }
+    return { type: 'array', items: typeToSwaggerType(itemType, types, aliases) }
   }
 
   if (typeStr.endsWith('[]')) {
     const itemType = typeStr.slice(0, -2)
-    return { type: 'array', items: typeToSwaggerType(itemType, types) }
+    return { type: 'array', items: typeToSwaggerType(itemType, types, aliases) }
   }
 
   if (typeStr.includes('|')) {
     const enumValues = typeStr.split('|').map(v => v.trim().replace(/'/g, ''))
     return { type: 'string', enum: enumValues.filter(v => !v.match(/^[A-Z][a-z]/)) || undefined }
+  }
+
+  if (aliases) {
+    const alias = aliases.find(a => a.name === typeStr)
+    if (alias) {
+      return { type: 'string', enum: alias.values }
+    }
   }
 
   if (types && isCustomType(typeStr, types)) {
@@ -419,7 +442,7 @@ function typeToSwaggerType(typeStr: string, types?: TypeSchema[]): { type: strin
   return { type: baseMap[typeStr] || 'string' }
 }
 
-function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[]): object {
+function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases: TypeAliasSchema[]): object {
   const paths: Record<string, any> = {}
   const components: Record<string, any> = { schemas: {} }
 
@@ -545,7 +568,7 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[]): object 
       properties: Object.fromEntries(
         t.properties.map(p => [
           p.name,
-          { ...typeToSwaggerType(p.type, types), description: p.description || p.name }
+          { ...typeToSwaggerType(p.type, types, aliases), description: p.description || p.name }
         ])
       )
     }
@@ -625,7 +648,7 @@ function getExampleValue(type: string, name: string): unknown {
     baseUrl: 'https://api.example.com/v1',
     apiKey: 'sk-xxx',
     modelName: 'gpt-4',
-    modelType: 'chat',
+    capabilities: ['chat'],
     displayName: '显示名称',
     isActive: true,
     isDefault: true,
@@ -716,28 +739,28 @@ function main() {
   console.log(`   提取 ${allEndpoints.length} 个端点`)
 
   console.log('📦 正在解析类型定义...')
-  const allTypes = parseTypesFile()
-  console.log(`   提取 ${allTypes.length} 个类型`)
+  const { schemas: allTypes, aliases } = parseTypesFile()
+  console.log(`   提取 ${allTypes.length} 个类型, ${aliases.length} 个类型别名`)
 
   // 过滤：只保留被端点引用的类型（递归）
   const usedTypes = getUsedTypes(allEndpoints, allTypes)
   console.log(`   筛选后: ${usedTypes.length} 个类型（已排除未使用的）`)
 
   console.log('🔨 正在生成 OpenAPI 规范...')
-  const spec = generateOpenAPI(allEndpoints, usedTypes)
+  const spec = generateOpenAPI(allEndpoints, usedTypes, aliases)
 
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(spec, null, 2) + '\n')
   console.log(`✅ 已生成: ${OUTPUT_FILE}`)
   console.log(`   大小: ${(fs.statSync(OUTPUT_FILE).size / 1024).toFixed(1)} KB`)
 
   console.log('🤖 正在生成 LLM 友好的 YAML 文档...')
-  const yaml = generateLLMYaml(allEndpoints, usedTypes)
+  const yaml = generateLLMYaml(allEndpoints, usedTypes, aliases)
   fs.writeFileSync(LLM_YAML_FILE, yaml)
   console.log(`✅ 已生成: ${LLM_YAML_FILE}`)
   console.log(`   大小: ${(fs.statSync(LLM_YAML_FILE).size / 1024).toFixed(1)} KB`)
 }
 
-function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[]): string {
+function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[], aliases: TypeAliasSchema[]): string {
   const lines: string[] = []
 
   lines.push('# PostMem API Reference (for LLM)')
@@ -813,14 +836,14 @@ function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[]): string 
             lines.push(`  - ${schemaType.name}:`)
             for (const p of schemaType.properties) {
               const req = p.required ? ' (required)' : ''
-              lines.push(`      - \`${p.name}\`: ${simplifyType(p.type)}${req}`)
+              lines.push(`      - \`${p.name}\`: ${simplifyType(p.type, aliases)}${req}`)
             }
           }
         } else if (matchedTypes.length === 1) {
           lines.push(`  type: ${matchedTypes[0].name}`)
           for (const p of matchedTypes[0].properties) {
             const req = p.required ? ' (required)' : ''
-            lines.push(`  - \`${p.name}\`: ${simplifyType(p.type)}${req}`)
+            lines.push(`  - \`${p.name}\`: ${simplifyType(p.type, aliases)}${req}`)
           }
         } else if (ep.requestBody.requiredFields?.length) {
           for (const f of ep.requestBody.requiredFields) {
@@ -873,17 +896,40 @@ function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[]): string 
     lines.push('')
     for (const p of t.properties) {
       const req = p.required ? '*' : '?'
-      lines.push(`- \`${p.name}\`${req}: ${simplifyType(p.type)}`)
+      lines.push(`- \`${p.name}\`${req}: ${simplifyType(p.type, aliases)}`)
     }
     lines.push('')
+  }
+
+  if (aliases.length > 0) {
+    lines.push('---')
+    lines.push('')
+    lines.push('## Type Aliases')
+    lines.push('')
+    for (const a of aliases) {
+      lines.push(`### ${a.name}`)
+      lines.push(`- ${a.values.join(' | ')}`)
+      lines.push('')
+    }
   }
 
   return lines.join('\n') + '\n'
 }
 
-function simplifyType(type: string): string {
-  if (type.startsWith('array[')) return `${type.slice(6, -1)}[]`
+function simplifyType(type: string, aliases?: TypeAliasSchema[]): string {
+  if (type.startsWith('array[')) {
+    const itemType = type.slice(6, -1)
+    const alias = aliases?.find(a => a.name === itemType)
+    if (alias) {
+      return `${itemType}[] [${alias.values.join('|')}]`
+    }
+    return `${itemType}[]`
+  }
   if (type === 'Record<string, unknown>') return 'object'
+  const alias = aliases?.find(a => a.name === type)
+  if (alias) {
+    return `${type} [${alias.values.join('|')}]`
+  }
   return type
 }
 

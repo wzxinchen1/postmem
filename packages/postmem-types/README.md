@@ -18,7 +18,7 @@ import type {
   SearchResult,
   CreateKBRequest,
   KnowledgeBaseInfo,
-  ModelType,
+  ModelCapability,
   SSEEvent,
 } from 'postmem-types'
 
@@ -54,7 +54,7 @@ pnpm publish
 
 | 分类 | 类型 |
 |------|------|
-| 枚举 | `ModelType`, `ConversationStatus`, `MessageRole`, `SearchSource`, `ErrorCode`, `SSEEventType` |
+| 枚举 | `ModelCapability`, `ConversationStatus`, `MessageRole`, `SearchSource`, `ErrorCode`, `SSEEventType` |
 | 通用 | `ApiResponse<T>`, `ApiError`, `ErrorResponse`, `SSEEvent<T>` |
 | 知识库 | `CreateKBRequest`, `KnowledgeBaseInfo`, `SearchRequest`, `SearchResult`, `ListRequest`, `ListItem`, `IngestTextRequest`, `IngestMessagesRequest`, `IngestTextResponse` |
 | 厂商 | `Vendor`, `CreateVendorRequest`, `UpdateVendorRequest` |

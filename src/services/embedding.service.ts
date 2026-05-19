@@ -27,7 +27,7 @@ export class EmbeddingService {
 
     const model = await this.prisma.model.findFirst({
       where: {
-        modelType: 'embedding',
+        capabilities: { has: 'embedding' },
         isDefault: true,
         isActive: true,
       },

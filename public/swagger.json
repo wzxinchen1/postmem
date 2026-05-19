@@ -498,8 +498,8 @@
     },
     "/api/chat/stream": {
       "get": {
-        "summary": "GET /api/chat/stream",
-        "description": "GET /api/chat/stream",
+        "summary": "⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️",
+        "description": "⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️",
         "tags": [
           "Chat"
         ],
@@ -1477,14 +1477,15 @@
         ],
         "parameters": [
           {
-            "name": "modelType",
+            "name": "capability",
             "in": "query",
-            "description": "模型类型",
+            "description": "模型能力",
             "schema": {
               "type": "string",
               "enum": [
                 "chat",
-                "embedding"
+                "embedding",
+                "vision"
               ]
             }
           }
@@ -1676,7 +1677,9 @@
               "example": {
                 "providerId": "clxabc123def456",
                 "name": "示例名称",
-                "modelType": "chat"
+                "capabilities": [
+                  "chat"
+                ]
               }
             }
           }
@@ -2410,18 +2413,6 @@
             }
           },
           {
-            "name": "modelType",
-            "in": "query",
-            "description": "模型类型",
-            "schema": {
-              "type": "string",
-              "enum": [
-                "chat",
-                "embedding"
-              ]
-            }
-          },
-          {
             "name": "status",
             "in": "query",
             "description": "按状态筛选",
@@ -2978,6 +2969,11 @@
           },
           "source": {
             "type": "string",
+            "enum": [
+              "dense",
+              "sparse",
+              "hybrid"
+            ],
             "description": "source"
           },
           "context": {
@@ -3079,6 +3075,11 @@
           },
           "role": {
             "type": "string",
+            "enum": [
+              "system",
+              "user",
+              "assistant"
+            ],
             "description": "role"
           },
           "content": {
@@ -3339,7 +3340,7 @@
           "id",
           "providerId",
           "name",
-          "modelType",
+          "capabilities",
           "config",
           "isActive",
           "isDefault",
@@ -3363,9 +3364,18 @@
             "type": "string",
             "description": "displayName"
           },
-          "modelType": {
-            "type": "string",
-            "description": "modelType"
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "chat",
+                "embedding",
+                "vision",
+                "reasoning"
+              ]
+            },
+            "description": "capabilities"
           },
           "config": {
             "type": "object",
@@ -3510,7 +3520,7 @@
         "required": [
           "providerId",
           "name",
-          "modelType"
+          "capabilities"
         ],
         "properties": {
           "providerId": {
@@ -3525,9 +3535,18 @@
             "type": "string",
             "description": "displayName"
           },
-          "modelType": {
-            "type": "string",
-            "description": "modelType"
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "chat",
+                "embedding",
+                "vision",
+                "reasoning"
+              ]
+            },
+            "description": "capabilities"
           },
           "config": {
             "type": "object",
@@ -3554,9 +3573,18 @@
             "type": "string",
             "description": "displayName"
           },
-          "modelType": {
-            "type": "string",
-            "description": "modelType"
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "chat",
+                "embedding",
+                "vision",
+                "reasoning"
+              ]
+            },
+            "description": "capabilities"
           },
           "config": {
             "type": "object",
@@ -3670,6 +3698,11 @@
           },
           "role": {
             "type": "string",
+            "enum": [
+              "system",
+              "user",
+              "assistant"
+            ],
             "description": "role"
           },
           "content": {
@@ -3691,6 +3724,20 @@
           "memoried": {
             "type": "boolean",
             "description": "memoried"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageImage"
+            },
+            "description": "images"
+          },
+          "urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            },
+            "description": "urls"
           },
           "metadata": {
             "type": "object",
@@ -3734,6 +3781,22 @@
           "conversationId": {
             "type": "string",
             "description": "conversationId"
+          }
+        }
+      },
+      "ChatMessageImage": {
+        "type": "object",
+        "required": [
+          "url"
+        ],
+        "properties": {
+          "url": {
+            "type": "string",
+            "description": "url"
+          },
+          "mimeType": {
+            "type": "string",
+            "description": "mimeType"
           }
         }
       },
@@ -3882,7 +3945,7 @@
           "id",
           "name",
           "displayName",
-          "modelType",
+          "capabilities",
           "isDefault",
           "isActive"
         ],
@@ -3899,9 +3962,18 @@
             "type": "string",
             "description": "displayName"
           },
-          "modelType": {
-            "type": "string",
-            "description": "modelType"
+          "capabilities": {
+            "type": "array",
+            "items": {
+              "type": "string",
+              "enum": [
+                "chat",
+                "embedding",
+                "vision",
+                "reasoning"
+              ]
+            },
+            "description": "capabilities"
           },
           "isDefault": {
             "type": "boolean",

@@ -3,6 +3,7 @@ export { StreamReader } from './stream-reader'
 export { PostMemError, DoneReason, StreamStatus, ThinkingEffort } from './types'
 export type {
   ChatMessageInput,
+  ChatMessageImage,
   ChatRequest,
   ChatMessage,
   Conversation,

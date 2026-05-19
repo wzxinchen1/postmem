@@ -29,7 +29,6 @@ export type ModelMinAggregateOutputType = {
   providerId: string | null
   name: string | null
   displayName: string | null
-  modelType: string | null
   isActive: boolean | null
   isDefault: boolean | null
   createdAt: Date | null
@@ -41,7 +40,6 @@ export type ModelMaxAggregateOutputType = {
   providerId: string | null
   name: string | null
   displayName: string | null
-  modelType: string | null
   isActive: boolean | null
   isDefault: boolean | null
   createdAt: Date | null
@@ -53,7 +51,7 @@ export type ModelCountAggregateOutputType = {
   providerId: number
   name: number
   displayName: number
-  modelType: number
+  capabilities: number
   config: number
   isActive: number
   isDefault: number
@@ -68,7 +66,6 @@ export type ModelMinAggregateInputType = {
   providerId?: true
   name?: true
   displayName?: true
-  modelType?: true
   isActive?: true
   isDefault?: true
   createdAt?: true
@@ -80,7 +77,6 @@ export type ModelMaxAggregateInputType = {
   providerId?: true
   name?: true
   displayName?: true
-  modelType?: true
   isActive?: true
   isDefault?: true
   createdAt?: true
@@ -92,7 +88,7 @@ export type ModelCountAggregateInputType = {
   providerId?: true
   name?: true
   displayName?: true
-  modelType?: true
+  capabilities?: true
   config?: true
   isActive?: true
   isDefault?: true
@@ -178,7 +174,7 @@ export type ModelGroupByOutputType = {
   providerId: string
   name: string
   displayName: string | null
-  modelType: string
+  capabilities: string[]
   config: runtime.JsonValue
   isActive: boolean
   isDefault: boolean
@@ -212,7 +208,7 @@ export type ModelWhereInput = {
   providerId?: Prisma.StringFilter<"Model"> | string
   name?: Prisma.StringFilter<"Model"> | string
   displayName?: Prisma.StringNullableFilter<"Model"> | string | null
-  modelType?: Prisma.StringFilter<"Model"> | string
+  capabilities?: Prisma.StringNullableListFilter<"Model">
   config?: Prisma.JsonFilter<"Model">
   isActive?: Prisma.BoolFilter<"Model"> | boolean
   isDefault?: Prisma.BoolFilter<"Model"> | boolean
@@ -226,7 +222,7 @@ export type ModelOrderByWithRelationInput = {
   providerId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   displayName?: Prisma.SortOrderInput | Prisma.SortOrder
-  modelType?: Prisma.SortOrder
+  capabilities?: Prisma.SortOrder
   config?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   isDefault?: Prisma.SortOrder
@@ -244,7 +240,7 @@ export type ModelWhereUniqueInput = Prisma.AtLeast<{
   providerId?: Prisma.StringFilter<"Model"> | string
   name?: Prisma.StringFilter<"Model"> | string
   displayName?: Prisma.StringNullableFilter<"Model"> | string | null
-  modelType?: Prisma.StringFilter<"Model"> | string
+  capabilities?: Prisma.StringNullableListFilter<"Model">
   config?: Prisma.JsonFilter<"Model">
   isActive?: Prisma.BoolFilter<"Model"> | boolean
   isDefault?: Prisma.BoolFilter<"Model"> | boolean
@@ -258,7 +254,7 @@ export type ModelOrderByWithAggregationInput = {
   providerId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   displayName?: Prisma.SortOrderInput | Prisma.SortOrder
-  modelType?: Prisma.SortOrder
+  capabilities?: Prisma.SortOrder
   config?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   isDefault?: Prisma.SortOrder
@@ -277,7 +273,7 @@ export type ModelScalarWhereWithAggregatesInput = {
   providerId?: Prisma.StringWithAggregatesFilter<"Model"> | string
   name?: Prisma.StringWithAggregatesFilter<"Model"> | string
   displayName?: Prisma.StringNullableWithAggregatesFilter<"Model"> | string | null
-  modelType?: Prisma.StringWithAggregatesFilter<"Model"> | string
+  capabilities?: Prisma.StringNullableListFilter<"Model">
   config?: Prisma.JsonWithAggregatesFilter<"Model">
   isActive?: Prisma.BoolWithAggregatesFilter<"Model"> | boolean
   isDefault?: Prisma.BoolWithAggregatesFilter<"Model"> | boolean
@@ -289,7 +285,7 @@ export type ModelCreateInput = {
   id?: string
   name: string
   displayName?: string | null
-  modelType: string
+  capabilities?: Prisma.ModelCreatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   isDefault?: boolean
@@ -303,7 +299,7 @@ export type ModelUncheckedCreateInput = {
   providerId: string
   name: string
   displayName?: string | null
-  modelType: string
+  capabilities?: Prisma.ModelCreatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   isDefault?: boolean
@@ -315,7 +311,7 @@ export type ModelUpdateInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  modelType?: Prisma.StringFieldUpdateOperationsInput | string
+  capabilities?: Prisma.ModelUpdatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isDefault?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -329,7 +325,7 @@ export type ModelUncheckedUpdateInput = {
   providerId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  modelType?: Prisma.StringFieldUpdateOperationsInput | string
+  capabilities?: Prisma.ModelUpdatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isDefault?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -342,7 +338,7 @@ export type ModelCreateManyInput = {
   providerId: string
   name: string
   displayName?: string | null
-  modelType: string
+  capabilities?: Prisma.ModelCreatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   isDefault?: boolean
@@ -354,7 +350,7 @@ export type ModelUpdateManyMutationInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  modelType?: Prisma.StringFieldUpdateOperationsInput | string
+  capabilities?: Prisma.ModelUpdatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isDefault?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -367,7 +363,7 @@ export type ModelUncheckedUpdateManyInput = {
   providerId?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  modelType?: Prisma.StringFieldUpdateOperationsInput | string
+  capabilities?: Prisma.ModelUpdatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isDefault?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -385,6 +381,14 @@ export type ModelOrderByRelationAggregateInput = {
   _count?: Prisma.SortOrder
 }
 
+export type StringNullableListFilter<$PrismaModel = never> = {
+  equals?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel> | null
+  has?: string | Prisma.StringFieldRefInput<$PrismaModel> | null
+  hasEvery?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
+  hasSome?: string[] | Prisma.ListStringFieldRefInput<$PrismaModel>
+  isEmpty?: boolean
+}
+
 export type ModelProviderIdNameCompoundUniqueInput = {
   providerId: string
   name: string
@@ -395,7 +399,7 @@ export type ModelCountOrderByAggregateInput = {
   providerId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   displayName?: Prisma.SortOrder
-  modelType?: Prisma.SortOrder
+  capabilities?: Prisma.SortOrder
   config?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   isDefault?: Prisma.SortOrder
@@ -408,7 +412,6 @@ export type ModelMaxOrderByAggregateInput = {
   providerId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   displayName?: Prisma.SortOrder
-  modelType?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   isDefault?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -420,7 +423,6 @@ export type ModelMinOrderByAggregateInput = {
   providerId?: Prisma.SortOrder
   name?: Prisma.SortOrder
   displayName?: Prisma.SortOrder
-  modelType?: Prisma.SortOrder
   isActive?: Prisma.SortOrder
   isDefault?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
@@ -469,11 +471,20 @@ export type ModelUncheckedUpdateManyWithoutProviderNestedInput = {
   deleteMany?: Prisma.ModelScalarWhereInput | Prisma.ModelScalarWhereInput[]
 }
 
+export type ModelCreatecapabilitiesInput = {
+  set: string[]
+}
+
+export type ModelUpdatecapabilitiesInput = {
+  set?: string[]
+  push?: string | string[]
+}
+
 export type ModelCreateWithoutProviderInput = {
   id?: string
   name: string
   displayName?: string | null
-  modelType: string
+  capabilities?: Prisma.ModelCreatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   isDefault?: boolean
@@ -485,7 +496,7 @@ export type ModelUncheckedCreateWithoutProviderInput = {
   id?: string
   name: string
   displayName?: string | null
-  modelType: string
+  capabilities?: Prisma.ModelCreatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   isDefault?: boolean
@@ -527,7 +538,7 @@ export type ModelScalarWhereInput = {
   providerId?: Prisma.StringFilter<"Model"> | string
   name?: Prisma.StringFilter<"Model"> | string
   displayName?: Prisma.StringNullableFilter<"Model"> | string | null
-  modelType?: Prisma.StringFilter<"Model"> | string
+  capabilities?: Prisma.StringNullableListFilter<"Model">
   config?: Prisma.JsonFilter<"Model">
   isActive?: Prisma.BoolFilter<"Model"> | boolean
   isDefault?: Prisma.BoolFilter<"Model"> | boolean
@@ -539,7 +550,7 @@ export type ModelCreateManyProviderInput = {
   id?: string
   name: string
   displayName?: string | null
-  modelType: string
+  capabilities?: Prisma.ModelCreatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: boolean
   isDefault?: boolean
@@ -551,7 +562,7 @@ export type ModelUpdateWithoutProviderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  modelType?: Prisma.StringFieldUpdateOperationsInput | string
+  capabilities?: Prisma.ModelUpdatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isDefault?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -563,7 +574,7 @@ export type ModelUncheckedUpdateWithoutProviderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  modelType?: Prisma.StringFieldUpdateOperationsInput | string
+  capabilities?: Prisma.ModelUpdatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isDefault?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -575,7 +586,7 @@ export type ModelUncheckedUpdateManyWithoutProviderInput = {
   id?: Prisma.StringFieldUpdateOperationsInput | string
   name?: Prisma.StringFieldUpdateOperationsInput | string
   displayName?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
-  modelType?: Prisma.StringFieldUpdateOperationsInput | string
+  capabilities?: Prisma.ModelUpdatecapabilitiesInput | string[]
   config?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   isActive?: Prisma.BoolFieldUpdateOperationsInput | boolean
   isDefault?: Prisma.BoolFieldUpdateOperationsInput | boolean
@@ -590,7 +601,7 @@ export type ModelSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs = 
   providerId?: boolean
   name?: boolean
   displayName?: boolean
-  modelType?: boolean
+  capabilities?: boolean
   config?: boolean
   isActive?: boolean
   isDefault?: boolean
@@ -604,7 +615,7 @@ export type ModelSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   providerId?: boolean
   name?: boolean
   displayName?: boolean
-  modelType?: boolean
+  capabilities?: boolean
   config?: boolean
   isActive?: boolean
   isDefault?: boolean
@@ -618,7 +629,7 @@ export type ModelSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Extensi
   providerId?: boolean
   name?: boolean
   displayName?: boolean
-  modelType?: boolean
+  capabilities?: boolean
   config?: boolean
   isActive?: boolean
   isDefault?: boolean
@@ -632,7 +643,7 @@ export type ModelSelectScalar = {
   providerId?: boolean
   name?: boolean
   displayName?: boolean
-  modelType?: boolean
+  capabilities?: boolean
   config?: boolean
   isActive?: boolean
   isDefault?: boolean
@@ -640,7 +651,7 @@ export type ModelSelectScalar = {
   updatedAt?: boolean
 }
 
-export type ModelOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "providerId" | "name" | "displayName" | "modelType" | "config" | "isActive" | "isDefault" | "createdAt" | "updatedAt", ExtArgs["result"]["model"]>
+export type ModelOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "providerId" | "name" | "displayName" | "capabilities" | "config" | "isActive" | "isDefault" | "createdAt" | "updatedAt", ExtArgs["result"]["model"]>
 export type ModelInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   provider?: boolean | Prisma.ProviderDefaultArgs<ExtArgs>
 }
@@ -661,7 +672,7 @@ export type $ModelPayload<ExtArgs extends runtime.Types.Extensions.InternalArgs 
     providerId: string
     name: string
     displayName: string | null
-    modelType: string
+    capabilities: string[]
     config: runtime.JsonValue
     isActive: boolean
     isDefault: boolean
@@ -1095,7 +1106,7 @@ export interface ModelFieldRefs {
   readonly providerId: Prisma.FieldRef<"Model", 'String'>
   readonly name: Prisma.FieldRef<"Model", 'String'>
   readonly displayName: Prisma.FieldRef<"Model", 'String'>
-  readonly modelType: Prisma.FieldRef<"Model", 'String'>
+  readonly capabilities: Prisma.FieldRef<"Model", 'String[]'>
   readonly config: Prisma.FieldRef<"Model", 'Json'>
   readonly isActive: Prisma.FieldRef<"Model", 'Boolean'>
   readonly isDefault: Prisma.FieldRef<"Model", 'Boolean'>

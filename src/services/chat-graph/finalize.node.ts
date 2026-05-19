@@ -7,7 +7,6 @@ export function createFinalizeNode(deps: GraphDependencies) {
     if (state.cancelled) {
       await deps.sseService.clearProcessing(state.conversationId)
       await deps.sseService.emit({ type: 'done' })
-      await deps.sseService.clearMessageStream()
       await deps.sseService.clearCancelled(state.conversationId)
       return {}
     }

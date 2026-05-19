@@ -1,4 +1,4 @@
-import type { ModelType, ConversationStatus, MessageRole, SearchSource, SSEEventType, ErrorCode } from './enums'
+import type { ModelCapability, ConversationStatus, MessageRole, SearchSource, SSEEventType, ErrorCode } from './enums'
 
 export interface ApiResponse<T = unknown> {
   success: boolean
@@ -127,7 +127,7 @@ export interface Model {
   providerId: number
   name: string
   displayName?: string
-  modelType: ModelType
+  capabilities: ModelCapability[]
   config: Record<string, unknown>
   isActive: boolean
   isDefault: boolean
@@ -173,7 +173,7 @@ export interface CreateModelRequest {
   providerId: number
   name: string
   displayName?: string
-  modelType: ModelType
+  capabilities: ModelCapability[]
   config?: Record<string, unknown>
   isActive?: boolean
   isDefault?: boolean
@@ -182,7 +182,7 @@ export interface CreateModelRequest {
 export interface UpdateModelRequest {
   name?: string
   displayName?: string
-  modelType?: ModelType
+  capabilities?: ModelCapability[]
   config?: Record<string, unknown>
   isActive?: boolean
   isDefault?: boolean
@@ -221,7 +221,7 @@ export interface ModelTreeNode {
   id: number
   name: string
   displayName: string
-  modelType: ModelType
+  capabilities: ModelCapability[]
   isDefault: boolean
   isActive: boolean
 }
@@ -229,7 +229,7 @@ export interface ModelTreeNode {
 export interface Conversation {
   id: number
   kbId?: number
-  modelType: ModelType
+  modelType: ModelCapability
   modelName: string
   provider: string
   status: ConversationStatus
@@ -249,6 +249,8 @@ export interface ChatMessage {
   totalTokens: number
   reasoningTokens?: number
   memoried: boolean
+  images?: ChatMessageImage[]
+  urls?: string[]
   metadata: Record<string, unknown>
   createdAt: string
 }
@@ -265,6 +267,13 @@ export interface ChatCompletionRequest {
 export interface ChatMessageInput {
   id: string
   content: string
+  images?: ChatMessageImage[]
+  urls?: string[]
+}
+
+export interface ChatMessageImage {
+  url: string
+  mimeType?: string
 }
 
 export interface ChatCompletionResponse {

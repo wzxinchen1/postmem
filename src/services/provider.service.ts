@@ -157,7 +157,7 @@ export class ProviderService {
         id: model.id,
         name: model.name,
         displayName: model.displayName,
-        modelType: model.modelType,
+        capabilities: model.capabilities,
         isDefault: model.isDefault,
         isActive: model.isActive,
       })),

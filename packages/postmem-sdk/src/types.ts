@@ -26,6 +26,8 @@ export enum StreamStatus {
   Summarizing = 'summarizing',
   MemoryProgress = 'memoryProgress',
   Thinking = 'thinking',
+  Recognizing = 'recognizing',
+  FetchingUrl = 'fetchingUrl',
 }
 
 export enum ThinkingEffort {
@@ -54,6 +56,13 @@ export type StreamEvent =
 export interface ChatMessageInput {
   id: string
   content: string
+  images?: ChatMessageImage[]
+  urls?: string[]
+}
+
+export interface ChatMessageImage {
+  url: string
+  mimeType?: string
 }
 
 export interface ChatRequest {
@@ -75,6 +84,8 @@ export interface ChatMessage {
   totalTokens: number
   reasoningTokens?: number
   memoried: boolean
+  images?: ChatMessageImage[]
+  urls?: string[]
   metadata: Record<string, unknown>
   createdAt: string
 }

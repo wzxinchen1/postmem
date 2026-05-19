@@ -143,7 +143,7 @@ export const ModelScalarFieldEnum = {
   providerId: 'providerId',
   name: 'name',
   displayName: 'displayName',
-  modelType: 'modelType',
+  capabilities: 'capabilities',
   config: 'config',
   isActive: 'isActive',
   isDefault: 'isDefault',
@@ -196,6 +196,8 @@ export const ChatMessageScalarFieldEnum = {
   totalTokens: 'totalTokens',
   reasoningTokens: 'reasoningTokens',
   memoried: 'memoried',
+  images: 'images',
+  urls: 'urls',
   metadata: 'metadata',
   createdAt: 'createdAt'
 } as const
@@ -281,6 +283,14 @@ export const JsonNullValueInput = {
 } as const
 
 export type JsonNullValueInput = (typeof JsonNullValueInput)[keyof typeof JsonNullValueInput]
+
+
+export const NullableJsonNullValueInput = {
+  DbNull: DbNull,
+  JsonNull: JsonNull
+} as const
+
+export type NullableJsonNullValueInput = (typeof NullableJsonNullValueInput)[keyof typeof NullableJsonNullValueInput]
 
 
 export const QueryMode = {

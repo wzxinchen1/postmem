@@ -1,4 +1,4 @@
-export type ModelType = 'embedding' | 'chat'
+export type ModelCapability = 'chat' | 'embedding' | 'vision' | 'reasoning'
 
 export type ConversationStatus = 'pending' | 'completed' | 'failed'
 
@@ -22,8 +22,11 @@ export type SSEEventType =
   | 'search_web_start'
   | 'search_web_end'
   | 'chat_error'
+  | 'fetching_url_start'
+  | 'fetching_url_end'
   | 'done'
   | 'keep-alive'
+  | 'recognizing'
 
 export type ErrorCode =
   | 'BAD_REQUEST'

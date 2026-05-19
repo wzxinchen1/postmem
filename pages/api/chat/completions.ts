@@ -29,6 +29,16 @@ export default createApiHandler<Deps>({
       return errorResponse(res, 'BAD_REQUEST', 'kbId 不能为空')
     }
 
+    const totalImages = messages.reduce((sum: number, m: { images?: unknown[] }) => sum + (m.images?.length ?? 0), 0)
+    if (totalImages > 5) {
+      return errorResponse(res, 'BAD_REQUEST', `单条消息最多支持 5 张图片，当前传入了 ${totalImages} 张`)
+    }
+
+    const totalUrls = messages.reduce((sum: number, m: { urls?: unknown[] }) => sum + (m.urls?.length ?? 0), 0)
+    if (totalUrls > 5) {
+      return errorResponse(res, 'BAD_REQUEST', `单条消息最多支持 5 个链接，当前传入了 ${totalUrls} 个`)
+    }
+
     let convId: string
 
     if (conversationId) {
@@ -66,6 +76,8 @@ export default createApiHandler<Deps>({
       messages: messages.map(m => ({
         id: m.id ? m.id : String(Date.now()),
         content: m.content,
+        images: m.images,
+        urls: m.urls,
       })),
       conversationId: convId,
       newConversation,

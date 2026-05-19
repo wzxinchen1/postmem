@@ -1,9 +1,12 @@
 import { Annotation } from '@langchain/langgraph'
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages'
+import type { ChatMessageImage } from '@/src/types'
 
 export enum ChatNode {
   Init = 'init',
   SaveMemory = 'saveMemory',
+  RecognizeImage = 'recognizeImage',
+  FetchUrl = 'fetchUrl',
   Search = 'search',
   StreamLLM = 'streamLLM',
   Finalize = 'finalize',
@@ -27,5 +30,12 @@ export const ChatGraphState = Annotation.Root({
   cancelled: Annotation<boolean>,
   thinkingEffort: Annotation<string | undefined>,
   langchainMessages: Annotation<(HumanMessage | AIMessage)[]>,
-  finalMessages: Annotation<(SystemMessage | HumanMessage | AIMessage)[]>},
-)
+  finalMessages: Annotation<(SystemMessage | HumanMessage | AIMessage)[]>,
+  images: Annotation<ChatMessageImage[]>,
+  urls: Annotation<string[]>,
+  hasVisionCapability: Annotation<boolean>,
+  recognizedText: Annotation<string>,
+  fetchedUrlContent: Annotation<string>,
+})
+
+export type ChatState = typeof ChatGraphState.State

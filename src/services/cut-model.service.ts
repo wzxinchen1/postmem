@@ -4,7 +4,7 @@ import { Errors } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
 import { logger } from '@/src/lib/logger'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
-import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelType, TopicMatchResult, TopicCreateInfo, BatchTopicPlan, TitledChunk } from '@/src/types'
+import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelCapability, TopicMatchResult, TopicCreateInfo, BatchTopicPlan, TitledChunk } from '@/src/types'
 import { SessionService } from '@/src/services/session.service'
 import { VendorService } from './vendor.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
@@ -40,7 +40,7 @@ export class CutModelService {
 
     const model = await this.prisma.model.findFirst({
       where: {
-        modelType: 'chat',
+        capabilities: { has: 'chat' },
         isDefault: true,
         isActive: true,
       },
@@ -63,7 +63,7 @@ export class CutModelService {
         providerId: model.providerId,
         name: model.name,
         displayName: model.displayName ?? undefined,
-        modelType: model.modelType as ModelType,
+        capabilities: model.capabilities as ModelCapability[],
         config: model.config as Record<string, unknown>,
         isActive: model.isActive,
         isDefault: model.isDefault,

@@ -1,4 +1,5 @@
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
+import type { ModelCapability } from '@/src/types'
 import { ProviderValidateService } from './provider-validate.service'
 import { ProviderService } from './provider.service'
 import { ModelService } from './model.service'
@@ -116,14 +117,14 @@ export class InitService {
 
       const createdModels: string[] = []
       for (const modelName of fetchResult.models) {
-        const modelType = this.inferModelType(modelName, vendor.chatModelClass, vendor.embeddingModelClass)
+        const capabilities = this.inferCapabilities(modelName, vendor.chatModelClass, vendor.embeddingModelClass)
         const exists = await this.modelService.exists(provider.id, modelName)
         if (exists) continue
 
         await this.modelService.create({
           providerId: provider.id,
           name: modelName,
-          modelType,
+          capabilities,
           isDefault: false,
           isActive: true,
         })
@@ -140,9 +141,11 @@ export class InitService {
     return results
   }
 
-  private inferModelType(modelName: string, chatModelClass: string | null, embeddingModelClass: string | null): 'chat' | 'embedding' {
-    if (embeddingModelClass && /embed/i.test(modelName)) return 'embedding'
-    if (chatModelClass && /embed/i.test(chatModelClass) && !/chat/i.test(chatModelClass)) return 'embedding'
-    return 'chat'
+  private inferCapabilities(modelName: string, chatModelClass: string | null, embeddingModelClass: string | null): ModelCapability[] {
+    if (embeddingModelClass && /embed/i.test(modelName)) return ['embedding']
+    if (chatModelClass && /embed/i.test(chatModelClass) && !/chat/i.test(chatModelClass)) return ['embedding']
+    if (/vision|vl|qwen2-vl|llava|cogvlm/i.test(modelName)) return ['chat', 'vision']
+    if (/reason|think|deepseek-r1|o1\b|o3\b|o4\b/i.test(modelName)) return ['chat', 'reasoning']
+    return ['chat']
   }
 }

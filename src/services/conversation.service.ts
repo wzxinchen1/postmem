@@ -69,6 +69,8 @@ export class ConversationService {
         totalTokens: data.totalTokens,
         reasoningTokens: data.reasoningTokens,
         memoried: data.memoried,
+        images: (data.images as any) ?? undefined,
+        urls: (data.urls as any) ?? undefined,
         metadata: { ...data.metadata as any, modelName: resolvedName },
       },
     }) as Promise<ChatMessage>
@@ -155,7 +157,7 @@ export class ConversationService {
     await this.prisma.chatMessage.deleteMany({
       where: {
         conversationId,
-        createdAt: { gte: targetMessage.createdAt },
+        createdAt: { gt: targetMessage.createdAt },
       },
     })
   }
@@ -189,6 +191,8 @@ export class ConversationService {
         totalTokens: data.totalTokens,
         reasoningTokens: data.reasoningTokens,
         memoried: data.memoried,
+        images: (data.images as any) ?? undefined,
+        urls: (data.urls as any) ?? undefined,
         metadata: { ...data.metadata as any, modelName: resolvedName },
       },
     }) as Promise<ChatMessage>

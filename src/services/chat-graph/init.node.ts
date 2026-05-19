@@ -19,11 +19,13 @@ export function createInitNode(deps: GraphDependencies) {
 
     const chatSetting = await deps.chatSettingService.get()
     const hasReasoning = state.thinkingEffort !== undefined && state.thinkingEffort !== 'none'
+    const hasVisionCapability = model.capabilities.includes('vision')
     logger.info('[ChatGraph] init 创建模型', {
       modelId: state.modelId,
       modelName: model.name,
       thinkingEffort: state.thinkingEffort,
       hasReasoning,
+      hasVisionCapability,
     })
     const agent = deps.chatModelFactory.createAgent(provider.vendor, {
       model: model.name,
@@ -56,6 +58,7 @@ export function createInitNode(deps: GraphDependencies) {
       agent,
       modelName: model.name,
       langchainMessages,
+      hasVisionCapability,
     }
   }
 }

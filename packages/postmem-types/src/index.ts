@@ -1,4 +1,4 @@
-import type { ModelType, ConversationStatus, MessageRole, SearchSource, SSEEventType, ErrorCode, ChunkModelType, ProviderType } from './enums'
+import type { ModelCapability, ConversationStatus, MessageRole, SearchSource, SSEEventType, ErrorCode, ChunkModelType, ProviderType } from './enums'
 import type {
   ApiResponse,
   ApiError,
@@ -33,12 +33,13 @@ import type {
   ChatMessage,
   ChatCompletionRequest,
   ChatMessageInput,
+  ChatMessageImage,
   ChatCompletionResponse,
   SSEEvent,
 } from './types'
 
 export {
-  ModelType,
+  ModelCapability,
   ConversationStatus,
   MessageRole,
   SearchSource,
@@ -79,6 +80,7 @@ export {
   ChatMessage,
   ChatCompletionRequest,
   ChatMessageInput,
+  ChatMessageImage,
   ChatCompletionResponse,
   SSEEvent,
 }

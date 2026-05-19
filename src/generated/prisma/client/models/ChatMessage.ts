@@ -71,6 +71,8 @@ export type ChatMessageCountAggregateOutputType = {
   totalTokens: number
   reasoningTokens: number
   memoried: number
+  images: number
+  urls: number
   metadata: number
   createdAt: number
   _all: number
@@ -122,6 +124,8 @@ export type ChatMessageCountAggregateInputType = {
   totalTokens?: true
   reasoningTokens?: true
   memoried?: true
+  images?: true
+  urls?: true
   metadata?: true
   createdAt?: true
   _all?: true
@@ -222,6 +226,8 @@ export type ChatMessageGroupByOutputType = {
   totalTokens: number
   reasoningTokens: number | null
   memoried: boolean
+  images: runtime.JsonValue | null
+  urls: runtime.JsonValue | null
   metadata: runtime.JsonValue
   createdAt: Date
   _count: ChatMessageCountAggregateOutputType | null
@@ -258,6 +264,8 @@ export type ChatMessageWhereInput = {
   totalTokens?: Prisma.IntFilter<"ChatMessage"> | number
   reasoningTokens?: Prisma.IntNullableFilter<"ChatMessage"> | number | null
   memoried?: Prisma.BoolFilter<"ChatMessage"> | boolean
+  images?: Prisma.JsonNullableFilter<"ChatMessage">
+  urls?: Prisma.JsonNullableFilter<"ChatMessage">
   metadata?: Prisma.JsonFilter<"ChatMessage">
   createdAt?: Prisma.DateTimeFilter<"ChatMessage"> | Date | string
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
@@ -272,6 +280,8 @@ export type ChatMessageOrderByWithRelationInput = {
   totalTokens?: Prisma.SortOrder
   reasoningTokens?: Prisma.SortOrderInput | Prisma.SortOrder
   memoried?: Prisma.SortOrder
+  images?: Prisma.SortOrderInput | Prisma.SortOrder
+  urls?: Prisma.SortOrderInput | Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   conversation?: Prisma.ConversationOrderByWithRelationInput
@@ -289,6 +299,8 @@ export type ChatMessageWhereUniqueInput = Prisma.AtLeast<{
   totalTokens?: Prisma.IntFilter<"ChatMessage"> | number
   reasoningTokens?: Prisma.IntNullableFilter<"ChatMessage"> | number | null
   memoried?: Prisma.BoolFilter<"ChatMessage"> | boolean
+  images?: Prisma.JsonNullableFilter<"ChatMessage">
+  urls?: Prisma.JsonNullableFilter<"ChatMessage">
   metadata?: Prisma.JsonFilter<"ChatMessage">
   createdAt?: Prisma.DateTimeFilter<"ChatMessage"> | Date | string
   conversation?: Prisma.XOR<Prisma.ConversationScalarRelationFilter, Prisma.ConversationWhereInput>
@@ -303,6 +315,8 @@ export type ChatMessageOrderByWithAggregationInput = {
   totalTokens?: Prisma.SortOrder
   reasoningTokens?: Prisma.SortOrderInput | Prisma.SortOrder
   memoried?: Prisma.SortOrder
+  images?: Prisma.SortOrderInput | Prisma.SortOrder
+  urls?: Prisma.SortOrderInput | Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   _count?: Prisma.ChatMessageCountOrderByAggregateInput
@@ -324,6 +338,8 @@ export type ChatMessageScalarWhereWithAggregatesInput = {
   totalTokens?: Prisma.IntWithAggregatesFilter<"ChatMessage"> | number
   reasoningTokens?: Prisma.IntNullableWithAggregatesFilter<"ChatMessage"> | number | null
   memoried?: Prisma.BoolWithAggregatesFilter<"ChatMessage"> | boolean
+  images?: Prisma.JsonNullableWithAggregatesFilter<"ChatMessage">
+  urls?: Prisma.JsonNullableWithAggregatesFilter<"ChatMessage">
   metadata?: Prisma.JsonWithAggregatesFilter<"ChatMessage">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"ChatMessage"> | Date | string
 }
@@ -336,6 +352,8 @@ export type ChatMessageCreateInput = {
   totalTokens?: number
   reasoningTokens?: number | null
   memoried?: boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
   conversation: Prisma.ConversationCreateNestedOneWithoutMessagesInput
@@ -350,6 +368,8 @@ export type ChatMessageUncheckedCreateInput = {
   totalTokens?: number
   reasoningTokens?: number | null
   memoried?: boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -362,6 +382,8 @@ export type ChatMessageUpdateInput = {
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
   reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   conversation?: Prisma.ConversationUpdateOneRequiredWithoutMessagesNestedInput
@@ -376,6 +398,8 @@ export type ChatMessageUncheckedUpdateInput = {
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
   reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -389,6 +413,8 @@ export type ChatMessageCreateManyInput = {
   totalTokens?: number
   reasoningTokens?: number | null
   memoried?: boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -401,6 +427,8 @@ export type ChatMessageUpdateManyMutationInput = {
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
   reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -414,6 +442,8 @@ export type ChatMessageUncheckedUpdateManyInput = {
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
   reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -437,6 +467,8 @@ export type ChatMessageCountOrderByAggregateInput = {
   totalTokens?: Prisma.SortOrder
   reasoningTokens?: Prisma.SortOrder
   memoried?: Prisma.SortOrder
+  images?: Prisma.SortOrder
+  urls?: Prisma.SortOrder
   metadata?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
 }
@@ -543,6 +575,8 @@ export type ChatMessageCreateWithoutConversationInput = {
   totalTokens?: number
   reasoningTokens?: number | null
   memoried?: boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -555,6 +589,8 @@ export type ChatMessageUncheckedCreateWithoutConversationInput = {
   totalTokens?: number
   reasoningTokens?: number | null
   memoried?: boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -597,6 +633,8 @@ export type ChatMessageScalarWhereInput = {
   totalTokens?: Prisma.IntFilter<"ChatMessage"> | number
   reasoningTokens?: Prisma.IntNullableFilter<"ChatMessage"> | number | null
   memoried?: Prisma.BoolFilter<"ChatMessage"> | boolean
+  images?: Prisma.JsonNullableFilter<"ChatMessage">
+  urls?: Prisma.JsonNullableFilter<"ChatMessage">
   metadata?: Prisma.JsonFilter<"ChatMessage">
   createdAt?: Prisma.DateTimeFilter<"ChatMessage"> | Date | string
 }
@@ -609,6 +647,8 @@ export type ChatMessageCreateManyConversationInput = {
   totalTokens?: number
   reasoningTokens?: number | null
   memoried?: boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Date | string
 }
@@ -621,6 +661,8 @@ export type ChatMessageUpdateWithoutConversationInput = {
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
   reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -633,6 +675,8 @@ export type ChatMessageUncheckedUpdateWithoutConversationInput = {
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
   reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -645,6 +689,8 @@ export type ChatMessageUncheckedUpdateManyWithoutConversationInput = {
   totalTokens?: Prisma.IntFieldUpdateOperationsInput | number
   reasoningTokens?: Prisma.NullableIntFieldUpdateOperationsInput | number | null
   memoried?: Prisma.BoolFieldUpdateOperationsInput | boolean
+  images?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
+  urls?: Prisma.NullableJsonNullValueInput | runtime.InputJsonValue
   metadata?: Prisma.JsonNullValueInput | runtime.InputJsonValue
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
 }
@@ -660,6 +706,8 @@ export type ChatMessageSelect<ExtArgs extends runtime.Types.Extensions.InternalA
   totalTokens?: boolean
   reasoningTokens?: boolean
   memoried?: boolean
+  images?: boolean
+  urls?: boolean
   metadata?: boolean
   createdAt?: boolean
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
@@ -674,6 +722,8 @@ export type ChatMessageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.E
   totalTokens?: boolean
   reasoningTokens?: boolean
   memoried?: boolean
+  images?: boolean
+  urls?: boolean
   metadata?: boolean
   createdAt?: boolean
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
@@ -688,6 +738,8 @@ export type ChatMessageSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.E
   totalTokens?: boolean
   reasoningTokens?: boolean
   memoried?: boolean
+  images?: boolean
+  urls?: boolean
   metadata?: boolean
   createdAt?: boolean
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
@@ -702,11 +754,13 @@ export type ChatMessageSelectScalar = {
   totalTokens?: boolean
   reasoningTokens?: boolean
   memoried?: boolean
+  images?: boolean
+  urls?: boolean
   metadata?: boolean
   createdAt?: boolean
 }
 
-export type ChatMessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversationId" | "role" | "content" | "tokens" | "totalTokens" | "reasoningTokens" | "memoried" | "metadata" | "createdAt", ExtArgs["result"]["chatMessage"]>
+export type ChatMessageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "conversationId" | "role" | "content" | "tokens" | "totalTokens" | "reasoningTokens" | "memoried" | "images" | "urls" | "metadata" | "createdAt", ExtArgs["result"]["chatMessage"]>
 export type ChatMessageInclude<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   conversation?: boolean | Prisma.ConversationDefaultArgs<ExtArgs>
 }
@@ -731,6 +785,8 @@ export type $ChatMessagePayload<ExtArgs extends runtime.Types.Extensions.Interna
     totalTokens: number
     reasoningTokens: number | null
     memoried: boolean
+    images: runtime.JsonValue | null
+    urls: runtime.JsonValue | null
     metadata: runtime.JsonValue
     createdAt: Date
   }, ExtArgs["result"]["chatMessage"]>
@@ -1165,6 +1221,8 @@ export interface ChatMessageFieldRefs {
   readonly totalTokens: Prisma.FieldRef<"ChatMessage", 'Int'>
   readonly reasoningTokens: Prisma.FieldRef<"ChatMessage", 'Int'>
   readonly memoried: Prisma.FieldRef<"ChatMessage", 'Boolean'>
+  readonly images: Prisma.FieldRef<"ChatMessage", 'Json'>
+  readonly urls: Prisma.FieldRef<"ChatMessage", 'Json'>
   readonly metadata: Prisma.FieldRef<"ChatMessage", 'Json'>
   readonly createdAt: Prisma.FieldRef<"ChatMessage", 'DateTime'>
 }
