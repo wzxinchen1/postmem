@@ -27,7 +27,7 @@ prisma/*.db-journal
 *~
 
 src/generated
-
+dist/
 # OS
 .DS_Store
 Thumbs.db
