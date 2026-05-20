@@ -67,19 +67,32 @@ if (existsSync(startCjs)) {
 // fileURLToPath("file:///home/user/...") with the build machine's absolute path.
 // On Windows, fileURLToPath() fails on these Linux paths.
 // Replace the entire __dirname assignment with a cross-platform fallback.
+//
+// Webpack inlines the code as:
+//   globalThis.__dirname=n.dirname((0,i.fileURLToPath)("file:///home/.../client.ts"))
+// The regex must handle:
+//   - globalThis.__dirname (dot notation) or globalThis["__dirname"] (bracket notation)
+//   - (0,i.fileURLToPath) webpack comma-expression wrapper
+//   - i.fileURLToPath or fileURLToPath (with or without module prefix)
 console.log('[Build] Patching hardcoded paths in webpack chunks...')
 const chunksDir = join(dist, '.next', 'server', 'chunks')
 if (existsSync(chunksDir)) {
   const chunkFiles = readdirSync(chunksDir).filter(f => f.endsWith('.js'))
   let patched = 0
+  const patchRegex = /globalThis(?:\["__dirname"\]|.__dirname)\s*=\s*[a-zA-Z_.]+\.dirname\(\(0,[a-zA-Z_.]+\.fileURLToPath\)\("file:\/\/[^"]*"\)\)/g
   for (const chunk of chunkFiles) {
     const chunkPath = join(chunksDir, chunk)
     let content = readFileSync(chunkPath, 'utf-8')
     if (content.includes('fileURLToPath') && /file:\/\/\/[A-Za-z]/.test(content)) {
-      content = content.replace(
-        /globalThis\["__dirname"\]\s*=\s*[a-zA-Z_.]+\.dirname\(\([a-zA-Z_.]+\.\)?fileURLToPath\("file:\/\/[^"]*"\)\)/g,
-        'globalThis["__dirname"]=__dirname'
-      )
+      const before = content
+      content = content.replace(patchRegex, 'globalThis.__dirname=process.cwd()')
+      if (content === before) {
+        console.error(`[Build] ERROR: Detected fileURLToPath with hardcoded path in ${chunk} but regex did not match!`)
+        console.error('[Build] The chunk content around fileURLToPath:')
+        const idx = content.indexOf('fileURLToPath')
+        console.error(content.substring(Math.max(0, idx - 80), idx + 80))
+        process.exit(1)
+      }
       writeFileSync(chunkPath, content)
       patched++
     }
