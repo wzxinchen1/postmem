@@ -90,18 +90,19 @@ export class InitService {
         continue
       }
 
-      const fetchResult = await this.providerValidateService.fetchModels(
-        vendor.id,
-        config.apiKey,
-        config.baseUrl
-      )
-
-      if (fetchResult.error) {
+      let fetchResult: { models: string[]; vendor?: import('@/src/types').Vendor }
+      try {
+        fetchResult = await this.providerValidateService.fetchModels(
+          vendor.id,
+          config.apiKey,
+          config.baseUrl
+        )
+      } catch (err) {
         results.push({
           name: config.name,
           vendorName: config.vendorName,
           models: [],
-          error: fetchResult.error,
+          error: err instanceof Error ? err.message : '获取模型列表失败',
         })
         continue
       }

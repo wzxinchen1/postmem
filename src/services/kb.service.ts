@@ -118,7 +118,7 @@ export class KBService {
     })
 
     if (!kb) {
-      throw Errors.badRequest(`知识库 ID ${id} 不存在`)
+      throw Errors.internalError(`知识库 ID ${id} 不存在`)
     }
 
     return {
@@ -908,15 +908,25 @@ export class KBService {
       .sort((a, b) => b.rrfScore - a.rrfScore)
       .slice(0, topK)
 
-    return merged.map((item) => ({
-      id: item.data.id,
-      title: item.data.title,
-      content: item.data.content,
-      score: item.cosineSim > 0 ? item.cosineSim : Math.min(1, item.tsRank ?? 0),
-      topicId,
-      metadata: item.data.metadata,
-      source: item.source,
-    }))
+    return merged.map((item) => {
+      let score: number
+      if (item.cosineSim > 0) {
+        score = item.cosineSim
+      } else if (item.tsRank !== undefined) {
+        score = Math.min(1, item.tsRank)
+      } else {
+        throw Errors.internalError('搜索结果缺少 cosineSim 和 tsRank')
+      }
+      return {
+        id: item.data.id,
+        title: item.data.title,
+        content: item.data.content,
+        score,
+        topicId,
+        metadata: item.data.metadata,
+        source: item.source,
+      }
+    })
   }
 
   private async resolveTopic(kbId: string, content: string): Promise<string> {
@@ -1061,11 +1071,14 @@ export class KBService {
         if (memStat._count.id === null || memStat._count.id === undefined) {
           throw Errors.internalError(`知识库 "${kb.name}" 的记录计数字段为空`)
         }
+        if (!memStat._max.createdAt) {
+          throw Errors.internalError(`知识库 "${kb.name}" 的 lastUpdated 聚合字段为空`)
+        }
         return {
           kbId: kb.id,
           kbName: kb.name,
           total: memStat._count.id,
-          lastUpdated: memStat._max.createdAt ?? kb.createdAt,
+          lastUpdated: memStat._max.createdAt,
         }
       })
 

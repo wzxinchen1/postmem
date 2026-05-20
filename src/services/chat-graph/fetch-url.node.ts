@@ -23,14 +23,11 @@ export function createFetchUrlNode(deps: GraphDependencies) {
     const contents: string[] = []
 
     for (const url of state.urls) {
-      const result = await deps.searchService.fetchUrlContent(url)
-      if (result.content) {
-        contents.push(`链接：${url}\n正文：${result.content}`)
-      } else {
-        const statusInfo = result.status ? `HTTP ${result.status}` : '连接失败'
-        const errorInfo = result.error ? `（${result.error}）` : ''
-        contents.push(`链接：${url}\n状态：${statusInfo}${errorInfo}，无法获取内容`)
-        logger.warn('[ChatGraph] fetchUrl 链接获取失败', { url, status: result.status, error: result.error })
+      try {
+        const content = await deps.searchService.fetchUrlContent(url)
+        contents.push(`链接：${url}\n正文：${content}`)
+      } catch (error) {
+        logger.warn('[ChatGraph] fetchUrl 链接获取失败', { url, errorMessage: error instanceof Error ? error.message : String(error) })
       }
     }
 

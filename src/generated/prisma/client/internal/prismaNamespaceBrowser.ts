@@ -209,6 +209,7 @@ export const WebPageScalarFieldEnum = {
   url: 'url',
   title: 'title',
   content: 'content',
+  summary: 'summary',
   keywords: 'keywords',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
@@ -221,6 +222,7 @@ export const ChatSettingScalarFieldEnum = {
   id: 'id',
   memoryContextThreshold: 'memoryContextThreshold',
   maxOutputTokens: 'maxOutputTokens',
+  searchLinkCount: 'searchLinkCount',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

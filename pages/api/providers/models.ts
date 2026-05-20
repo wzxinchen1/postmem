@@ -27,10 +27,6 @@ export default createApiHandler<Deps>({
           baseUrl
         )
 
-        if (result.error) {
-          return errorResponse(res, 'FETCH_ERROR', result.error, 400)
-        }
-
         return successResponse(res, { models: result.models, vendor: result.vendor })
       },
     })

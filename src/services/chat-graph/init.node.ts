@@ -1,12 +1,13 @@
 import type { ChatState, GraphDependencies } from './types'
 import { HumanMessage, AIMessage } from '@langchain/core/messages'
 import { logger } from '@/src/lib/logger'
+import { Errors } from '@/src/lib/errors'
 
 export function createInitNode(deps: GraphDependencies) {
   return async function initNode(state: ChatState): Promise<Partial<ChatState>> {
     const model = await deps.modelService.get(state.modelId)
     if (!model) {
-      throw new Error(`模型 ${state.modelId} 不存在`)
+      throw Errors.internalError(`模型 ${state.modelId} 不存在`)
     }
 
     const hasVisionCapability = model.capabilities.includes('vision')

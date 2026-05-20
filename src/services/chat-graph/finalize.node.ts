@@ -20,6 +20,7 @@ export function createFinalizeNode(deps: GraphDependencies) {
       reasoningTokens: state.reasoningTokens,
       memoried: false,
       name: state.modelName,
+      urls: state.urls,
     })
 
     const tokenError =

@@ -14,13 +14,14 @@ export class ChatSettingService {
       return this.prisma.chatSetting.create({
         data: {
           memoryContextThreshold: 50,
+          searchLinkCount: 10,
         },
       }) as Promise<ChatSettingInfo>
     }
     return setting as ChatSettingInfo
   }
 
-  async update(data: { memoryContextThreshold?: number; maxOutputTokens?: number | null }): Promise<ChatSettingInfo> {
+  async update(data: { memoryContextThreshold?: number; maxOutputTokens?: number | null; searchLinkCount?: number }): Promise<ChatSettingInfo> {
     const setting = await this.get()
     return this.prisma.chatSetting.update({
       where: { id: setting.id },

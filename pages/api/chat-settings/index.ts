@@ -39,6 +39,15 @@ export default createApiHandler<Deps>({
           }
         }
 
+        if (data.searchLinkCount !== undefined) {
+          if (typeof data.searchLinkCount !== 'number') {
+            return errorResponse(res, 'VALIDATION_ERROR', 'searchLinkCount 必须是数字', 400)
+          }
+          if (data.searchLinkCount < 1 || data.searchLinkCount > 50) {
+            return errorResponse(res, 'VALIDATION_ERROR', 'searchLinkCount 必须在 1-50 之间', 400)
+          }
+        }
+
         const setting = await deps.chatSettingService.update(data)
         return successResponse(res, { setting })
       },

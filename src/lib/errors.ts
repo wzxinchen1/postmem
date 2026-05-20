@@ -18,8 +18,8 @@ export const ErrorCodeToStatus: Record<ErrorCode, number> = {
   [ErrorCode.BAD_REQUEST]: 400,
   [ErrorCode.KB_NOT_FOUND]: 404,
   [ErrorCode.MEMORY_NOT_FOUND]: 404,
-  [ErrorCode.EMBEDDING_ERROR]: 503,
-  [ErrorCode.CUT_MODEL_ERROR]: 503,
+  [ErrorCode.EMBEDDING_ERROR]: 500,
+  [ErrorCode.CUT_MODEL_ERROR]: 500,
   [ErrorCode.DATABASE_ERROR]: 500,
   [ErrorCode.INTERNAL_ERROR]: 500,
 }
@@ -67,10 +67,10 @@ export const Errors = {
     new AppError(ErrorCode.MEMORY_NOT_FOUND, `片段 ID ${id} 不存在`),
 
   embeddingError: (details: string) =>
-    new AppError(ErrorCode.BAD_REQUEST, details),
+    new AppError(ErrorCode.INTERNAL_ERROR, 'AI 嵌入服务异常', details),
 
   cutModelError: (details: string) =>
-    new AppError(ErrorCode.BAD_REQUEST, details),
+    new AppError(ErrorCode.INTERNAL_ERROR, 'AI 模型推理服务异常', details),
 
   databaseError: (details: string) =>
     new AppError(ErrorCode.DATABASE_ERROR, '数据库操作异常', details),

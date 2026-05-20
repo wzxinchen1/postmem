@@ -2,14 +2,14 @@
 description: PostMem 服务地图，描述服务类与文件路径的对应关系及类间依赖关系。排查问题时必须查阅此文件确定服务依赖关系和调用链路。
 alwaysApply: true
 enabled: true
-updatedAt: 2026-05-20T02:46:41.075Z
+updatedAt: 2026-05-20T03:15:56.965Z
 ---
 
 # PostMem 服务地图
 
 > 自动生成，描述服务类与文件路径的对应关系及类间依赖关系
 
-生成时间: 2026-05-20T02:46:41.075Z
+生成时间: 2026-05-20T03:15:56.965Z
 
 ---
 
@@ -20,7 +20,7 @@ updatedAt: 2026-05-20T02:46:41.075Z
 | `AgentService` | `src/services/agent.service.ts` | ChatModelFactory, ModelService, ProviderService, ChatSettingService | 3 |
 | `ChatMemoryService` | `src/services/chat-memory.service.ts` | SSEService, KBService | 0 |
 | `ChatModelFactory` | `src/services/chat-model-factory.service.ts` | — | 4 |
-| `SearchService` | `src/services/chat-search.service.ts` | LLMResilienceService | 4 |
+| `SearchService` | `src/services/chat-search.service.ts` | LLMResilienceService, AgentService, ChatSettingService | 4 |
 | `ChatSettingService` | `src/services/chat-setting.service.ts` | — | 1 |
 | `ChatService` | `src/services/chat.service.ts` | ConversationService, SearchService, ChatMemoryService, ChatSettingService, ChatModelFactory, SSEService, ProviderService, ModelService, KBService, AgentService | 2 |
 | `ConversationService` | `src/services/conversation.service.ts` | AgentService | 9 |
@@ -72,6 +72,8 @@ graph TD
     ChatMemorySvc -->|依赖| SSESvc
     ChatMemorySvc -->|依赖| KBSvc
     SearchSvc -->|依赖| LLMResilienceSvc
+    SearchSvc -->|依赖| AgentSvc
+    SearchSvc -->|依赖| ChatSettingSvc
     ChatSvc -->|依赖| ConversationSvc
     ChatSvc -->|依赖| SearchSvc
     ChatSvc -->|依赖| ChatMemorySvc
@@ -121,6 +123,8 @@ graph TD
 | `ChatMemoryService` | `SSEService` | `src/services/sse.service.ts` |
 | `ChatMemoryService` | `KBService` | `src/services/kb.service.ts` |
 | `SearchService` | `LLMResilienceService` | `src/services/llm-resilience.service.ts` |
+| `SearchService` | `AgentService` | `src/services/agent.service.ts` |
+| `SearchService` | `ChatSettingService` | `src/services/chat-setting.service.ts` |
 | `ChatService` | `ConversationService` | `src/services/conversation.service.ts` |
 | `ChatService` | `SearchService` | `src/services/chat-search.service.ts` |
 | `ChatService` | `ChatMemoryService` | `src/services/chat-memory.service.ts` |
@@ -197,13 +201,15 @@ graph TD
 - **文件路径**: `src/services/chat-search.service.ts`
 - **依赖项**:
   - `llmResilienceService`: [`LLMResilienceService`](#llmresilienceservice) (`src/services/llm-resilience.service.ts`)
+  - `agentService`: [`AgentService`](#agentservice) (`src/services/agent.service.ts`)
+  - `chatSettingService`: [`ChatSettingService`](#chatsettingservice) (`src/services/chat-setting.service.ts`)
 
 **公开方法**:
 
 | 方法 | 异步 | 参数 | 返回类型 |
 |------|------|------|----------|
 | `getCachedWebpages` | ✓ | `keywords` | `Promise<void>` |
-| `searchWeb` | ✓ | `keywords` | `Promise<Array<{ url: string; title: string; content: string; keywords: string[] }>>` |
+| `searchWeb` | ✓ | `keywords` | `Promise<WebpageResult[]>` |
 | `saveWebpages` | ✓ | `webpages` | `Promise<void>` |
 | `fetchUrlContent` | ✓ | `url` | `Promise<{ content: string | null; status: number | null; error: string | null }>` |
 
@@ -213,6 +219,8 @@ graph TD
 | 方法 | 异步 | 参数 | 返回类型 |
 |------|------|------|----------|
 | `extractWebContent` | ✓ | `url` | `Promise<string | null>` |
+| `summarizeBatch` | ✓ | `agent`, `webpages` | `Promise<SummaryItem[]>` |
+| `validateSummariesResult` |  | `parsed`, `webpages` | `SummariesResult` |
 | `validateSearchNeedsResult` |  | `parsed` | `SearchNeedsResult` |
 
 </details>

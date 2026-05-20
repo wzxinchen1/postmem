@@ -62,20 +62,13 @@ export function createSearchNode(deps: GraphDependencies) {
         recentMessages
       )
     } catch (error) {
-      logger.error('[ChatGraph] searchNeeds 分析失败，跳过搜索', {
-        error: error instanceof Error ? error : new Error(String(error)),
-      })
-      const { systemPrompt, systemTokens } = await buildSystemContext(
-        state.fetchedUrlContent ?? '',
-        '',
-        state.recognizedText ?? '',
-        systemTokensService,
-      )
-      return { searchResult: '', memoryText: '', systemTokens, finalMessages: [new SystemMessage(Prompts.fillCurrentTime(systemPrompt)), ...state.langchainMessages] }
+      deps.onError(error)
+      throw error
     }
 
     let searchResult = ''
     let memoryText = ''
+    let fetchedUrls: string[] = []
 
     if (searchNeeds.needSearchWeb && searchNeeds.webKeywords.length > 0) {
       await deps.sseService.emit({ type: 'status', status: 'searchingWeb' })
@@ -90,53 +83,31 @@ export function createSearchNode(deps: GraphDependencies) {
           cachedWebpages
         )
       } catch (error) {
-        logger.error('[ChatGraph] confirmNeedSearchWeb 失败，默认执行搜索', {
-          keywords: searchNeeds.webKeywords,
-          error: error instanceof Error ? error : new Error(String(error)),
-        })
+        deps.onError(error)
+        throw error
       }
 
       if (confirm) {
-        try {
-          const webpages = await deps.searchService.searchWeb(searchNeeds.webKeywords)
-          await deps.searchService.saveWebpages(webpages)
-          searchResult = webpages.map(w =>
-            `链接：${w.url}\n标题：${w.title}\n正文：${w.content}`
-          ).join('\n\n')
-        } catch (error) {
-          logger.error('[ChatGraph] searchWeb 失败，降级为缓存结果', {
-            keywords: searchNeeds.webKeywords,
-            error: error instanceof Error ? error : new Error(String(error)),
-          })
-          const errorMsg = error instanceof Error ? error.message : String(error)
-          try {
-            const cachedResult = cachedWebpages.map(w => {
-              if (!w.title) throw Errors.internalError(`网页 ${w.url} 缺少标题`)
-              return `链接：${w.url}\n标题：${w.title}\n正文：${w.content}`
-            }).join('\n\n')
-            searchResult = cachedResult
-              ? `[互联网搜索失败：${errorMsg}，以下为缓存结果]\n\n${cachedResult}`
-              : `[互联网搜索失败：${errorMsg}，无缓存结果可用]`
-          } catch (cacheError) {
-            logger.error('[ChatGraph] 缓存结果格式异常', {
-              error: cacheError instanceof Error ? cacheError : new Error(String(cacheError)),
-            })
-            searchResult = `[互联网搜索失败：${errorMsg}，且缓存数据异常，无法提供缓存结果]`
-          }
-        }
+        const webpages = await deps.searchService.searchWeb(searchNeeds.webKeywords)
+        fetchedUrls = webpages.map(w => w.url)
+        searchResult = webpages.map(w =>
+          `链接：${w.url}\n标题：${w.title}\n摘要：${w.summary}`
+        ).join('\n\n')
       } else {
-        try {
-          const cachedResult = cachedWebpages.map(w => {
-            if (!w.title) throw Errors.internalError(`网页 ${w.url} 缺少标题`)
-            return `链接：${w.url}\n标题：${w.title}\n正文：${w.content}`
-          }).join('\n\n')
-          searchResult = cachedResult
-        } catch (cacheError) {
-          logger.error('[ChatGraph] 缓存结果格式异常', {
-            error: cacheError instanceof Error ? cacheError : new Error(String(cacheError)),
-          })
-          searchResult = ''
+        const cachedItems = cachedWebpages.map(w => {
+          if (!w.title) throw Errors.internalError(`网页 ${w.url} 缺少标题`)
+          if (!w.summary) throw Errors.internalError(`网页 ${w.url} 缺少摘要`)
+          return { url: w.url, title: w.title, content: w.content, summary: w.summary, keywords: w.keywords as string[] }
+        })
+        for (const item of cachedItems) {
+          await deps.sseService.emit({ type: 'status', status: 'searchingWeb', url: item.url })
+          fetchedUrls.push(item.url)
         }
+        await deps.searchService.saveWebpages(cachedItems)
+        const cachedResult = cachedItems.map(w =>
+          `链接：${w.url}\n标题：${w.title}\n摘要：${w.summary}`
+        ).join('\n\n')
+        searchResult = cachedResult
       }
 
       await deps.sseService.emit({ type: 'status', status: 'searchingWeb' })
@@ -194,10 +165,13 @@ export function createSearchNode(deps: GraphDependencies) {
       }
     }
 
+    const mergedUrls = [...new Set([...state.urls, ...fetchedUrls])]
+
     return {
       searchResult,
       memoryText,
       systemTokens,
+      urls: mergedUrls,
       finalMessages: [new SystemMessage(Prompts.fillCurrentTime(systemPrompt)), ...finalLangchainMessages],
     }
   }

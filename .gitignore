@@ -9,6 +9,7 @@ build/
 
 # Environment
 .env
+.npmrc
 .env.local
 .env.development.local
 .env.test.local

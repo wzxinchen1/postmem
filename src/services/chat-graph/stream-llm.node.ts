@@ -2,6 +2,7 @@ import type { ChatState, GraphDependencies } from './types'
 import { DoneReason } from '@/src/types'
 import { createId } from '@paralleldrive/cuid2'
 import { logger } from '@/src/lib/logger'
+import { Errors } from '@/src/lib/errors'
 
 export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalanceError: (err: unknown) => boolean) {
   return async function streamLLMNode(state: ChatState): Promise<Partial<ChatState>> {
@@ -33,8 +34,14 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
         if (chunk.usage_metadata) {
           const meta = chunk.usage_metadata as any
           logger.info('[ChatGraph] 原始 usage_metadata', { raw: JSON.stringify(meta) })
-          apiTotalPromptTokens = meta.input_tokens || apiTotalPromptTokens
-          const rawOutputTokens = meta.output_tokens || 0
+          if (typeof meta.input_tokens !== 'number') {
+            throw Errors.internalError('LLM 响应 usage_metadata 缺少 input_tokens')
+          }
+          if (typeof meta.output_tokens !== 'number') {
+            throw Errors.internalError('LLM 响应 usage_metadata 缺少 output_tokens')
+          }
+          apiTotalPromptTokens = meta.input_tokens
+          const rawOutputTokens = meta.output_tokens
           reasoningTokens = meta.output_token_details?.reasoning ?? 0
           completionTokens = rawOutputTokens - reasoningTokens
         }
@@ -73,7 +80,7 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
       }
       logger.info('[ChatGraph] streamLLM 流结束', { thinkingCount, chunkCount, fullContentLength: fullContent.length })
     } catch (err) {
-      logger.error('[ChatGraph] streamLLM 异常', { conversationId: state.conversationId, error: err })
+      deps.onError(err)
       if (isInsufficientBalanceError(err)) {
         logger.error('[ChatGraph] 提供商 API 欠费', { conversationId: state.conversationId, errorMessage: (err as Error).message })
         await deps.sseService.emit({ type: 'done', reason: DoneReason.InsufficientBalance })

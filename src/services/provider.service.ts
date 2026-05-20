@@ -63,11 +63,11 @@ export class ProviderService {
   async createModel(providerId: string, model: string, modelType: 'chat' | 'embedding', config?: Record<string, unknown>): Promise<unknown> {
     const provider = await this.get(providerId)
     if (!provider) {
-      throw Errors.badRequest(`提供商不存在: ${providerId}`)
+      throw Errors.internalError(`提供商不存在: ${providerId}`)
     }
 
     if (!provider.vendor) {
-      throw Errors.badRequest(`提供商未关联厂商: ${providerId}`)
+      throw Errors.internalError(`提供商未关联厂商: ${providerId}`)
     }
 
     return this.vendorService.createModel(provider.vendor, {
@@ -75,7 +75,7 @@ export class ProviderService {
       modelType,
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
-      config: config ?? {},
+      config,
     })
   }
 

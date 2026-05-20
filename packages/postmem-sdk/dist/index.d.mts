@@ -41,6 +41,7 @@ type StreamEvent = {
 } | {
     type: 'status';
     status: StreamStatus;
+    url?: string;
 } | {
     type: 'messageId';
     role: 'user' | 'assistant';

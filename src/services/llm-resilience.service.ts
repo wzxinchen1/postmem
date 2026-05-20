@@ -68,7 +68,7 @@ export class LLMResilienceService {
 
         const content = response.content.toString()
         if (!content || content.trim().length === 0) {
-          throw Errors.badRequest('LLM 返回空内容')
+          throw Errors.internalError('LLM 返回空内容')
         }
 
         const usage = this.extractUsage(response)
@@ -134,7 +134,7 @@ export class LLMResilienceService {
       }
     }
 
-    throw Errors.badRequest(
+    throw Errors.internalError(
       `LLM 响应校验失败，已重试 ${maxRetries} 次: ${lastError?.message}`
     )
   }
@@ -166,11 +166,25 @@ export class LLMResilienceService {
 
         for await (const chunk of stream) {
           if (chunk.usage_metadata) {
-            promptTokens = chunk.usage_metadata.input_tokens || promptTokens
-            completionTokens = chunk.usage_metadata.output_tokens || completionTokens
+            const meta = chunk.usage_metadata
+            if (typeof meta.input_tokens !== 'number') {
+              throw Errors.internalError('LLM 响应 usage_metadata 缺少 input_tokens')
+            }
+            if (typeof meta.output_tokens !== 'number') {
+              throw Errors.internalError('LLM 响应 usage_metadata 缺少 output_tokens')
+            }
+            promptTokens = meta.input_tokens
+            completionTokens = meta.output_tokens
           } else if (chunk.response_metadata) {
-            promptTokens = chunk.response_metadata.prompt_eval_count || promptTokens
-            completionTokens = chunk.response_metadata.eval_count || completionTokens
+            const meta = chunk.response_metadata
+            if (typeof meta.prompt_eval_count !== 'number') {
+              throw Errors.internalError('LLM 响应 response_metadata 缺少 prompt_eval_count')
+            }
+            if (typeof meta.eval_count !== 'number') {
+              throw Errors.internalError('LLM 响应 response_metadata 缺少 eval_count')
+            }
+            promptTokens = meta.prompt_eval_count
+            completionTokens = meta.eval_count
           }
 
           const content = chunk.content ?? ''
@@ -185,7 +199,7 @@ export class LLMResilienceService {
         streamCompleted = true
 
         if (!fullContent || fullContent.trim().length === 0) {
-          throw Errors.badRequest('LLM 流式响应返回空内容')
+          throw Errors.internalError('LLM 流式响应返回空内容')
         }
 
         const usage: TokenMetadata = { promptTokens, completionTokens }
@@ -263,7 +277,7 @@ export class LLMResilienceService {
         return repaired as T
       }
 
-      throw Errors.badRequest(
+      throw Errors.internalError(
         `JSON 解析失败: ${parseError instanceof Error ? parseError.message : String(parseError)}`
       )
     }

@@ -1,4 +1,3 @@
-import type { NextApiRequest, NextApiResponse } from 'next'
 import { ChatService } from '@/src/services/chat.service'
 import { ConversationService } from '@/src/services/conversation.service'
 import { SSEService } from '@/src/services/sse.service'
@@ -72,25 +71,27 @@ export default createApiHandler<Deps>({
       }
     }
 
-    deps.chatService.chat({
-      messages: messages.map(m => ({
-        id: m.id ? m.id : String(Date.now()),
-        content: m.content,
-        images: m.images,
-        urls: m.urls,
-      })),
-      conversationId: convId,
-      newConversation,
-      regenerateMessageId,
-      modelId,
-      kbId,
-      thinkingEffort,
-    }).then(() => {
-      logger.info('[completions] chat completed')
-    }).catch(error => {
-      logger.error('[completions] Chat error', { errorMessage: error.message, stack: error.stack })
-      deps.sseService.emit({ type: 'error', message: error.message })
-    })
+    ;(async () => {
+      try {
+        await deps.chatService.chat({
+          messages: messages.map(m => ({
+            id: m.id ? m.id : String(Date.now()),
+            content: m.content,
+            images: m.images,
+            urls: m.urls,
+          })),
+          conversationId: convId,
+          newConversation,
+          regenerateMessageId,
+          modelId,
+          kbId,
+          thinkingEffort,
+        })
+        logger.info('[completions] chat completed')
+      } catch (error) {
+        logger.error('[completions] Chat error', { errorMessage: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
+      }
+    })()
 
     return successResponse(res, { conversationId: convId })
   },

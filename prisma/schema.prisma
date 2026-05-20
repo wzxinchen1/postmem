@@ -156,6 +156,7 @@ model WebPage {
   url       String   @unique
   title     String?  @db.Text
   content   String   @db.Text
+  summary   String?  @db.Text
   keywords  String[] @default([])
   createdAt DateTime @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt DateTime @updatedAt @map("updated_at") @db.Timestamptz(6)
@@ -167,6 +168,7 @@ model ChatSetting {
   id                      String    @id @default(cuid())
   memoryContextThreshold  Int       @default(50) @map("memory_context_threshold")
   maxOutputTokens         Int?      @map("max_output_tokens")
+  searchLinkCount         Int       @default(10) @map("search_link_count")
   createdAt               DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt               DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 

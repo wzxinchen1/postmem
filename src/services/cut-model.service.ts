@@ -86,7 +86,7 @@ export class CutModelService {
           updatedAt: model.provider.vendor.updatedAt,
         },
         apiKey: model.provider.apiKey ?? undefined,
-        baseUrl: model.provider.baseUrl ?? '',
+        baseUrl: model.provider.baseUrl ?? undefined,
         config: model.provider.config as Record<string, unknown>,
         isActive: model.provider.isActive,
         createdAt: model.provider.createdAt,
@@ -368,11 +368,19 @@ export class CutModelService {
 
     await this.sessionService.complete(session.id)
 
-    return parsed.chunks.map((chunk: any, i: number) => ({
-      index: i,
-      title: (chunk.title ?? `片段${i}`).trim(),
-      content: chunk.content.trim(),
-    }))
+    return parsed.chunks.map((chunk: any, i: number) => {
+      if (!chunk.title || !chunk.title.trim()) {
+        throw Errors.cutModelError(`LLM 返回的 chunk #${i} 缺少 title`)
+      }
+      if (!chunk.content || !chunk.content.trim()) {
+        throw Errors.cutModelError(`LLM 返回的 chunk #${i} 缺少 content`)
+      }
+      return {
+        index: i,
+        title: chunk.title.trim(),
+        content: chunk.content.trim(),
+      }
+    })
   }
 
   async shouldIngestChunk(
@@ -443,7 +451,11 @@ export class CutModelService {
       mergedContent = parsed.mergedContent!.trim()
     }
 
-    return { action, reason: parsed.reason ?? '', targetMemoryId, mergedContent }
+    if (!parsed.reason) {
+      throw Errors.cutModelError('LLM 响应缺少 reason 字段')
+    }
+
+    return { action, reason: parsed.reason, targetMemoryId, mergedContent }
   }
 
   async getModelInfo(): Promise<{ provider: string; model: string }> {
@@ -497,10 +509,14 @@ export class CutModelService {
 
     await this.sessionService.complete(session.id)
 
+    if (!parsed.reason) {
+      throw Errors.cutModelError('LLM 响应缺少 reason 字段')
+    }
+
     return {
       action: parsed.action as 'select' | 'create',
       topicName: parsed.topicName,
-      reason: parsed.reason ?? '',
+      reason: parsed.reason,
     }
   }
 
@@ -674,13 +690,18 @@ export class CutModelService {
 
     await this.sessionService.complete(session.id)
 
-    const plans = parsed.plans.map((p) => ({
-      index: p.index,
-      action: p.action as 'select' | 'create',
-      topicName: p.topicName,
-      newTopicName: p.newTopicName,
-      reason: p.reason ?? '',
-    }))
+    const plans = parsed.plans.map((p) => {
+      if (!p.reason) {
+        throw Errors.cutModelError('LLM 响应中某个 topic 计划缺少 reason 字段')
+      }
+      return {
+        index: p.index,
+        action: p.action as 'select' | 'create',
+        topicName: p.topicName,
+        newTopicName: p.newTopicName,
+        reason: p.reason,
+      }
+    })
 
     return { plans }
   }

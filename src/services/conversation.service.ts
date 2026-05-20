@@ -14,6 +14,7 @@ export class ConversationService {
   private prisma: PrismaClient
   private agentService: AgentService
   private static WELCOME_CONTENT = '你好！我是你的聊天伙伴，拥有联网搜索和记忆搜索能力。你可以向我提问任何问题，我会结合你的历史记忆和互联网信息为你解答。'
+  private static DEFAULT_ASSISTANT_NAME = '聊天助手'
   private welcomeTokens: number | null = null
 
   constructor({ prisma, agentService }: { prisma: PrismaClient; agentService: AgentService }) {
@@ -42,7 +43,7 @@ export class ConversationService {
             content: ConversationService.WELCOME_CONTENT,
             tokens: welcomeTokens,
             totalTokens: welcomeTokens,
-            metadata: { isWelcome: true },
+            metadata: { isWelcome: true, modelName: ConversationService.DEFAULT_ASSISTANT_NAME },
           },
         },
       },
@@ -74,7 +75,7 @@ export class ConversationService {
       throw Errors.internalError(`非系统/欢迎/user消息的 tokens 必须 > 0，当前值=${data.tokens}，role=${data.role}，content长度=${data.content.length}`)
     }
 
-    const resolvedName = isWelcome ? (data.name ?? '聊天助手') : data.name
+    const resolvedName = isWelcome && data.name === undefined ? ConversationService.DEFAULT_ASSISTANT_NAME : data.name
 
     return this.prisma.chatMessage.create({
       data: {
@@ -163,7 +164,7 @@ export class ConversationService {
       select: { createdAt: true, memoried: true },
     })
     if (!targetMessage) {
-      throw Errors.badRequest(`消息 ${messageId} 不存在`)
+      throw Errors.internalError(`消息 ${messageId} 不存在`)
     }
 
     if (targetMessage.memoried) {
@@ -195,7 +196,7 @@ export class ConversationService {
       throw Errors.internalError(`非系统/欢迎/user消息的 tokens 必须 > 0，当前值=${data.tokens}，role=${data.role}，content长度=${data.content.length}`)
     }
 
-    const resolvedName = isWelcome ? (data.name ?? '聊天助手') : data.name
+    const resolvedName = isWelcome && data.name === undefined ? ConversationService.DEFAULT_ASSISTANT_NAME : data.name
 
     return this.prisma.chatMessage.create({
       data: {

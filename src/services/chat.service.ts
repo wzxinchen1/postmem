@@ -11,6 +11,7 @@ import { KBService } from '@/src/services/kb.service'
 import { AgentService } from '@/src/services/agent.service'
 import { createChatGraph } from '@/src/services/chat-graph'
 import { logger } from '@/src/lib/logger'
+import { Errors } from '@/src/lib/errors'
 import { createId } from '@paralleldrive/cuid2'
 import type { ChatCompletionRequest, ChatMessageImage } from '@/src/types'
 
@@ -112,14 +113,25 @@ export class ChatService {
 
     if (regenerateMessageId) {
       const originalMessage = await this.conversationService.getMessage(regenerateMessageId)
-      images = originalMessage?.images as ChatMessageImage[] ?? []
-      urls = originalMessage?.urls as string[] ?? []
+      if (!originalMessage) {
+        throw Errors.internalError(`消息 ${regenerateMessageId} 不存在`)
+      }
+      if (originalMessage.images) {
+        images = originalMessage.images as ChatMessageImage[]
+      }
+      if (originalMessage.urls) {
+        urls = originalMessage.urls as string[]
+      }
 
       await this.conversationService.removeMessagesAfter(convId, regenerateMessageId)
     } else if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
-      images = lastMessage.images ?? []
-      urls = lastMessage.urls ?? []
+      if (lastMessage.images) {
+        images = lastMessage.images as ChatMessageImage[]
+      }
+      if (lastMessage.urls) {
+        urls = lastMessage.urls as string[]
+      }
       const userMessageId = createId()
       await this.conversationService.addMessageWithId({
         id: userMessageId,
@@ -153,6 +165,11 @@ export class ChatService {
       modelService: this.modelService,
       kbService: this.kbService,
       agentService: this.agentService,
+      onError: (error) => {
+        const appError = Errors.internalError(error instanceof Error ? error.message : String(error))
+        logger.error('[ChatGraph] 流式响应异常', { conversationId: convId, errorMessage: appError.message, errorDetails: appError.details, stack: error instanceof Error ? error.stack : undefined })
+        this.sseService.emit({ type: 'error', message: appError.message })
+      },
     })
 
     try {

@@ -1,5 +1,5 @@
 import { StateGraph, START, END } from '@langchain/langgraph'
-import { ChatNode, ChatGraphState } from './types'
+import { ChatNode, ChatGraphState, type OnStreamError } from './types'
 import { createInitNode } from './init.node'
 import { createSaveMemoryNode } from './save-memory.node'
 import { createRecognizeImageNode } from './recognize-image.node'
@@ -33,6 +33,7 @@ export interface GraphDependencies {
   modelService: ModelService
   kbService: KBService
   agentService: AgentService
+  onError: OnStreamError
 }
 
 const BALANCE_ERROR_PATTERNS = [

@@ -40,3 +40,5 @@ export const ChatGraphState = Annotation.Root({
 })
 
 export type ChatState = typeof ChatGraphState.State
+
+export type OnStreamError = (error: unknown) => void

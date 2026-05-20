@@ -16,6 +16,7 @@ interface AppSettings {
 interface ChatSettings {
   memoryContextThreshold: number
   maxOutputTokens?: number | null
+  searchLinkCount: number
 }
 
 export default function SettingsPage() {
@@ -28,6 +29,7 @@ export default function SettingsPage() {
   const [chatSettings, setChatSettings] = useState<ChatSettings>({
     memoryContextThreshold: 50,
     maxOutputTokens: null,
+    searchLinkCount: 10,
   })
   const [loading, setLoading] = useState(false)
   const [msg, contextHolder] = message.useMessage()
@@ -78,6 +80,7 @@ export default function SettingsPage() {
         setChatSettings({
           memoryContextThreshold: data.data.setting.memoryContextThreshold,
           maxOutputTokens: data.data.setting.maxOutputTokens ?? null,
+          searchLinkCount: data.data.setting.searchLinkCount ?? 10,
         })
       }
     } catch (err) {
@@ -182,6 +185,20 @@ export default function SettingsPage() {
             />
             <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
               单次聊天回复的最大输出 token 数。留空或清空表示不限制，由模型 API 自行决定（范围 1-100000）。建议根据模型能力设置，如 GPT-4o 可设 16384
+            </Text>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>搜索链接数量</Text>
+            <InputNumber
+              value={chatSettings.searchLinkCount}
+              onChange={(value) => setChatSettings({ ...chatSettings, searchLinkCount: value || 10 })}
+              min={1}
+              max={50}
+              style={{ width: '100%' }}
+            />
+            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+              网络搜索时每次抓取多少个链接进行摘要（范围 1-50）。数量越多，搜索结果越全面，但消耗更多 token 和时间
             </Text>
           </div>
 

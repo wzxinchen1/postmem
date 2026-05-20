@@ -562,7 +562,7 @@ export enum DoneReason {
 export type StreamEvent =
   | { type: 'chunk'; content: string; model: { id: string; name: string } }
   | { type: 'thinking'; content: string }
-  | { type: 'status'; status: StreamStatus; message?: string }
+  | { type: 'status'; status: StreamStatus; message?: string; url?: string }
   | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
   | { type: 'error'; message: string }
   | { type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number; reasoningTokens?: number }
@@ -575,6 +575,7 @@ export interface WebPageInfo {
   url: string
   title?: string
   content: string
+  summary?: string | null
   keywords: string[]
   createdAt: Date
   updatedAt: Date
@@ -587,6 +588,7 @@ export interface ChatSettingInfo {
   id: string
   memoryContextThreshold: number
   maxOutputTokens?: number | null
+  searchLinkCount: number
   createdAt: Date
   updatedAt: Date
 }

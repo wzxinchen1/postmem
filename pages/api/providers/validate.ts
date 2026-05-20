@@ -24,7 +24,7 @@ export default createApiHandler<Deps>({
         )
 
         if (!result.valid) {
-          return errorResponse(res, 'VALIDATION_ERROR', result.error || '验证失败', 400)
+          return errorResponse(res, 'VALIDATION_ERROR', '验证失败：未找到可用的模型', 400)
         }
 
         return successResponse(res, { valid: true, models: result.models })

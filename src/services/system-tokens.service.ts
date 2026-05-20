@@ -69,12 +69,11 @@ export class SystemTokensService {
     const response = await agent.invoke(messages)
 
     const usage = (response as any).usage_metadata
-    const inputTokens = usage?.input_tokens ?? 0
-
-    if (!inputTokens) {
+    if (!usage || typeof usage.input_tokens !== 'number') {
       logger.error('[SystemTokens] 校准失败：API 未返回 input_tokens', { usage: JSON.stringify(usage) })
       throw new Error('系统提示词 token 校准失败：API 未返回 input_tokens')
     }
+    const inputTokens = usage.input_tokens
 
     const systemTokens = inputTokens - 1
     logger.info('[SystemTokens] 校准完成', { inputTokens, systemTokens })
@@ -90,12 +89,11 @@ export class SystemTokensService {
     const response = await agentInstance.invoke(messages)
 
     const usage = (response as any).usage_metadata
-    const inputTokens = usage?.input_tokens ?? 0
-
-    if (!inputTokens) {
+    if (!usage || typeof usage.input_tokens !== 'number') {
       logger.error('[SystemTokens] 内容校准失败：API 未返回 input_tokens', { usage: JSON.stringify(usage) })
       throw new Error('内容 token 校准失败：API 未返回 input_tokens')
     }
+    const inputTokens = usage.input_tokens
 
     const contentTokens = inputTokens
     logger.info('[SystemTokens] 内容校准完成', { inputTokens, contentTokens })

@@ -29,6 +29,7 @@ export type WebPageMinAggregateOutputType = {
   url: string | null
   title: string | null
   content: string | null
+  summary: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -38,6 +39,7 @@ export type WebPageMaxAggregateOutputType = {
   url: string | null
   title: string | null
   content: string | null
+  summary: string | null
   createdAt: Date | null
   updatedAt: Date | null
 }
@@ -47,6 +49,7 @@ export type WebPageCountAggregateOutputType = {
   url: number
   title: number
   content: number
+  summary: number
   keywords: number
   createdAt: number
   updatedAt: number
@@ -59,6 +62,7 @@ export type WebPageMinAggregateInputType = {
   url?: true
   title?: true
   content?: true
+  summary?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -68,6 +72,7 @@ export type WebPageMaxAggregateInputType = {
   url?: true
   title?: true
   content?: true
+  summary?: true
   createdAt?: true
   updatedAt?: true
 }
@@ -77,6 +82,7 @@ export type WebPageCountAggregateInputType = {
   url?: true
   title?: true
   content?: true
+  summary?: true
   keywords?: true
   createdAt?: true
   updatedAt?: true
@@ -160,6 +166,7 @@ export type WebPageGroupByOutputType = {
   url: string
   title: string | null
   content: string
+  summary: string | null
   keywords: string[]
   createdAt: Date
   updatedAt: Date
@@ -191,6 +198,7 @@ export type WebPageWhereInput = {
   url?: Prisma.StringFilter<"WebPage"> | string
   title?: Prisma.StringNullableFilter<"WebPage"> | string | null
   content?: Prisma.StringFilter<"WebPage"> | string
+  summary?: Prisma.StringNullableFilter<"WebPage"> | string | null
   keywords?: Prisma.StringNullableListFilter<"WebPage">
   createdAt?: Prisma.DateTimeFilter<"WebPage"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"WebPage"> | Date | string
@@ -201,6 +209,7 @@ export type WebPageOrderByWithRelationInput = {
   url?: Prisma.SortOrder
   title?: Prisma.SortOrderInput | Prisma.SortOrder
   content?: Prisma.SortOrder
+  summary?: Prisma.SortOrderInput | Prisma.SortOrder
   keywords?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -214,6 +223,7 @@ export type WebPageWhereUniqueInput = Prisma.AtLeast<{
   NOT?: Prisma.WebPageWhereInput | Prisma.WebPageWhereInput[]
   title?: Prisma.StringNullableFilter<"WebPage"> | string | null
   content?: Prisma.StringFilter<"WebPage"> | string
+  summary?: Prisma.StringNullableFilter<"WebPage"> | string | null
   keywords?: Prisma.StringNullableListFilter<"WebPage">
   createdAt?: Prisma.DateTimeFilter<"WebPage"> | Date | string
   updatedAt?: Prisma.DateTimeFilter<"WebPage"> | Date | string
@@ -224,6 +234,7 @@ export type WebPageOrderByWithAggregationInput = {
   url?: Prisma.SortOrder
   title?: Prisma.SortOrderInput | Prisma.SortOrder
   content?: Prisma.SortOrder
+  summary?: Prisma.SortOrderInput | Prisma.SortOrder
   keywords?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -240,6 +251,7 @@ export type WebPageScalarWhereWithAggregatesInput = {
   url?: Prisma.StringWithAggregatesFilter<"WebPage"> | string
   title?: Prisma.StringNullableWithAggregatesFilter<"WebPage"> | string | null
   content?: Prisma.StringWithAggregatesFilter<"WebPage"> | string
+  summary?: Prisma.StringNullableWithAggregatesFilter<"WebPage"> | string | null
   keywords?: Prisma.StringNullableListFilter<"WebPage">
   createdAt?: Prisma.DateTimeWithAggregatesFilter<"WebPage"> | Date | string
   updatedAt?: Prisma.DateTimeWithAggregatesFilter<"WebPage"> | Date | string
@@ -250,6 +262,7 @@ export type WebPageCreateInput = {
   url: string
   title?: string | null
   content: string
+  summary?: string | null
   keywords?: Prisma.WebPageCreatekeywordsInput | string[]
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -260,6 +273,7 @@ export type WebPageUncheckedCreateInput = {
   url: string
   title?: string | null
   content: string
+  summary?: string | null
   keywords?: Prisma.WebPageCreatekeywordsInput | string[]
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -270,6 +284,7 @@ export type WebPageUpdateInput = {
   url?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   keywords?: Prisma.WebPageUpdatekeywordsInput | string[]
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -280,6 +295,7 @@ export type WebPageUncheckedUpdateInput = {
   url?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   keywords?: Prisma.WebPageUpdatekeywordsInput | string[]
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -290,6 +306,7 @@ export type WebPageCreateManyInput = {
   url: string
   title?: string | null
   content: string
+  summary?: string | null
   keywords?: Prisma.WebPageCreatekeywordsInput | string[]
   createdAt?: Date | string
   updatedAt?: Date | string
@@ -300,6 +317,7 @@ export type WebPageUpdateManyMutationInput = {
   url?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   keywords?: Prisma.WebPageUpdatekeywordsInput | string[]
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -310,6 +328,7 @@ export type WebPageUncheckedUpdateManyInput = {
   url?: Prisma.StringFieldUpdateOperationsInput | string
   title?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   content?: Prisma.StringFieldUpdateOperationsInput | string
+  summary?: Prisma.NullableStringFieldUpdateOperationsInput | string | null
   keywords?: Prisma.WebPageUpdatekeywordsInput | string[]
   createdAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
   updatedAt?: Prisma.DateTimeFieldUpdateOperationsInput | Date | string
@@ -320,6 +339,7 @@ export type WebPageCountOrderByAggregateInput = {
   url?: Prisma.SortOrder
   title?: Prisma.SortOrder
   content?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
   keywords?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
@@ -330,6 +350,7 @@ export type WebPageMaxOrderByAggregateInput = {
   url?: Prisma.SortOrder
   title?: Prisma.SortOrder
   content?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -339,6 +360,7 @@ export type WebPageMinOrderByAggregateInput = {
   url?: Prisma.SortOrder
   title?: Prisma.SortOrder
   content?: Prisma.SortOrder
+  summary?: Prisma.SortOrder
   createdAt?: Prisma.SortOrder
   updatedAt?: Prisma.SortOrder
 }
@@ -359,6 +381,7 @@ export type WebPageSelect<ExtArgs extends runtime.Types.Extensions.InternalArgs 
   url?: boolean
   title?: boolean
   content?: boolean
+  summary?: boolean
   keywords?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -369,6 +392,7 @@ export type WebPageSelectCreateManyAndReturn<ExtArgs extends runtime.Types.Exten
   url?: boolean
   title?: boolean
   content?: boolean
+  summary?: boolean
   keywords?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -379,6 +403,7 @@ export type WebPageSelectUpdateManyAndReturn<ExtArgs extends runtime.Types.Exten
   url?: boolean
   title?: boolean
   content?: boolean
+  summary?: boolean
   keywords?: boolean
   createdAt?: boolean
   updatedAt?: boolean
@@ -389,12 +414,13 @@ export type WebPageSelectScalar = {
   url?: boolean
   title?: boolean
   content?: boolean
+  summary?: boolean
   keywords?: boolean
   createdAt?: boolean
   updatedAt?: boolean
 }
 
-export type WebPageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "url" | "title" | "content" | "keywords" | "createdAt" | "updatedAt", ExtArgs["result"]["webPage"]>
+export type WebPageOmit<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = runtime.Types.Extensions.GetOmit<"id" | "url" | "title" | "content" | "summary" | "keywords" | "createdAt" | "updatedAt", ExtArgs["result"]["webPage"]>
 
 export type $WebPagePayload<ExtArgs extends runtime.Types.Extensions.InternalArgs = runtime.Types.Extensions.DefaultArgs> = {
   name: "WebPage"
@@ -404,6 +430,7 @@ export type $WebPagePayload<ExtArgs extends runtime.Types.Extensions.InternalArg
     url: string
     title: string | null
     content: string
+    summary: string | null
     keywords: string[]
     createdAt: Date
     updatedAt: Date
@@ -834,6 +861,7 @@ export interface WebPageFieldRefs {
   readonly url: Prisma.FieldRef<"WebPage", 'String'>
   readonly title: Prisma.FieldRef<"WebPage", 'String'>
   readonly content: Prisma.FieldRef<"WebPage", 'String'>
+  readonly summary: Prisma.FieldRef<"WebPage", 'String'>
   readonly keywords: Prisma.FieldRef<"WebPage", 'String[]'>
   readonly createdAt: Prisma.FieldRef<"WebPage", 'DateTime'>
   readonly updatedAt: Prisma.FieldRef<"WebPage", 'DateTime'>
