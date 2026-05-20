@@ -42,7 +42,7 @@ cpSync(join(root, 'prisma'), distPrisma, { recursive: true })
 // Step 7: Copy package.json for dependency reference
 copyFileSync(join(root, 'package.json'), join(dist, 'package.json'))
 
-// Step 8: Copy .env file (for Windows service / nssm deployment)
+// Step 8: Copy .env file from project root
 const envFile = join(root, '.env')
 if (existsSync(envFile)) {
   copyFileSync(envFile, join(dist, '.env'))
@@ -52,9 +52,7 @@ if (existsSync(envFile)) {
   copyFileSync(join(root, '.env.example'), join(dist, '.env.example'))
 }
 
-// Step 9: Copy dotenv bootstrap wrapper (start.cjs)
-// Loads .env relative to __dirname before delegating to the Next.js standalone server.
-// Essential for Windows service (nssm) deployments where working directory is unpredictable.
+// Step 9: Copy start.cjs from scripts/
 const startCjs = join(root, 'scripts', 'start.cjs')
 if (existsSync(startCjs)) {
   copyFileSync(startCjs, join(dist, 'start.cjs'))
@@ -72,7 +70,7 @@ console.log(`
 [Build]     - start.cjs        (dotenv bootstrap wrapper, use as nssm entry)
 [Build]     - server.js        (standalone server entry, auto-loaded by start.cjs)
 [Build]     - .env             (environment variables)
-[Build]     - node_modules/    (runtime dependencies)
+[Build]     - node_modules/    (runtime dependencies, hoisted - no symlinks)
 [Build]     - .next/static/    (static assets)
 [Build]     - public/          (public assets)
 [Build]     - prisma/          (schema + migrations)

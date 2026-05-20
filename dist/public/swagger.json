@@ -2964,6 +2964,7 @@
             "description": "topicId"
           },
           "metadata": {
+            "type": "string",
             "$ref": "#/components/schemas/MemoryMetadata",
             "description": "metadata"
           },
@@ -3028,6 +3029,7 @@
             "description": "topicId"
           },
           "metadata": {
+            "type": "string",
             "$ref": "#/components/schemas/MemoryMetadata",
             "description": "metadata"
           },
@@ -3119,6 +3121,7 @@
           "messages": {
             "type": "array",
             "items": {
+              "type": "string",
               "$ref": "#/components/schemas/IngestMessage"
             },
             "description": "messages"
@@ -3304,6 +3307,7 @@
             "description": "vendorId"
           },
           "vendor": {
+            "type": "string",
             "$ref": "#/components/schemas/Vendor",
             "description": "vendor"
           },
@@ -3715,6 +3719,7 @@
           "images": {
             "type": "array",
             "items": {
+              "type": "string",
               "$ref": "#/components/schemas/ChatMessageImage"
             },
             "description": "images"
@@ -3749,6 +3754,7 @@
           "messages": {
             "type": "array",
             "items": {
+              "type": "string",
               "$ref": "#/components/schemas/ChatMessage"
             },
             "description": "messages"
@@ -3838,6 +3844,7 @@
           "messages": {
             "type": "array",
             "items": {
+              "type": "string",
               "$ref": "#/components/schemas/SessionMessage"
             },
             "description": "messages"
@@ -3920,6 +3927,7 @@
           "models": {
             "type": "array",
             "items": {
+              "type": "string",
               "$ref": "#/components/schemas/ModelTreeNode"
             },
             "description": "models"

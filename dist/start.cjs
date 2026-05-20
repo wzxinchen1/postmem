@@ -20,13 +20,6 @@ if (fs.existsSync(envPath)) {
   console.warn('[Startup] .env not found at:', envPath);
 }
 
-process.env.HOSTNAME = '0.0.0.0';
-if (process.env.PORT) {
-  console.log('[Startup] Listening on 0.0.0.0:' + process.env.PORT);
-} else {
-  console.log('[Startup] Listening on 0.0.0.0:3000 (PORT not set in .env)');
-}
-
 console.log('[Startup] DATABASE_URL:', process.env.DATABASE_URL ? 'OK' : 'MISSING');
 
 require('./server.js');

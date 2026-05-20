@@ -13,3 +13,5 @@ allowBuilds:
   tree-sitter: false
   tree-sitter-json: false
   unrs-resolver: false
+
+nodeLinker: hoisted
