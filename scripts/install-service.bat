@@ -11,11 +11,8 @@ echo   PostMem - Install Windows Service
 echo ========================================
 echo.
 
-if not exist "%TARGET_DIR%" (
-    echo [ERROR] Build artifact not found: %TARGET_DIR%
-    echo         Please copy dist/ contents to %TARGET_DIR% first.
-    exit /b 1
-)
+set SCRIPT_DIR=%~dp0
+set PROJECT_DIR=%SCRIPT_DIR%..
 
 if not exist "%NSSM_EXE%" (
     echo [ERROR] nssm not found: %NSSM_EXE%
@@ -29,8 +26,23 @@ if not exist "%NODE_EXE%" (
     exit /b 1
 )
 
-if not exist "%TARGET_DIR%\start.cjs" (
-    echo [ERROR] start.cjs not found in %TARGET_DIR%
+if not exist "%TARGET_DIR%" (
+    echo [INFO] Creating target directory: %TARGET_DIR%
+    mkdir "%TARGET_DIR%"
+)
+
+echo [INFO] Copying .env from project root to target directory ...
+if exist "%PROJECT_DIR%\.env" (
+    copy /Y "%PROJECT_DIR%\.env" "%TARGET_DIR%\.env" >nul
+) else (
+    echo [WARN] .env not found at project root, skipping.
+)
+
+echo [INFO] Copying start.cjs from scripts/ to target directory ...
+if exist "%SCRIPT_DIR%start.cjs" (
+    copy /Y "%SCRIPT_DIR%start.cjs" "%TARGET_DIR%\start.cjs" >nul
+) else (
+    echo [ERROR] start.cjs not found in scripts directory.
     exit /b 1
 )
 
