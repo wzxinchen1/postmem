@@ -15,6 +15,7 @@ import type {
 import { EmbeddingService } from '@/src/services/embedding.service'
 import { SettingService } from '@/src/services/setting.service'
 import { CutModelService } from '@/src/services/cut-model.service'
+import { SSEService } from '@/src/services/sse.service'
 
 /**
  * 知识库核心服务
@@ -29,22 +30,26 @@ export class KBService {
   private embeddingService: EmbeddingService
   private settingService: SettingService
   private cutModelService: CutModelService
+  private sseService: SSEService
 
   constructor({
     prisma,
     embeddingService,
     settingService,
     cutModelService,
+    sseService,
   }: {
     prisma: PrismaClient
     embeddingService: EmbeddingService
     settingService: SettingService
     cutModelService: CutModelService
+    sseService: SSEService
   }) {
     this.prisma = prisma
     this.embeddingService = embeddingService
     this.settingService = settingService
     this.cutModelService = cutModelService
+    this.sseService = sseService
   }
 
   /**
@@ -489,7 +494,11 @@ export class KBService {
       })
       .join('\n\n')
 
+    await this.sseService.emit({ type: 'status', status: 'summarizing', message: '正在切分文本...' })
+
     const chunks = await this.cutModelService.cutAndRewrite(conversationText, kbId)
+
+    await this.sseService.emit({ type: 'status', status: 'summarizing', message: `已切分为 ${chunks.length} 个片段` })
 
     const existingTopics = await this.prisma.topic.findMany({
       where: { kbId },
@@ -504,6 +513,8 @@ export class KBService {
     }
     for (const p of plan.plans) {
       if (p.action === 'create' && p.newTopicName && !topicNameMap.has(p.newTopicName)) {
+        await this.sseService.emit({ type: 'status', status: 'summarizing', message: `创建主题：${p.newTopicName}` })
+
         const sampleChunk = chunks[p.index]
         if (!sampleChunk?.content) throw Errors.internalError(`片段 ${p.index} 缺少 content 字段`)
         const createInfo = await this.cutModelService.createTopicInfo(sampleChunk.content, kbId)
@@ -522,7 +533,11 @@ export class KBService {
     const memorizedMessageIds = messages.map((m) => m.id)
     const thisBatchIds = new Set<string>()
 
-    for (const chunk of chunks) {
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i]
+
+      await this.sseService.emit({ type: 'status', status: 'summarizing', message: `处理片段 ${i + 1}/${chunks.length}：${chunk.title}` })
+
       const planItem = plan.plans.find((p) => p.index === chunk.index)
       if (!planItem) {
         throw Errors.internalError(`片段 ${chunk.index} 缺少主题规划`)
@@ -547,6 +562,8 @@ export class KBService {
       similarMemories = similarMemories.filter((m) => !thisBatchIds.has(m.id))
 
       if (similarMemories.length === 0) {
+        await this.sseService.emit({ type: 'status', status: 'summarizing', message: `入库` })
+
         const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
         const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
@@ -560,6 +577,8 @@ export class KBService {
         continue
       }
 
+      await this.sseService.emit({ type: 'status', status: 'summarizing', message: `去重判断` })
+
       const result = await this.cutModelService.shouldIngestChunk(
         chunk.content,
         similarMemories.map((m) => ({ id: m.id, content: m.content, score: m.score })),
@@ -567,10 +586,13 @@ export class KBService {
       )
 
       if (result.action === 'skip') {
+        await this.sseService.emit({ type: 'status', status: 'summarizing', message: `跳过重复` })
         continue
       }
 
       if (result.action === 'merge' && result.targetMemoryId && result.mergedContent) {
+        await this.sseService.emit({ type: 'status', status: 'summarizing', message: `合并到已有记录` })
+
         const mergeEmbedding = await this.embeddingService.generateEmbedding(result.mergedContent)
 
         await this.prisma.$executeRaw`
@@ -584,6 +606,8 @@ export class KBService {
         thisBatchIds.add(result.targetMemoryId)
         continue
       }
+
+      await this.sseService.emit({ type: 'status', status: 'summarizing', message: `新记录入库` })
 
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 

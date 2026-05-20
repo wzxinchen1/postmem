@@ -1,27 +1,6 @@
 import { redis } from '@/src/lib/redis'
-
-export enum StreamStatus {
-  SearchingWeb = 'searchingWeb',
-  SearchingMemory = 'searchingMemory',
-  Summarizing = 'summarizing',
-  MemoryProgress = 'memoryProgress',
-  Recognizing = 'recognizing',
-  FetchingUrl = 'fetchingUrl',
-}
-
-export enum DoneReason {
-  Truncated = 'truncated',
-  InsufficientBalance = 'insufficient_balance',
-  ContentFiltered = 'content_filtered',
-}
-
-export type StreamEvent =
-  | { type: 'chunk'; content: string; model: { id: string; name: string } }
-  | { type: 'thinking'; content: string }
-  | { type: 'status'; status: StreamStatus }
-  | { type: 'messageId'; role: 'user' | 'assistant'; id: string }
-  | { type: 'error'; message: string }
-  | { type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number; reasoningTokens?: number }
+import type { StreamEvent } from '@/src/types'
+import { DoneReason, StreamStatus } from '@/src/types'
 
 export class SSEService {
   private readonly globalMessageKey = 'chat:global'

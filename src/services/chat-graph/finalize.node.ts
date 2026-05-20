@@ -1,5 +1,5 @@
 import type { ChatState, GraphDependencies } from './types'
-import { DoneReason } from '@/src/services/sse.service'
+import { DoneReason } from '@/src/types'
 import { logger } from '@/src/lib/logger'
 
 export function createFinalizeNode(deps: GraphDependencies) {

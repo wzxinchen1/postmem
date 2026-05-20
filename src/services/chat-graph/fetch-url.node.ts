@@ -1,5 +1,5 @@
 import type { ChatState, GraphDependencies } from './types'
-import { StreamStatus } from '@/src/services/sse.service'
+import { StreamStatus } from '@/src/types'
 import { logger } from '@/src/lib/logger'
 
 export function createFetchUrlNode(deps: GraphDependencies) {

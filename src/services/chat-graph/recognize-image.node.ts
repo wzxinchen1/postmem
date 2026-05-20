@@ -1,6 +1,6 @@
 import type { ChatState, GraphDependencies } from './types'
 import { HumanMessage } from '@langchain/core/messages'
-import { StreamStatus } from '@/src/services/sse.service'
+import { StreamStatus } from '@/src/types'
 import { logger } from '@/src/lib/logger'
 import { Errors } from '@/src/lib/errors'
 

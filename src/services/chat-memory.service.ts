@@ -34,8 +34,6 @@ export class ChatMemoryService {
     kbId: string,
     agent: ChatOpenAI
   ): Promise<string[]> {
-    await this.sseService.emit({ type: 'status', status: 'summarizing' })
-
     const ingestMessages: IngestMessage[] = messages.map(m => ({
       id: String(m.id),
       role: m.role === 'assistant' ? 'assistant' : 'user',
@@ -43,8 +41,6 @@ export class ChatMemoryService {
     }))
 
     const memorizedIds = await this.ingestMessages(kbId, ingestMessages)
-
-    await this.sseService.emit({ type: 'status', status: 'summarizing' })
 
     return memorizedIds
   }
