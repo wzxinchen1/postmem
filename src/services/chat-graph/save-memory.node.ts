@@ -1,4 +1,5 @@
-import type { ChatState, GraphDependencies } from './types'
+import type { ChatState } from './types'
+import type { GraphDependencies } from './index'
 import type { ChatMessage } from '@/src/types'
 import { logger } from '@/src/lib/logger'
 
@@ -52,7 +53,7 @@ export function createSaveMemoryNode(deps: GraphDependencies) {
       unmemoriedMessages,
       state.conversationId,
       state.kbId,
-      state.agent
+      state.agent as any
     )
 
     for (const msgId of memorizedMessageIds) {

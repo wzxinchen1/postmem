@@ -23,7 +23,7 @@ export class Prompts {
 Always respond with valid JSON only.`
   }
 
-  static cutAndRewrite(text: string): string {
+  static cutAndRewrite(text: string, charRange: string = '200-500'): string {
     return `请将以下文本切分为语义完整的片段，为每个片段生成标题并重写使其连贯自足。
 
 文本内容：
@@ -48,7 +48,7 @@ ${text}
 要求：
 1. title 是片段的简短标题，概括核心主题，10个汉字以内
 2. content 字段是重写后的完整文本，不是摘要
-3. 每个片段建议 200-1000 字符
+3. 每个片段建议 ${charRange} 字符
 4. 切分点必须选在语义完整的位置
 5. 所有原文内容都必须被覆盖，不允许遗漏
 6. 如果文本很短不需要切分，返回只有一个 chunk 的数组

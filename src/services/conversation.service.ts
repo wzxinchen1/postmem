@@ -55,7 +55,7 @@ export class ConversationService {
   async getLatest(): Promise<Conversation | null> {
     return this.prisma.conversation.findFirst({
       orderBy: { createdAt: 'desc' },
-    }) as Promise<Conversation | null>
+    }) as unknown as Promise<Conversation | null>
   }
 
   async addMessage(data: AddChatMessageRequest): Promise<ChatMessage> {
@@ -90,7 +90,7 @@ export class ConversationService {
         urls: (data.urls as any) ?? undefined,
         metadata: { ...data.metadata as any, modelName: resolvedName },
       },
-    }) as Promise<ChatMessage>
+    }) as unknown as Promise<ChatMessage>
   }
 
   async list(options: {
@@ -121,7 +121,7 @@ export class ConversationService {
     ])
 
     return {
-      conversations: conversations as Conversation[],
+      conversations: conversations as unknown as Conversation[],
       total,
       page,
       limit,
@@ -132,7 +132,7 @@ export class ConversationService {
     return this.prisma.chatMessage.findMany({
       where: { conversationId },
       orderBy: { createdAt: 'asc' },
-    }) as Promise<ChatMessage[]>
+    }) as unknown as Promise<ChatMessage[]>
   }
 
   async get(conversationId: string): Promise<Conversation | null> {
@@ -143,7 +143,7 @@ export class ConversationService {
           orderBy: { createdAt: 'asc' },
         },
       },
-    }) as Promise<Conversation | null>
+    }) as unknown as Promise<Conversation | null>
   }
 
   async delete(conversationId: string): Promise<void> {
@@ -155,7 +155,7 @@ export class ConversationService {
   async getMessage(messageId: string): Promise<ChatMessage | null> {
     return this.prisma.chatMessage.findUnique({
       where: { id: messageId },
-    }) as Promise<ChatMessage | null>
+    }) as unknown as Promise<ChatMessage | null>
   }
 
   async removeMessagesAfter(conversationId: string, messageId: string): Promise<void> {
@@ -212,7 +212,7 @@ export class ConversationService {
         urls: (data.urls as any) ?? undefined,
         metadata: { ...data.metadata as any, modelName: resolvedName },
       },
-    }) as Promise<ChatMessage>
+    }) as unknown as Promise<ChatMessage>
   }
 
   async markMessageMemoried(messageId: string): Promise<void> {
@@ -289,7 +289,7 @@ export class ConversationService {
     logger.info('[ConversationService] 查询消息完成', { conversationId, total, fetchedCount: messages.length })
 
     return {
-      messages: messages as ChatMessage[],
+      messages: messages as unknown as ChatMessage[],
       total,
       page,
       limit,

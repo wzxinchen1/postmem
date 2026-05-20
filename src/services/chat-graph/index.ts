@@ -18,6 +18,7 @@ import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
 import { KBService } from '@/src/services/kb.service'
 import { AgentService } from '@/src/services/agent.service'
+import { SystemTokensService } from '@/src/services/system-tokens.service'
 
 export type ChatState = typeof ChatGraphState.State
 
@@ -33,6 +34,7 @@ export interface GraphDependencies {
   modelService: ModelService
   kbService: KBService
   agentService: AgentService
+  systemTokensService: SystemTokensService
   onError: OnStreamError
 }
 
@@ -89,4 +91,4 @@ export function createChatGraph(deps: GraphDependencies) {
 }
 
 export type CompiledChatGraph = ReturnType<typeof createChatGraph>
-export { ChatNode, ChatGraphState, ChatState, GraphDependencies }
+export { ChatNode, ChatGraphState }

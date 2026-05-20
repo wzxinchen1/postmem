@@ -38,8 +38,8 @@ export class SettingService {
   async set(key: string, value: Record<string, unknown>, description?: string): Promise<Setting> {
     const setting = await this.prisma.setting.upsert({
       where: { key },
-      update: { value, description },
-      create: { key, value, description },
+      update: { value: value as any, description },
+      create: { key, value: value as any, description },
     })
 
     this.cache.set(key, value)
@@ -66,7 +66,7 @@ export class SettingService {
     const result = { ...defaults }
     for (const setting of settings) {
       const key = setting.key as keyof AppSettings
-      result[key] = setting.value[key] as any
+      result[key] = (setting.value as any)[key] as any
     }
 
     return result
@@ -81,8 +81,8 @@ export class SettingService {
       updates.push(
         this.prisma.setting.upsert({
           where: { key },
-          update: { value: { [key]: value } },
-          create: { key, value: { [key]: value } },
+          update: { value: { [key]: value } as any },
+          create: { key, value: { [key]: value } as any },
         })
       )
     }

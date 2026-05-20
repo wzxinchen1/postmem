@@ -1,4 +1,5 @@
-import type { ChatState, GraphDependencies } from './types'
+import type { ChatState } from './types'
+import type { GraphDependencies } from './index'
 import { HumanMessage, AIMessage } from '@langchain/core/messages'
 import { logger } from '@/src/lib/logger'
 import { Errors } from '@/src/lib/errors'

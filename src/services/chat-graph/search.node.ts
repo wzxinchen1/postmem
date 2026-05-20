@@ -1,18 +1,19 @@
-import type { ChatState, GraphDependencies } from './types'
-import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages'
+import type { ChatState } from './types'
+import type { GraphDependencies } from './index'
+import { HumanMessage, SystemMessage } from '@langchain/core/messages'
+import { StreamStatus } from '@/src/types'
 import { Errors } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
 import { logger } from '@/src/lib/logger'
-import { SystemTokensService } from '@/src/services/system-tokens.service'
 
 export function createSearchNode(deps: GraphDependencies) {
-  async function buildSystemContext(searchResult: string, memoryText: string, recognizedText: string, systemTokensService: SystemTokensService) {
+  async function buildSystemContext(searchResult: string, memoryText: string, recognizedText: string, agent: unknown) {
     const systemPrompt = Prompts.chatSystemRole(
       searchResult || undefined,
       memoryText || undefined,
       recognizedText || undefined,
     )
-    const systemTokens = await systemTokensService.getSystemTokens(systemPrompt)
+    const systemTokens = await deps.systemTokensService.getSystemTokens(systemPrompt, agent)
     return { systemPrompt, systemTokens }
   }
 
@@ -21,10 +22,8 @@ export function createSearchNode(deps: GraphDependencies) {
       return {}
     }
 
-    const systemTokensService = new SystemTokensService({ agent: state.agent })
-
     if (state.langchainMessages.length < 1) {
-      const { systemPrompt, systemTokens } = await buildSystemContext('', '', '', systemTokensService)
+      const { systemPrompt, systemTokens } = await buildSystemContext('', '', '', state.agent)
       return {
         searchResult: '',
         memoryText: '',
@@ -58,7 +57,7 @@ export function createSearchNode(deps: GraphDependencies) {
     let searchNeeds: { needSearchWeb: boolean; webKeywords: string[]; needSearchMemory: boolean; memoryQuery: string | null }
     try {
       searchNeeds = await deps.searchService.analyzeSearchNeeds(
-        state.agent,
+        state.agent as any,
         recentMessages
       )
     } catch (error) {
@@ -71,7 +70,7 @@ export function createSearchNode(deps: GraphDependencies) {
     let fetchedUrls: string[] = []
 
     if (searchNeeds.needSearchWeb && searchNeeds.webKeywords.length > 0) {
-      await deps.sseService.emit({ type: 'status', status: 'searchingWeb' })
+      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb })
 
       const cachedWebpages = await deps.searchService.getCachedWebpages(searchNeeds.webKeywords)
 
@@ -79,7 +78,7 @@ export function createSearchNode(deps: GraphDependencies) {
       try {
         confirm = await deps.searchService.confirmNeedSearchWeb(
           recentMessages,
-          state.agent,
+          state.agent as any,
           cachedWebpages
         )
       } catch (error) {
@@ -100,7 +99,7 @@ export function createSearchNode(deps: GraphDependencies) {
           return { url: w.url, title: w.title, content: w.content, summary: w.summary, keywords: w.keywords as string[] }
         })
         for (const item of cachedItems) {
-          await deps.sseService.emit({ type: 'status', status: 'searchingWeb', url: item.url })
+          await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, url: item.url })
           fetchedUrls.push(item.url)
         }
         await deps.searchService.saveWebpages(cachedItems)
@@ -110,11 +109,11 @@ export function createSearchNode(deps: GraphDependencies) {
         searchResult = cachedResult
       }
 
-      await deps.sseService.emit({ type: 'status', status: 'searchingWeb' })
+      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb })
     }
 
     if (searchNeeds.needSearchMemory && searchNeeds.memoryQuery) {
-      await deps.sseService.emit({ type: 'status', status: 'searchingMemory' })
+      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory })
 
       const similarSummaries = await deps.chatMemoryService.searchSimilar(
         state.kbId,
@@ -122,7 +121,7 @@ export function createSearchNode(deps: GraphDependencies) {
       )
       memoryText = similarSummaries.map(s => s.content).join('\n\n')
 
-      await deps.sseService.emit({ type: 'status', status: 'searchingMemory' })
+      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory })
     }
 
     if (state.fetchedUrlContent) {
@@ -135,7 +134,7 @@ export function createSearchNode(deps: GraphDependencies) {
       searchResult,
       memoryText,
       state.recognizedText ?? '',
-      systemTokensService,
+      state.agent,
     )
 
     logger.info('[ChatGraph] search 完成', {

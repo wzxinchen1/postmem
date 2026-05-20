@@ -12,6 +12,7 @@ import type {
   IngestTextResponse,
   IngestMessagesResponse,
 } from '@/src/types'
+import { StreamStatus } from '@/src/types'
 import { EmbeddingService } from '@/src/services/embedding.service'
 import { SettingService } from '@/src/services/setting.service'
 import { CutModelService } from '@/src/services/cut-model.service'
@@ -494,11 +495,11 @@ export class KBService {
       })
       .join('\n\n')
 
-    await this.sseService.emit({ type: 'status', status: 'summarizing', message: '正在切分文本...' })
+    await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: '正在切分文本...' })
 
     const chunks = await this.cutModelService.cutAndRewrite(conversationText, kbId)
 
-    await this.sseService.emit({ type: 'status', status: 'summarizing', message: `已切分为 ${chunks.length} 个片段` })
+    await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `已切分为 ${chunks.length} 个片段` })
 
     const existingTopics = await this.prisma.topic.findMany({
       where: { kbId },
@@ -513,7 +514,7 @@ export class KBService {
     }
     for (const p of plan.plans) {
       if (p.action === 'create' && p.newTopicName && !topicNameMap.has(p.newTopicName)) {
-        await this.sseService.emit({ type: 'status', status: 'summarizing', message: `创建主题：${p.newTopicName}` })
+        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `创建主题：${p.newTopicName}` })
 
         const sampleChunk = chunks[p.index]
         if (!sampleChunk?.content) throw Errors.internalError(`片段 ${p.index} 缺少 content 字段`)
@@ -536,7 +537,7 @@ export class KBService {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i]
 
-      await this.sseService.emit({ type: 'status', status: 'summarizing', message: `处理片段 ${i + 1}/${chunks.length}：${chunk.title}` })
+      await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `处理片段 ${i + 1}/${chunks.length}：${chunk.title}` })
 
       const planItem = plan.plans.find((p) => p.index === chunk.index)
       if (!planItem) {
@@ -562,7 +563,7 @@ export class KBService {
       similarMemories = similarMemories.filter((m) => !thisBatchIds.has(m.id))
 
       if (similarMemories.length === 0) {
-        await this.sseService.emit({ type: 'status', status: 'summarizing', message: `入库` })
+        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `入库` })
 
         const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
@@ -577,7 +578,7 @@ export class KBService {
         continue
       }
 
-      await this.sseService.emit({ type: 'status', status: 'summarizing', message: `去重判断` })
+      await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `去重判断` })
 
       const result = await this.cutModelService.shouldIngestChunk(
         chunk.content,
@@ -586,12 +587,12 @@ export class KBService {
       )
 
       if (result.action === 'skip') {
-        await this.sseService.emit({ type: 'status', status: 'summarizing', message: `跳过重复` })
+        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `跳过重复` })
         continue
       }
 
       if (result.action === 'merge' && result.targetMemoryId && result.mergedContent) {
-        await this.sseService.emit({ type: 'status', status: 'summarizing', message: `合并到已有记录` })
+        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `合并到已有记录` })
 
         const mergeEmbedding = await this.embeddingService.generateEmbedding(result.mergedContent)
 
@@ -607,7 +608,7 @@ export class KBService {
         continue
       }
 
-      await this.sseService.emit({ type: 'status', status: 'summarizing', message: `新记录入库` })
+      await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `新记录入库` })
 
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
@@ -921,8 +922,8 @@ export class KBService {
         id: item.data.id,
         title: item.data.title,
         content: item.data.content,
-        score,
-        topicId,
+      score,
+      topicId: topicId ?? null,
         metadata: item.data.metadata,
         source: item.source,
       }

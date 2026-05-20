@@ -192,7 +192,7 @@ function parseEndpoint(
     const paramName = queryMatch[1]
     if (paramName === 'id') continue
     
-    const descMap: Record<string, { description: string; type: string; default?: unknown }> = {
+    const descMap: Record<string, { description: string; type: string; default?: unknown; enum?: string[] }> = {
       includeInactive: { description: '是否包含已禁用的项', type: 'boolean', default: false },
       providerId: { description: '按提供商ID筛选', type: 'string' },
       capability: { description: '模型能力', type: 'string', enum: ['chat', 'embedding', 'vision'] },
@@ -436,7 +436,7 @@ function typeToSwaggerType(typeStr: string, types?: TypeSchema[], aliases?: Type
   }
 
   if (types && isCustomType(typeStr, types)) {
-    return { $ref: `#/components/schemas/${typeStr}` }
+    return { type: 'string', $ref: `#/components/schemas/${typeStr}` }
   }
 
   return { type: baseMap[typeStr] || 'string' }
@@ -518,7 +518,7 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
     }
 
     for (const [code, resp] of Object.entries(ep.responses)) {
-      if (ep.sse && (code === '200' || code === 200)) {
+      if (ep.sse && (code === '200' || Number(code) === 200)) {
         operation.responses[code] = {
           description: resp.description + '（SSE 流式响应）',
           content: {
@@ -854,11 +854,11 @@ function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
       }
 
       lines.push('Response Body:')
-      const respEntries = Object.entries(ep.responses).sort((a, b) => Number(a[0]) - Number(b[0]))
+      const respEntries = Object.entries(ep.responses)
       for (const [code, resp] of respEntries) {
         const typeInfo = getResponseType(ep.path, ep.method, Number(code), types)
         const refStr = typeInfo ? ` (${typeInfo})` : ''
-        if (ep.sse && (code === '200' || code === 200)) {
+        if (ep.sse && (code === '200' || Number(code) === 200)) {
           lines.push(`  ${code}: ${resp.description}（SSE 流式响应）`)
           lines.push(`    Content-Type: text/event-stream`)
           lines.push(`    事件格式: data: { type: string, message?: string, data?: object }`)
@@ -881,7 +881,7 @@ function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
     lines.push('')
   }
 
-  lines.append = () => {}
+  ;(lines as any).append = () => {}
 
   lines.push('## Data Types')
   lines.push('')

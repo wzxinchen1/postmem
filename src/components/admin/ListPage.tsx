@@ -3,14 +3,14 @@
 import { useState, useEffect } from 'react'
 import { message, Card, Table, Button, Select, Space, Typography, Empty, Popconfirm, Modal } from 'antd'
 import { DeleteOutlined, EyeOutlined } from '@ant-design/icons'
-import { ListResponse } from '@/app/admin/types'
+import { ListResponse, ListItem } from '@/app/admin/types'
 import { post } from '@/app/admin/lib/request'
 import { KBSelector } from '@/src/components/admin/KBSelector'
 
 const { Title, Text } = Typography
 
 export default function ListPage() {
-  const [kbId, setKbId] = useState<number | null>(null)
+  const [kbId, setKbId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [listPage, setListPage] = useState(1)
   const [listLimit, setListLimit] = useState(10)
@@ -38,7 +38,7 @@ export default function ListPage() {
     }
   }
 
-  const handleDelete = async (id: number) => {
+  const handleDelete = async (id: string) => {
     setLoading(true)
     try {
       const data = await post<{ success: boolean }>('/api/kb/delete', { id })
@@ -84,7 +84,7 @@ export default function ListPage() {
       title: '操作',
       key: 'action',
       width: 160,
-      render: (_: unknown, record: { id: number; content: string }) => (
+      render: (_: unknown, record: ListItem) => (
         <Space>
           <Button
             type="link"
@@ -145,7 +145,7 @@ export default function ListPage() {
               </Space>
             </Space>
             
-            <Table
+            <Table<ListItem>
               columns={columns}
               dataSource={listResults?.data?.items || []}
               rowKey="id"

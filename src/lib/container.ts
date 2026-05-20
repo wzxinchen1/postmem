@@ -20,6 +20,7 @@ import { ChatModelFactory } from '@/src/services/chat-model-factory.service'
 import { InitService } from '@/src/services/init.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 import { AgentService } from '@/src/services/agent.service'
+import { SystemTokensService } from '@/src/services/system-tokens.service'
 
 export const container = createContainer({
   injectionMode: InjectionMode.PROXY,
@@ -46,6 +47,7 @@ container.register({
   initService: asClass(InitService).scoped(),
   llmResilienceService: asClass(LLMResilienceService).scoped(),
   agentService: asClass(AgentService).scoped(),
+  systemTokensService: asClass(SystemTokensService).singleton(),
 })
 
 export default container

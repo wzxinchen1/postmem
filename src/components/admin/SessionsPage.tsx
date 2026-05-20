@@ -178,7 +178,7 @@ export default function SessionsPage() {
       width: 200,
       render: (name: string, record: Session) => (
         <Space direction="vertical" size={0}>
-          <Text strong>{record.metadata?.displayName || name}</Text>
+          <Text strong>{(record.metadata?.displayName as string) || name}</Text>
           <Text type="secondary" style={{ fontSize: 12 }}>{record.provider}</Text>
         </Space>
       ),
@@ -188,7 +188,7 @@ export default function SessionsPage() {
       dataIndex: 'kbId',
       key: 'kbId',
       width: 100,
-      render: (id?: number) => id || <Text type="secondary">-</Text>,
+      render: (id?: string | null) => id || <Text type="secondary">-</Text>,
     },
     {
       title: '状态',
@@ -329,7 +329,7 @@ export default function SessionsPage() {
               </Descriptions.Item>
               <Descriptions.Item label="模型类型">{selectedSession.modelType}</Descriptions.Item>
               <Descriptions.Item label="模型名称">
-                {selectedSession.metadata?.displayName || selectedSession.modelName}
+                {(selectedSession.metadata?.displayName as string) || selectedSession.modelName}
               </Descriptions.Item>
               <Descriptions.Item label="提供商">{selectedSession.provider}</Descriptions.Item>
               <Descriptions.Item label="知识库ID">{selectedSession.kbId || '-'}</Descriptions.Item>
@@ -358,7 +358,7 @@ export default function SessionsPage() {
                           {new Date(msg.createdAt).toLocaleTimeString('zh-CN')}
                         </Text>
                       </Space>
-                      {msg.role === 'assistant' && msg.metadata?.reasoning_content && (
+                      {(msg.metadata as any)?.reasoning_content && (
                         <Card size="small" style={{ background: '#fffbe6', borderLeft: '4px solid #faad14', marginBottom: 8 }}>
                           <Space direction="vertical" size={2} style={{ width: '100%' }}>
                             <Tag color="warning" style={{ margin: 0 }}>深度思考</Tag>
@@ -366,7 +366,7 @@ export default function SessionsPage() {
                               ellipsis={{ expandable: true, rows: 6, symbol: '展开全部' }}
                               style={{ whiteSpace: 'pre-wrap', wordBreak: 'break-all', marginBottom: 0 }}
                             >
-                              {String(msg.metadata.reasoning_content)}
+                              {String((msg.metadata as any)?.reasoning_content ?? '')}
                             </Paragraph>
                           </Space>
                         </Card>

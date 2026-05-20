@@ -42,7 +42,7 @@ export function IngestModal({
     }
   }, [result, msg])
 
-  const isProcessing = loading || result && result.type !== 'complete' && result.type !== 'error'
+  const isProcessing = Boolean(loading || result && result.type !== 'complete' && result.type !== 'error')
 
   return (
     <>

@@ -4,6 +4,7 @@ import type {
   ProviderTreeNode,
   CreateProviderRequest,
   UpdateProviderRequest,
+  ModelCapability,
 } from '@/src/types'
 import { Errors } from '@/src/lib/errors'
 import { VendorService } from './vendor.service'
@@ -150,8 +151,8 @@ export class ProviderService {
       models: provider.models.map((model) => ({
         id: model.id,
         name: model.name,
-        displayName: model.displayName,
-        capabilities: model.capabilities,
+        displayName: model.displayName ?? '',
+        capabilities: model.capabilities as ModelCapability[],
         isDefault: model.isDefault,
         isActive: model.isActive,
       })),

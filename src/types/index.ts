@@ -589,6 +589,7 @@ export interface ChatSettingInfo {
   memoryContextThreshold: number
   maxOutputTokens?: number | null
   searchLinkCount: number
+  chunkCharRange: string
   createdAt: Date
   updatedAt: Date
 }

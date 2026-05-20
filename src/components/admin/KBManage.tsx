@@ -180,7 +180,7 @@ export default function KBManagePage() {
             description={
               <Space direction="vertical">
                 <Text>暂无知识库</Text>
-                <Text type="secondary">点击上方"新增知识库"按钮创建第一个知识库</Text>
+                <Text type="secondary">点击上方「新增知识库」按钮创建第一个知识库</Text>
               </Space>
             }
           />

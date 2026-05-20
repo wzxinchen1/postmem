@@ -1632,6 +1632,7 @@ export const ChatSettingScalarFieldEnum = {
   memoryContextThreshold: 'memoryContextThreshold',
   maxOutputTokens: 'maxOutputTokens',
   searchLinkCount: 'searchLinkCount',
+  chunkCharRange: 'chunkCharRange',
   createdAt: 'createdAt',
   updatedAt: 'updatedAt'
 } as const

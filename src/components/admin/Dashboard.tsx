@@ -111,7 +111,7 @@ export default function Dashboard() {
             description={
               <Space vertical>
                 <Text>暂无知识库</Text>
-                <Text type="secondary">请前往"知识列表"创建知识库</Text>
+                <Text type="secondary">请前往「知识列表」创建知识库</Text>
               </Space>
             }
           />

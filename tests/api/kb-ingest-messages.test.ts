@@ -62,7 +62,7 @@ function createTestServer(handler: (req: NextApiRequest, res: NextApiResponse) =
 
 describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
   let request: ReturnType<typeof createTestServer>
-  let testKbId: number
+  let testKbId: string
 
   beforeAll(async () => {
     request = createTestServer(ingestHandler)
@@ -115,7 +115,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
 
     const memories = await prisma.$queryRaw<
       Array<{ id: number; content: string }>
-    >`SELECT id, content FROM memories WHERE kb_id = ${testKbId} AND metadata->>'messageId' IN ('msg-1', 'msg-2') ORDER BY created_at ASC`
+    >`SELECT id, content FROM memories WHERE kb_id = ${testKbId as string} AND metadata->>'messageId' IN ('msg-1', 'msg-2') ORDER BY created_at ASC`
 
     expect(memories.length).toBe(2)
     expect(memories[0].content).toContain('你好')
@@ -123,7 +123,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
 
     const rawMemories = await prisma.$queryRaw<
       Array<{ id: number; embedding: unknown }>
-    >`SELECT id, embedding FROM memories WHERE kb_id = ${testKbId} AND metadata->>'messageId' IN ('msg-1', 'msg-2') ORDER BY created_at`
+    >`SELECT id, embedding FROM memories WHERE kb_id = ${testKbId as string} AND metadata->>'messageId' IN ('msg-1', 'msg-2') ORDER BY created_at`
     expect(rawMemories.length).toBe(2)
     expect(rawMemories[0].embedding).not.toBeNull()
     expect(rawMemories[1].embedding).not.toBeNull()
@@ -257,7 +257,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
       const memories = await prisma.memory.findMany({
         where: {
           kbId: testKbId,
-          metadata: { path: ['messageId'], equals: 'meta-msg-1' },
+          metadata: { path: ['messageId'], equals: 'meta-msg-1' } as any,
         },
         take: 1,
       })
@@ -271,7 +271,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
       const memories2 = await prisma.memory.findMany({
         where: {
           kbId: testKbId,
-          metadata: { path: ['messageId'], equals: 'meta-msg-2' },
+          metadata: { path: ['messageId'], equals: 'meta-msg-2' } as any,
         },
         take: 1,
       })
@@ -360,7 +360,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
       expect(res2.status).toBe(200)
 
       const mem1 = await prisma.memory.findFirst({
-        where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'valid-topic-1' } },
+        where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'valid-topic-1' } as any },
         select: { topicId: true },
       })
       const mem2 = await prisma.memory.findFirst({
@@ -386,7 +386,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
       expect(res.status).toBe(200)
 
       const memory = await prisma.memory.findFirst({
-        where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'special-chars' } },
+        where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'special-chars' } as any },
       })
 
       expect(memory).not.toBeNull()
@@ -409,7 +409,7 @@ describe('POST /api/kb/ingest - 消息列表入库（集成测试）', () => {
       expect(res.body.data.memorizedMessageIds).toEqual(['dup-id', 'dup-id'])
 
       const memories = await prisma.memory.findMany({
-        where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'dup-id' } },
+        where: { kbId: testKbId, metadata: { path: ['messageId'], equals: 'dup-id' } as any },
         orderBy: { createdAt: 'asc' },
       })
 

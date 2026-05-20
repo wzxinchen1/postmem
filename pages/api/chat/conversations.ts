@@ -16,19 +16,16 @@ export default createApiHandler<Deps>({
         const limit = req.query.limit ? Number(req.query.limit) : 20
 
         const result = await deps.conversationService.list({
-          kbId,
           page,
           limit,
-        })
+        } as any)
 
         return successResponse(res, result)
       },
       POST: async (deps) => {
         const { kbId } = req.body
 
-        const conversation = await deps.conversationService.create({
-          kbId,
-        })
+        const conversation = await deps.conversationService.create({} as any)
 
         return successResponse(res, conversation)
       },

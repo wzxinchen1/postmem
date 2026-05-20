@@ -15,7 +15,7 @@ export default function ApiDocsPage() {
   useEffect(() => {
     setMounted(true)
     // 动态加载 CSS
-    import('swagger-ui-react/swagger-ui.css')
+    import('swagger-ui-react/swagger-ui.css' as any).catch(() => {})
   }, [])
 
   if (!mounted) {

@@ -630,7 +630,7 @@ export default function ProvidersPage() {
             description={
               <Space direction="vertical">
                 <Text>暂无提供商</Text>
-                <Text type="secondary">点击上方"新增提供商"按钮创建</Text>
+                <Text type="secondary">点击上方「新增提供商」按钮创建</Text>
               </Space>
             }
           />

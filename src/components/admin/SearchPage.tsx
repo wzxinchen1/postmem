@@ -10,7 +10,7 @@ const { Title, Text } = Typography
 const { TextArea } = Input
 
 export default function SearchPage() {
-  const [kbId, setKbId] = useState<number | null>(null)
+  const [kbId, setKbId] = useState<string | null>(null)
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchTopK, setSearchTopK] = useState(5)

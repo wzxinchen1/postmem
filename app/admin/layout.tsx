@@ -23,7 +23,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
   const router = useRouter()
 
   const activeKey = menuItems.find(item => 
-    item.key === pathname || (item.key !== '/admin' && pathname.startsWith(item.key))
+    item.key === pathname || (item.key !== '/admin' && (pathname ?? '').startsWith(item.key))
   )?.key || '/admin'
 
   return (

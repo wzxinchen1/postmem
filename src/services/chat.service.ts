@@ -9,6 +9,7 @@ import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
 import { KBService } from '@/src/services/kb.service'
 import { AgentService } from '@/src/services/agent.service'
+import { SystemTokensService } from '@/src/services/system-tokens.service'
 import { createChatGraph } from '@/src/services/chat-graph'
 import { logger } from '@/src/lib/logger'
 import { Errors } from '@/src/lib/errors'
@@ -31,6 +32,7 @@ interface Dependencies {
   modelService: ModelService
   kbService: KBService
   agentService: AgentService
+  systemTokensService: SystemTokensService
 }
 
 export class ChatService {
@@ -45,6 +47,7 @@ export class ChatService {
   private modelService: ModelService
   private kbService: KBService
   private agentService: AgentService
+  private systemTokensService: SystemTokensService
 
   constructor({
     prisma,
@@ -58,6 +61,7 @@ export class ChatService {
     modelService,
     kbService,
     agentService,
+    systemTokensService,
   }: Dependencies) {
     this.prisma = prisma
     this.conversationService = conversationService
@@ -70,6 +74,7 @@ export class ChatService {
     this.modelService = modelService
     this.kbService = kbService
     this.agentService = agentService
+    this.systemTokensService = systemTokensService
   }
 
   async chat(params: ChatCompletionRequest): Promise<ChatResult | null> {
@@ -165,6 +170,7 @@ export class ChatService {
       modelService: this.modelService,
       kbService: this.kbService,
       agentService: this.agentService,
+      systemTokensService: this.systemTokensService,
       onError: (error) => {
         const appError = Errors.internalError(error instanceof Error ? error.message : String(error))
         logger.error('[ChatGraph] 流式响应异常', { conversationId: convId, errorMessage: appError.message, errorDetails: appError.details, stack: error instanceof Error ? error.stack : undefined })

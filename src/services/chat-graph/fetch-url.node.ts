@@ -1,4 +1,5 @@
-import type { ChatState, GraphDependencies } from './types'
+import type { ChatState } from './types'
+import type { GraphDependencies } from './index'
 import { StreamStatus } from '@/src/types'
 import { logger } from '@/src/lib/logger'
 

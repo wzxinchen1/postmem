@@ -8,12 +8,14 @@ import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelCapab
 import { SessionService } from '@/src/services/session.service'
 import { VendorService } from './vendor.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
+import { ChatSettingService } from '@/src/services/chat-setting.service'
 
 interface CutModelDependencies {
   prisma: PrismaClient
   sessionService: SessionService
   vendorService: VendorService
   llmResilienceService: LLMResilienceService
+  chatSettingService: ChatSettingService
 }
 
 export class CutModelService {
@@ -21,15 +23,17 @@ export class CutModelService {
   private sessionService: SessionService
   private vendorService: VendorService
   private llmResilienceService: LLMResilienceService
+  private chatSettingService: ChatSettingService
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map<string, { model: Model; provider: Provider }>()
 
   private static readonly MAX_RETRIES = 5
 
-  constructor({ prisma, sessionService, vendorService, llmResilienceService }: CutModelDependencies) {
+  constructor({ prisma, sessionService, vendorService, llmResilienceService, chatSettingService }: CutModelDependencies) {
     this.prisma = prisma
     this.sessionService = sessionService
     this.vendorService = vendorService
     this.llmResilienceService = llmResilienceService
+    this.chatSettingService = chatSettingService
   }
 
   private async getDefaultModel(): Promise<{ model: Model; provider: Provider }> {
@@ -87,11 +91,10 @@ export class CutModelService {
         },
         apiKey: model.provider.apiKey ?? undefined,
         baseUrl: model.provider.baseUrl ?? undefined,
-        config: model.provider.config as Record<string, unknown>,
         isActive: model.provider.isActive,
         createdAt: model.provider.createdAt,
         updatedAt: model.provider.updatedAt,
-      },
+      } as any,
     }
     this.modelCache.set(cacheKey, result)
     return result
@@ -352,8 +355,10 @@ export class CutModelService {
       },
     })
 
+    const chatSetting = await this.chatSettingService.get()
+    const charRange = chatSetting.chunkCharRange
     const systemPrompt = Prompts.cutAndRewriteExpert()
-    const prompt = Prompts.cutAndRewrite(text)
+    const prompt = Prompts.cutAndRewrite(text, charRange)
 
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
       if (!raw || typeof raw !== 'object') {
@@ -385,12 +390,12 @@ export class CutModelService {
 
   async shouldIngestChunk(
     chunk: string,
-    existingMemories: Array<{ id: number; content: string; score: number }>,
+    existingMemories: Array<{ id: string; content: string; score: number }>,
     kbId?: string
   ): Promise<{
     action: 'skip' | 'merge' | 'new'
     reason: string
-    targetMemoryId: number | null
+    targetMemoryId: string | null
     mergedContent: string | null
   }> {
     const { model, provider } = await this.getDefaultModel()
@@ -443,7 +448,7 @@ export class CutModelService {
     await this.sessionService.complete(session.id)
 
     const action = parsed.action as 'skip' | 'merge' | 'new'
-    let targetMemoryId: number | null = null
+    let targetMemoryId: string | null = null
     let mergedContent: string | null = null
 
     if (action === 'merge') {
@@ -619,7 +624,7 @@ export class CutModelService {
    */
   async batchResolveTopics(
     chunks: TitledChunk[],
-    existingTopics: Array<{ id: number; name: string; description: string }>,
+    existingTopics: Array<{ id: string; name: string; description: string }>,
     kbId?: string
   ): Promise<BatchTopicPlan> {
     const { model, provider } = await this.getDefaultModel()

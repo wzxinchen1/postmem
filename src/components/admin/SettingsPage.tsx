@@ -1,7 +1,7 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { message, Card, InputNumber, Button, Space, Typography, Alert, Divider } from 'antd'
+import { message, Card, Input, InputNumber, Button, Space, Typography, Alert, Divider } from 'antd'
 import { SaveOutlined, ReloadOutlined } from '@ant-design/icons'
 
 const { Title, Text } = Typography
@@ -17,6 +17,7 @@ interface ChatSettings {
   memoryContextThreshold: number
   maxOutputTokens?: number | null
   searchLinkCount: number
+  chunkCharRange: string
 }
 
 export default function SettingsPage() {
@@ -30,6 +31,7 @@ export default function SettingsPage() {
     memoryContextThreshold: 50,
     maxOutputTokens: null,
     searchLinkCount: 10,
+    chunkCharRange: '200-500',
   })
   const [loading, setLoading] = useState(false)
   const [msg, contextHolder] = message.useMessage()
@@ -81,6 +83,7 @@ export default function SettingsPage() {
           memoryContextThreshold: data.data.setting.memoryContextThreshold,
           maxOutputTokens: data.data.setting.maxOutputTokens ?? null,
           searchLinkCount: data.data.setting.searchLinkCount ?? 10,
+          chunkCharRange: data.data.setting.chunkCharRange ?? '200-500',
         })
       }
     } catch (err) {
@@ -181,7 +184,6 @@ export default function SettingsPage() {
               max={100000}
               placeholder="留空表示不限制（由模型决定）"
               style={{ width: '100%' }}
-              allowClear
             />
             <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
               单次聊天回复的最大输出 token 数。留空或清空表示不限制，由模型 API 自行决定（范围 1-100000）。建议根据模型能力设置，如 GPT-4o 可设 16384
@@ -199,6 +201,19 @@ export default function SettingsPage() {
             />
             <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
               网络搜索时每次抓取多少个链接进行摘要（范围 1-50）。数量越多，搜索结果越全面，但消耗更多 token 和时间
+            </Text>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>记忆片段字符数范围</Text>
+            <Input
+              value={chatSettings.chunkCharRange}
+              onChange={(e) => setChatSettings({ ...chatSettings, chunkCharRange: e.target.value })}
+              placeholder="200-500"
+              style={{ width: '100%' }}
+            />
+            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+              记忆入库时每个切片的建议字符数范围，格式为「最小-最大」，如「200-500」。最小 {'>='} 50，最大 {'<='} 5000
             </Text>
           </div>
 

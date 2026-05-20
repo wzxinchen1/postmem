@@ -48,6 +48,19 @@ export default createApiHandler<Deps>({
           }
         }
 
+        if (data.chunkCharRange !== undefined) {
+          if (typeof data.chunkCharRange !== 'string') {
+            return errorResponse(res, 'VALIDATION_ERROR', 'chunkCharRange 必须是字符串', 400)
+          }
+          if (!/^\d+-\d+$/.test(data.chunkCharRange)) {
+            return errorResponse(res, 'VALIDATION_ERROR', 'chunkCharRange 格式必须为 "最小-最大"，如 "200-500"', 400)
+          }
+          const [min, max] = data.chunkCharRange.split('-').map(Number)
+          if (min < 50 || max > 5000 || min >= max) {
+            return errorResponse(res, 'VALIDATION_ERROR', 'chunkCharRange 范围无效: 最小值 >= 50，最大值 <= 5000，最小值必须小于最大值', 400)
+          }
+        }
+
         const setting = await deps.chatSettingService.update(data)
         return successResponse(res, { setting })
       },

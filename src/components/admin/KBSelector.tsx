@@ -7,12 +7,12 @@ import { post } from '@/app/admin/lib/request'
 const { Text } = Typography
 
 interface KBSelectorProps {
-  kbId: number | null
-  setKbId: (id: number) => void
+  kbId: string | null
+  setKbId: (id: string) => void
 }
 
 interface KBInfo {
-  kbId: number
+  kbId: string
   kbName: string
   total: number
   lastUpdated?: string

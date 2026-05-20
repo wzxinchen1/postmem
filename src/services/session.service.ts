@@ -5,6 +5,7 @@ import type {
   CreateSessionRequest,
   AddSessionMessageRequest,
 } from '@/src/types'
+import { Errors } from '@/src/lib/errors'
 
 export class SessionService {
   private prisma: PrismaClient
@@ -20,7 +21,7 @@ export class SessionService {
         modelType: data.modelType,
         modelName: data.modelName,
         provider: data.provider,
-        metadata: data.metadata,
+        metadata: data.metadata as any,
         status: 'pending',
       },
     }) as Promise<Session>
@@ -33,7 +34,7 @@ export class SessionService {
         role: data.role,
         content: data.content,
         tokens: data.tokens,
-        metadata: data.metadata,
+        metadata: data.metadata as any,
       },
     }) as Promise<SessionMessage>
   }

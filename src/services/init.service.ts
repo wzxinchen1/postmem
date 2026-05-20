@@ -112,7 +112,6 @@ export class InitService {
         vendorId: vendor.id,
         baseUrl: config.baseUrl,
         apiKey: config.apiKey,
-        config: {},
         isActive: true,
       })
 

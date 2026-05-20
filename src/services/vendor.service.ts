@@ -29,9 +29,13 @@ export class VendorService {
     }
     if (data.isActive === undefined) throw Errors.badRequest('厂商缺少 isActive 字段')
 
+    if (!(data as any).url) {
+      throw Errors.badRequest('厂商缺少 url 字段')
+    }
     const vendor = await this.prisma.vendor.create({
       data: {
         name: data.name,
+        url: (data as any).url,
         chatModelClass: data.chatModelClass,
         embeddingModelClass: data.embeddingModelClass,
         factoryCode: data.factoryCode,

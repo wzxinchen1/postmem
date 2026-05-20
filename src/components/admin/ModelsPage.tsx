@@ -309,7 +309,7 @@ export default function ModelsPage() {
               description={
                 <Space direction="vertical">
                   <Text>暂无模型</Text>
-                  <Text type="secondary">点击上方"新增模型"按钮创建</Text>
+                  <Text type="secondary">点击上方「新增模型」按钮创建</Text>
                 </Space>
               }
             />

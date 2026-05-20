@@ -7,27 +7,18 @@ const REDIS_KEY_PROMPT = 'system_tokens:default_prompt'
 
 const CALIBRATION_USER_MESSAGE = '1'
 
-interface Dependencies {
-  agent: unknown
-}
-
 export class SystemTokensService {
-  private agent: unknown
   private defaultCalibrated = false
   private nonDefaultTokens: number | null = null
 
-  constructor({ agent }: Dependencies) {
-    this.agent = agent
-  }
-
-  async getSystemTokens(systemPrompt: string): Promise<number> {
+  async getSystemTokens(systemPrompt: string, agent: unknown): Promise<number> {
     if (this.defaultCalibrated) {
       if (this.nonDefaultTokens !== null) {
         logger.info('[SystemTokens] 使用内存中的非默认提示词 token', { systemTokens: this.nonDefaultTokens })
         return this.nonDefaultTokens
       }
 
-      const tokens = await this.calibrate(systemPrompt)
+      const tokens = await this.calibrate(systemPrompt, agent)
       this.nonDefaultTokens = tokens
       logger.info('[SystemTokens] 校准非默认提示词 token 存入内存', { systemTokens: tokens })
       return tokens
@@ -43,7 +34,7 @@ export class SystemTokensService {
         return Number(cachedTokens)
       }
 
-      const tokens = await this.calibrate(systemPrompt)
+      const tokens = await this.calibrate(systemPrompt, agent)
       await redis.set(REDIS_KEY_PROMPT, systemPrompt)
       await redis.set(REDIS_KEY_TOKENS, String(tokens))
       this.defaultCalibrated = true
@@ -51,7 +42,7 @@ export class SystemTokensService {
       return tokens
     }
 
-    const tokens = await this.calibrate(systemPrompt)
+    const tokens = await this.calibrate(systemPrompt, agent)
     await redis.set(REDIS_KEY_PROMPT, systemPrompt)
     await redis.set(REDIS_KEY_TOKENS, String(tokens))
     this.defaultCalibrated = true
@@ -59,14 +50,14 @@ export class SystemTokensService {
     return tokens
   }
 
-  private async calibrate(systemPrompt: string): Promise<number> {
+  private async calibrate(systemPrompt: string, agent: unknown): Promise<number> {
     const messages = [
       new SystemMessage(systemPrompt),
       new HumanMessage(CALIBRATION_USER_MESSAGE),
     ]
 
-    const agent = this.agent as { invoke: (messages: unknown[]) => Promise<Record<string, unknown>> }
-    const response = await agent.invoke(messages)
+    const agentInstance = agent as { invoke: (messages: unknown[]) => Promise<Record<string, unknown>> }
+    const response = await agentInstance.invoke(messages)
 
     const usage = (response as any).usage_metadata
     if (!usage || typeof usage.input_tokens !== 'number') {

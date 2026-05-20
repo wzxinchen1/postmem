@@ -1,4 +1,5 @@
-import type { ChatState, GraphDependencies } from './types'
+import type { ChatState } from './types'
+import type { GraphDependencies } from './index'
 import { DoneReason } from '@/src/types'
 import { createId } from '@paralleldrive/cuid2'
 import { logger } from '@/src/lib/logger'
@@ -46,13 +47,14 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
           completionTokens = rawOutputTokens - reasoningTokens
         }
 
-        if (chunk.response_metadata?.finish_reason) {
-          finishReason = chunk.response_metadata.finish_reason
+        const chunkAny = chunk as any
+        if (chunkAny.response_metadata?.finish_reason) {
+          finishReason = chunkAny.response_metadata.finish_reason
           logger.info('[ChatGraph] 收到 finish_reason', { finishReason })
         }
 
-        if (chunk.additional_kwargs?.type === 'reasoning') {
-          const thinkingContent = chunk.content ?? ''
+        if (chunkAny.additional_kwargs?.type === 'reasoning') {
+          const thinkingContent = chunkAny.content ?? ''
           if (thinkingContent) {
             thinkingCount++
            if (await deps.sseService.isCancelled(state.conversationId)) {
@@ -63,7 +65,7 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
           continue
         }
 
-        const content = chunk.content ?? ''
+        const content = chunkAny.content ?? ''
         fullContent += content
 
         if (content) {

@@ -187,7 +187,7 @@ export class LLMResilienceService {
             completionTokens = meta.eval_count
           }
 
-          const content = chunk.content ?? ''
+          const content = typeof chunk.content === 'string' ? chunk.content : ''
           fullContent += content
 
           if (options.onChunk) {
