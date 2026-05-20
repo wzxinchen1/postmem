@@ -2,9 +2,7 @@
 const nextConfig = {
   output: 'standalone',
   reactStrictMode: true,
-  experimental: {
-    serverComponentsExternalPackages: ['@prisma/client', 'prisma'],
-  },
+  serverExternalPackages: ['@prisma/client', 'prisma'],
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {

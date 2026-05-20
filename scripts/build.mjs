@@ -1,5 +1,5 @@
 import { execSync } from 'child_process'
-import { copyFileSync, cpSync, existsSync, mkdirSync, rmSync } from 'fs'
+import { copyFileSync, cpSync, existsSync, mkdirSync, readdirSync, readFileSync, rmSync, writeFileSync } from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 
@@ -60,6 +60,31 @@ if (existsSync(startCjs)) {
 } else {
   console.error('[Build] ERROR: start.cjs not found at', startCjs)
   process.exit(1)
+}
+
+// Step 10: Patch hardcoded absolute paths in webpack chunks
+// Next.js inlines Prisma generated code into webpack chunks, which contains
+// fileURLToPath("file:///home/user/...") with the build machine's absolute path.
+// On Windows, fileURLToPath() fails on these Linux paths.
+// Replace the entire __dirname assignment with a cross-platform fallback.
+console.log('[Build] Patching hardcoded paths in webpack chunks...')
+const chunksDir = join(dist, '.next', 'server', 'chunks')
+if (existsSync(chunksDir)) {
+  const chunkFiles = readdirSync(chunksDir).filter(f => f.endsWith('.js'))
+  let patched = 0
+  for (const chunk of chunkFiles) {
+    const chunkPath = join(chunksDir, chunk)
+    let content = readFileSync(chunkPath, 'utf-8')
+    if (content.includes('fileURLToPath') && /file:\/\/\/[A-Za-z]/.test(content)) {
+      content = content.replace(
+        /globalThis\["__dirname"\]\s*=\s*[a-zA-Z_.]+\.dirname\(\([a-zA-Z_.]+\.\)?fileURLToPath\("file:\/\/[^"]*"\)\)/g,
+        'globalThis["__dirname"]=__dirname'
+      )
+      writeFileSync(chunkPath, content)
+      patched++
+    }
+  }
+  console.log(`[Build] Patched ${patched} chunk(s).`)
 }
 
 console.log(`
