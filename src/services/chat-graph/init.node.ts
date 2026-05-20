@@ -9,33 +9,16 @@ export function createInitNode(deps: GraphDependencies) {
       throw new Error(`模型 ${state.modelId} 不存在`)
     }
 
-    const provider = await deps.providerService.get(model.providerId)
-    if (!provider) {
-      throw new Error('模型对应的提供商不存在')
-    }
-    if (!provider.vendor) {
-      throw new Error(`提供商 ${provider.id} 未关联厂商`)
-    }
-
-    const chatSetting = await deps.chatSettingService.get()
-    const hasReasoning = state.thinkingEffort !== undefined && state.thinkingEffort !== 'none'
     const hasVisionCapability = model.capabilities.includes('vision')
     logger.info('[ChatGraph] init 创建模型', {
       modelId: state.modelId,
       modelName: model.name,
       thinkingEffort: state.thinkingEffort,
-      hasReasoning,
+      hasReasoning: state.thinkingEffort !== undefined && state.thinkingEffort !== 'none',
       hasVisionCapability,
     })
-    const agent = deps.chatModelFactory.createAgent(provider.vendor, {
-      model: model.name,
-      apiKey: provider.apiKey,
-      baseUrl: provider.baseUrl,
-      maxTokens: chatSetting.maxOutputTokens,
-      reasoning: !!hasReasoning,
-      reasoningEffort: hasReasoning ? state.thinkingEffort : undefined,
-      config: { capabilities: model.capabilities },
-    })
+
+    const agent = await deps.agentService.getChatAgent(state.modelId, state.thinkingEffort)
 
     await deps.kbService.getKnowledgeBaseById(state.kbId)
 

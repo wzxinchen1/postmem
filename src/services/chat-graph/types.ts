@@ -36,6 +36,7 @@ export const ChatGraphState = Annotation.Root({
   hasVisionCapability: Annotation<boolean>,
   recognizedText: Annotation<string>,
   fetchedUrlContent: Annotation<string>,
+  systemTokens: Annotation<number>,
 })
 
 export type ChatState = typeof ChatGraphState.State

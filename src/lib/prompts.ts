@@ -279,17 +279,29 @@ ${topicsText}
 只返回 JSON。`
   }
 
-  static chatSystemRole(searchResult: string, memoryResult: string): string {
+  static readonly CURRENT_TIME_PLACEHOLDER = '{{CURRENT_TIME}}'
+
+  static chatSystemRole(searchResult?: string, memoryResult?: string, visionResult?: string): string {
+    const searchSection = searchResult
+      ? `\n\n## 互联网搜索结果\n${searchResult}\n`
+      : ''
+    const memorySection = memoryResult
+      ? `\n\n## 记忆搜索结果\n${memoryResult}\n`
+      : ''
+    const visionSection = visionResult
+      ? `\n\n## 图片描述\n${visionResult}\n`
+      : ''
+
     return `你是一个智能助手，拥有联网搜索和记忆搜索能力。
 
 ## 当前时间
-${new Date().toLocaleString('zh-CN')}
+${Prompts.CURRENT_TIME_PLACEHOLDER}
 
-## 互联网搜索结果
-${searchResult}
+${searchSection}
 
-## 记忆搜索结果
-${memoryResult}
+${memorySection}
+
+${visionSection}
 
 ## 指南
 1. 优先使用记忆搜索结果中的信息回答，因为这是用户的历史上下文
@@ -297,6 +309,10 @@ ${memoryResult}
 3. 如果搜索结果为空或与问题无关，基于自身知识回答
 4. 回答时自然地融合信息，不要提及"搜索结果"或"记忆"等来源
 5. 使用中文回答`
+  }
+
+  static fillCurrentTime(systemPrompt: string): string {
+    return systemPrompt.replace(Prompts.CURRENT_TIME_PLACEHOLDER, new Date().toLocaleString('zh-CN'))
   }
 
   static searchNeedsAnalysis(historyText: string, currentQuery: string): string {

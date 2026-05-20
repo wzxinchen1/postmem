@@ -24,25 +24,7 @@ export function createRecognizeImageNode(deps: GraphDependencies) {
 
     await deps.sseService.emit({ type: 'status', status: StreamStatus.Recognizing })
 
-    const visionModel = await deps.modelService.getDefaultByCapability('vision')
-    if (!visionModel) {
-      throw Errors.internalError('当前模型不支持图片处理，且系统中没有配置识图模型（vision capability），无法处理图片')
-    }
-
-    const visionProvider = await deps.providerService.get(visionModel.providerId)
-    if (!visionProvider) {
-      throw Errors.internalError(`识图模型 ${visionModel.name} 对应的提供商不存在`)
-    }
-    if (!visionProvider.vendor) {
-      throw Errors.internalError(`识图模型的提供商 ${visionProvider.id} 未关联厂商`)
-    }
-
-    const visionAgent = deps.chatModelFactory.createAgent(visionProvider.vendor, {
-      model: visionModel.name,
-      apiKey: visionProvider.apiKey,
-      baseUrl: visionProvider.baseUrl,
-      config: { capabilities: visionModel.capabilities, reasoning: false },
-    })
+    const visionAgent = await deps.agentService.getVisionAgent()
 
     const imageContents = [
       { type: 'text' as const, text: '请详细描述这张图片的内容。' },
@@ -56,7 +38,6 @@ export function createRecognizeImageNode(deps: GraphDependencies) {
 
     logger.info('[ChatGraph] recognizeImage 开始识图', {
       conversationId: state.conversationId,
-      visionModelName: visionModel.name,
       imageCount: state.images.length,
     })
 

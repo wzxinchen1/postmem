@@ -82,7 +82,7 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
     }
 
     const chatMessages = await deps.conversationService.getMessages(state.conversationId)
-    const allHistory = chatMessages.filter(m => !m.memoried && !m.metadata?.isWelcome)
+    const allHistory = chatMessages.filter(m => !m.memoried)
     const lastUserMsgIndex = allHistory.findLastIndex(m => m.role === 'user')
     const historyMessages = lastUserMsgIndex !== -1
       ? allHistory.slice(0, lastUserMsgIndex)
@@ -100,7 +100,7 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
       remaining -= m.tokens
     }
 
-    const userTokens = remaining
+    const userTokens = remaining - state.systemTokens
     const userTotalTokens = apiTotalPromptTokens
     const totalTokens = apiTotalPromptTokens + completionTokens + reasoningTokens
 

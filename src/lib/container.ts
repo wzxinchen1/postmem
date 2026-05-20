@@ -19,6 +19,7 @@ import { ChatSettingService } from '@/src/services/chat-setting.service'
 import { ChatModelFactory } from '@/src/services/chat-model-factory.service'
 import { InitService } from '@/src/services/init.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
+import { AgentService } from '@/src/services/agent.service'
 
 export const container = createContainer({
   injectionMode: InjectionMode.PROXY,
@@ -44,6 +45,7 @@ container.register({
   chatService: asClass(ChatService).scoped(),
   initService: asClass(InitService).scoped(),
   llmResilienceService: asClass(LLMResilienceService).scoped(),
+  agentService: asClass(AgentService).scoped(),
 })
 
 export default container

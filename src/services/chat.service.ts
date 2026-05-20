@@ -8,6 +8,7 @@ import { SSEService } from '@/src/services/sse.service'
 import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
 import { KBService } from '@/src/services/kb.service'
+import { AgentService } from '@/src/services/agent.service'
 import { createChatGraph } from '@/src/services/chat-graph'
 import { logger } from '@/src/lib/logger'
 import { createId } from '@paralleldrive/cuid2'
@@ -28,6 +29,7 @@ interface Dependencies {
   providerService: ProviderService
   modelService: ModelService
   kbService: KBService
+  agentService: AgentService
 }
 
 export class ChatService {
@@ -41,6 +43,7 @@ export class ChatService {
   private providerService: ProviderService
   private modelService: ModelService
   private kbService: KBService
+  private agentService: AgentService
 
   constructor({
     prisma,
@@ -53,6 +56,7 @@ export class ChatService {
     providerService,
     modelService,
     kbService,
+    agentService,
   }: Dependencies) {
     this.prisma = prisma
     this.conversationService = conversationService
@@ -64,6 +68,7 @@ export class ChatService {
     this.providerService = providerService
     this.modelService = modelService
     this.kbService = kbService
+    this.agentService = agentService
   }
 
   async chat(params: ChatCompletionRequest): Promise<ChatResult | null> {
@@ -147,6 +152,7 @@ export class ChatService {
       providerService: this.providerService,
       modelService: this.modelService,
       kbService: this.kbService,
+      agentService: this.agentService,
     })
 
     try {

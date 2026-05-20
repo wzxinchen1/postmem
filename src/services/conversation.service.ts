@@ -7,16 +7,32 @@ import type {
 } from '@/src/types'
 import { logger } from '@/src/lib/logger'
 import { Errors } from '@/src/lib/errors'
+import { SystemTokensService } from '@/src/services/system-tokens.service'
+import { AgentService } from '@/src/services/agent.service'
 
 export class ConversationService {
   private prisma: PrismaClient
+  private agentService: AgentService
   private static WELCOME_CONTENT = '你好！我是你的聊天伙伴，拥有联网搜索和记忆搜索能力。你可以向我提问任何问题，我会结合你的历史记忆和互联网信息为你解答。'
+  private welcomeTokens: number | null = null
 
-  constructor({ prisma }: { prisma: PrismaClient }) {
+  constructor({ prisma, agentService }: { prisma: PrismaClient; agentService: AgentService }) {
     this.prisma = prisma
+    this.agentService = agentService
+  }
+
+  private async getWelcomeTokens(): Promise<number> {
+    if (this.welcomeTokens !== null) {
+      return this.welcomeTokens
+    }
+    const agent = await this.agentService.getDefaultChatAgent()
+    this.welcomeTokens = await SystemTokensService.calibrateContent(agent, ConversationService.WELCOME_CONTENT)
+    logger.info('[ConversationService] 欢迎消息 token 校准完成', { welcomeTokens: this.welcomeTokens })
+    return this.welcomeTokens
   }
 
   async create(data: CreateConversationRequest): Promise<Conversation> {
+    const welcomeTokens = await this.getWelcomeTokens()
     const conversation = await this.prisma.conversation.create({
       data: {
         metadata: data.metadata as any,
@@ -24,8 +40,8 @@ export class ConversationService {
           create: {
             role: 'assistant',
             content: ConversationService.WELCOME_CONTENT,
-            tokens: 0,
-            totalTokens: 0,
+            tokens: welcomeTokens,
+            totalTokens: welcomeTokens,
             metadata: { isWelcome: true },
           },
         },
@@ -255,12 +271,13 @@ export class ConversationService {
     ])
 
     if (total === 0) {
+      const welcomeTokens = await this.getWelcomeTokens()
       const welcomeMessage = await this.addMessage({
         conversationId,
         role: 'assistant',
         content: ConversationService.WELCOME_CONTENT,
-        tokens: 0,
-        totalTokens: 0,
+        tokens: welcomeTokens,
+        totalTokens: welcomeTokens,
         memoried: false,
         metadata: { isWelcome: true },
       })

@@ -17,6 +17,7 @@ import { SSEService } from '@/src/services/sse.service'
 import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
 import { KBService } from '@/src/services/kb.service'
+import { AgentService } from '@/src/services/agent.service'
 
 export type ChatState = typeof ChatGraphState.State
 
@@ -31,6 +32,7 @@ export interface GraphDependencies {
   providerService: ProviderService
   modelService: ModelService
   kbService: KBService
+  agentService: AgentService
 }
 
 const BALANCE_ERROR_PATTERNS = [

@@ -3,22 +3,33 @@ import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages
 import { Errors } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
 import { logger } from '@/src/lib/logger'
+import { SystemTokensService } from '@/src/services/system-tokens.service'
 
 export function createSearchNode(deps: GraphDependencies) {
+  async function buildSystemContext(searchResult: string, memoryText: string, recognizedText: string, systemTokensService: SystemTokensService) {
+    const systemPrompt = Prompts.chatSystemRole(
+      searchResult || undefined,
+      memoryText || undefined,
+      recognizedText || undefined,
+    )
+    const systemTokens = await systemTokensService.getSystemTokens(systemPrompt)
+    return { systemPrompt, systemTokens }
+  }
+
   return async function searchNode(state: ChatState): Promise<Partial<ChatState>> {
     if (state.cancelled) {
       return {}
     }
 
+    const systemTokensService = new SystemTokensService({ agent: state.agent })
+
     if (state.langchainMessages.length < 1) {
-      const systemPrompt = Prompts.chatSystemRole(
-        '本轮对话没有触发搜索',
-        '本轮对话没有触发记忆搜索'
-      )
+      const { systemPrompt, systemTokens } = await buildSystemContext('', '', '', systemTokensService)
       return {
         searchResult: '',
         memoryText: '',
-        finalMessages: [new SystemMessage(systemPrompt), ...state.langchainMessages],
+        systemTokens,
+        finalMessages: [new SystemMessage(Prompts.fillCurrentTime(systemPrompt)), ...state.langchainMessages],
       }
     }
 
@@ -54,11 +65,13 @@ export function createSearchNode(deps: GraphDependencies) {
       logger.error('[ChatGraph] searchNeeds 分析失败，跳过搜索', {
         error: error instanceof Error ? error : new Error(String(error)),
       })
-      const systemPrompt = Prompts.chatSystemRole(
-        state.fetchedUrlContent || '本轮对话没有触发搜索',
-        '本轮对话没有触发记忆搜索'
+      const { systemPrompt, systemTokens } = await buildSystemContext(
+        state.fetchedUrlContent ?? '',
+        '',
+        state.recognizedText ?? '',
+        systemTokensService,
       )
-      return { searchResult: '', memoryText: '', finalMessages: [new SystemMessage(systemPrompt), ...state.langchainMessages] }
+      return { searchResult: '', memoryText: '', systemTokens, finalMessages: [new SystemMessage(Prompts.fillCurrentTime(systemPrompt)), ...state.langchainMessages] }
     }
 
     let searchResult = ''
@@ -147,9 +160,11 @@ export function createSearchNode(deps: GraphDependencies) {
         : state.fetchedUrlContent
     }
 
-    const systemPrompt = Prompts.chatSystemRole(
-      searchResult || '本轮对话没有触发搜索',
-      memoryText || '本轮对话没有触发记忆搜索'
+    const { systemPrompt, systemTokens } = await buildSystemContext(
+      searchResult,
+      memoryText,
+      state.recognizedText ?? '',
+      systemTokensService,
     )
 
     logger.info('[ChatGraph] search 完成', {
@@ -159,19 +174,7 @@ export function createSearchNode(deps: GraphDependencies) {
 
     let finalLangchainMessages = state.langchainMessages
 
-    if (state.recognizedText) {
-      const lastUserMsgIndex = finalLangchainMessages.findLastIndex(m => m instanceof HumanMessage)
-      if (lastUserMsgIndex !== -1) {
-        const originalMsg = finalLangchainMessages[lastUserMsgIndex]
-        const originalContent = typeof originalMsg.content === 'string' ? originalMsg.content : ''
-        const augmentedContent = `${originalContent}\n\n[图片描述]\n${state.recognizedText}`
-        finalLangchainMessages = [
-          ...finalLangchainMessages.slice(0, lastUserMsgIndex),
-          new HumanMessage(augmentedContent),
-          ...finalLangchainMessages.slice(lastUserMsgIndex + 1),
-        ]
-      }
-    } else if (state.images && state.images.length > 0 && state.hasVisionCapability) {
+    if (state.images && state.images.length > 0 && state.hasVisionCapability) {
       const lastUserMsgIndex = finalLangchainMessages.findLastIndex(m => m instanceof HumanMessage)
       if (lastUserMsgIndex !== -1) {
         const originalMsg = finalLangchainMessages[lastUserMsgIndex]
@@ -194,7 +197,8 @@ export function createSearchNode(deps: GraphDependencies) {
     return {
       searchResult,
       memoryText,
-      finalMessages: [new SystemMessage(systemPrompt), ...finalLangchainMessages],
+      systemTokens,
+      finalMessages: [new SystemMessage(Prompts.fillCurrentTime(systemPrompt)), ...finalLangchainMessages],
     }
   }
 }
