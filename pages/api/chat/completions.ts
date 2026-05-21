@@ -17,7 +17,7 @@ export default createApiHandler<Deps>({
   handler: async (req, res, deps) => {
     const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId, thinkingEffort } = req.body
 
-    if (!messages || !Array.isArray(messages) || messages.length === 0) {
+    if (!messages || !Array.isArray(messages) || (messages.length === 0 && !regenerateMessageId)) {
       return errorResponse(res, 'BAD_REQUEST', 'messages 不能为空')
     }
 
@@ -90,7 +90,7 @@ export default createApiHandler<Deps>({
         })
         logger.info('[completions] chat completed')
       } catch (error) {
-        logger.error('[completions] Chat error', error instanceof AppError ? error : { errorMessage: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
+        logger.error('[completions] Chat error', { modelId, kbId, conversationId: convId, error: error instanceof AppError ? error : { errorMessage: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined } })
       }
     })()
 

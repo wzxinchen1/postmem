@@ -1,13 +1,20 @@
 import { describe, it, expect, beforeAll, afterAll } from 'vitest'
-import { createClient, getTestKbId, getTestModelId, cleanupConversations, waitForProcessingCleared } from './helpers'
-import type { PostMemClient, StreamEvent } from '@postmem/sdk'
-import { PostMemError } from '@postmem/sdk'
+import {
+  createClient,
+  getTestKbId,
+  getTestModelId,
+  cleanupConversations,
+  waitForProcessingCleared,
+  chatAndWait,
+  getBaseUrl,
+} from './helpers'
+import type { PostMemClient } from '@postmem/sdk'
 
 describe.sequential('POST /api/chat/completions', () => {
   let client: PostMemClient
   let kbId: string
   let modelId: string
-  let firstConversationId: string
+  let convId1: string
 
   beforeAll(async () => {
     await cleanupConversations()
@@ -17,107 +24,164 @@ describe.sequential('POST /api/chat/completions', () => {
   })
 
   afterAll(async () => {
-    await client.disconnect()
+    await client.cleanup()
   })
 
   it('用例1: 空库时聊天 — 自动创建新对话并返回有效 ChatResult', async () => {
-    const handle = await client.chat({
-      messages: [{ id: '1', content: '你好' }],
-      modelId,
-      kbId,
-    })
-    const result = await handle.done
+    const result = await chatAndWait(
+      {
+        messages: [{ id: '1', content: '你好' }],
+        modelId,
+        kbId,
+      },
+      true,
+    )
 
     expect(result.conversationId).toBeTruthy()
     expect(result.fullContent).toBeTruthy()
     expect(result.error).toBeUndefined()
     expect(result.userTokens).toBeGreaterThan(0)
     expect(result.completionTokens).toBeGreaterThan(0)
+    expect(result.totalTokens).toBeGreaterThan(0)
 
     const conversations = await client.listConversations()
     expect(conversations.total).toBe(1)
     expect(conversations.conversations[0].id).toBe(result.conversationId)
 
-    firstConversationId = result.conversationId
+    convId1 = result.conversationId
   })
 
-  it('用例2: 默认行为 — 有对话时复用最新对话', async () => {
-    const handle = await client.chat({
-      messages: [{ id: '2', content: '我叫什么？' }],
-      modelId,
-      kbId,
-    })
-    const result = await handle.done
+  it('用例2: 有对话时复用最新对话', async () => {
+    const result = await chatAndWait(
+      {
+        messages: [{ id: '2', content: '我叫什么？' }],
+        modelId,
+        kbId,
+      },
+      true,
+    )
 
-    expect(result.conversationId).toBe(firstConversationId)
+    expect(result.conversationId).toBe(convId1)
   })
 
-  it('用例3: 缺少 modelId — 返回 400', async () => {
-    try {
-      await client.chat({
-        messages: [{ id: '3', content: '测试' }],
+  it('用例3: 传已有 conversationId 继续聊天', async () => {
+    const result = await chatAndWait(
+      {
+        messages: [{ id: '3', content: '继续聊' }],
+        modelId,
+        kbId,
+        conversationId: convId1,
+      },
+      true,
+    )
+
+    expect(result.conversationId).toBe(convId1)
+    expect(result.fullContent).toBeTruthy()
+  })
+
+  it('用例4: 缺少 modelId — 返回 400', async () => {
+    const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ id: '4', content: '测试' }],
         modelId: '',
         kbId,
-      })
-    } catch (err) {
-      expect(err).toBeInstanceOf(PostMemError)
-      expect((err as PostMemError).status).toBe(400)
-    }
+      }),
+    })
+
+    expect(res.status).toBe(400)
   })
 
-  it('用例4: 缺少 kbId — 返回 400', async () => {
-    try {
-      await client.chat({
-        messages: [{ id: '4', content: '测试' }],
+  it('用例5: 缺少 kbId — 返回 400', async () => {
+    const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ id: '5', content: '测试' }],
         modelId,
         kbId: '',
-      })
-    } catch (err) {
-      expect(err).toBeInstanceOf(PostMemError)
-      expect((err as PostMemError).status).toBe(400)
-    }
+      }),
+    })
+
+    expect(res.status).toBe(400)
   })
 
-  it('用例5: 缺少 messages — 返回 400', async () => {
-    try {
-      await client.chat({ modelId, kbId } as any)
-    } catch (err) {
-      expect(err).toBeInstanceOf(PostMemError)
-      expect((err as PostMemError).status).toBe(400)
-    }
+  it('用例6: 缺少 messages — 返回 400', async () => {
+    const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ modelId, kbId }),
+    })
+
+    expect(res.status).toBe(400)
   })
 
-  it('用例6: 首 token 时间 ≤ 10s', async () => {
-    await waitForProcessingCleared(firstConversationId)
+  it('用例7: 同一对话正在处理时再次请求 → 400', async () => {
+    await waitForProcessingCleared(convId1)
 
-    const startTime = Date.now()
-    let firstChunkTime = 0
+    const firstRes = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ id: '7', content: '请详细解释量子力学的原理' }],
+        modelId,
+        kbId,
+        conversationId: convId1,
+      }),
+    })
+    expect(firstRes.ok).toBe(true)
 
-    const handle = await client.chat(
-      { messages: [{ id: '6', content: '你好' }], modelId, kbId },
-      (event) => {
-        if (event.type === 'chunk' && firstChunkTime === 0) {
-          firstChunkTime = Date.now()
-        }
+    await new Promise((resolve) => setTimeout(resolve, 500))
+
+    const secondRes = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        messages: [{ id: '7b', content: '再问一个问题' }],
+        modelId,
+        kbId,
+        conversationId: convId1,
+      }),
+    })
+
+    expect(secondRes.status).toBe(400)
+    const text = await secondRes.text()
+    expect(text).toContain('尚未处理完成')
+
+    await waitForProcessingCleared(convId1)
+  })
+
+  it('用例8: 首 token 时间 ≤ 10s', async () => {
+    const result = await chatAndWait(
+      {
+        messages: [{ id: '8', content: '你好' }],
+        modelId,
+        kbId,
+        conversationId: convId1,
       },
+      true,
     )
-    await handle.done
 
-    expect(firstChunkTime).toBeGreaterThan(0)
-    const ttfb = firstChunkTime - startTime
+    const firstChunk = result.events.find((e) => e.type === 'chunk')
+    expect(firstChunk).toBeTruthy()
+    const ttfb = (firstChunk!._timestamp ?? 0) - result.requestStartTime
+    expect(ttfb).toBeGreaterThan(0)
     expect(ttfb).toBeLessThanOrEqual(10_000)
   })
 
-  it('用例7: 流事件包含 chunk → done（含 token 计数）序列', async () => {
-    const events: StreamEvent[] = []
-
-    const handle = await client.chat(
-      { messages: [{ id: '7', content: '1+1等于几？' }], modelId, kbId },
-      (event) => events.push(event),
+  it('用例9: 流事件包含 chunk → done 序列（含 token 计数）', async () => {
+    const result = await chatAndWait(
+      {
+        messages: [{ id: '9', content: '1+1等于几？' }],
+        modelId,
+        kbId,
+        conversationId: convId1,
+      },
+      true,
     )
-    await handle.done
 
-    const types = events.map((e) => e.type)
+    const types = result.events.map((e) => e.type)
     expect(types).toContain('chunk')
     expect(types).toContain('done')
 
@@ -125,68 +189,134 @@ describe.sequential('POST /api/chat/completions', () => {
     const doneIndex = types.indexOf('done')
     expect(chunkIndex).toBeLessThan(doneIndex)
 
-    const doneEvent = events.find((e) => e.type === 'done') as any
-    expect(doneEvent.error).toBeUndefined()
-    expect(doneEvent.userTokens).toBeGreaterThan(0)
-    expect(doneEvent.completionTokens).toBeGreaterThan(0)
+    const doneEvent = result.events.find((e) => e.type === 'done') as Record<string, unknown> | undefined
+    expect(doneEvent).toBeTruthy()
+    expect(doneEvent!.error).toBeUndefined()
+    expect(doneEvent!.userTokens as number).toBeGreaterThan(0)
+    expect(doneEvent!.completionTokens as number).toBeGreaterThan(0)
   })
 
-  it('用例8: 流事件包含 messageId（user + assistant）', async () => {
-    await waitForProcessingCleared(firstConversationId)
-
-    const events: StreamEvent[] = []
-
-    const handle = await client.chat(
-      { messages: [{ id: '8', content: '今天天气怎么样？' }], modelId, kbId },
-      (event) => events.push(event),
+  it('用例10: 流事件包含 messageId（user + assistant）', async () => {
+    const result = await chatAndWait(
+      {
+        messages: [{ id: '10', content: '今天天气怎么样？' }],
+        modelId,
+        kbId,
+        conversationId: convId1,
+      },
+      true,
     )
-    await handle.done
 
-    const messageIdEvents = events.filter((e) => e.type === 'messageId')
+    const messageIdEvents = result.events.filter((e) => e.type === 'messageId')
     expect(messageIdEvents.length).toBeGreaterThanOrEqual(2)
 
-    const userMessageId = messageIdEvents.find((e) => e.role === 'user')
-    const assistantMessageId = messageIdEvents.find((e) => e.role === 'assistant')
+    const userMessageId = messageIdEvents.find((e) => (e as Record<string, unknown>).role === 'user')
+    const assistantMessageId = messageIdEvents.find((e) => (e as Record<string, unknown>).role === 'assistant')
     expect(userMessageId).toBeTruthy()
     expect(assistantMessageId).toBeTruthy()
   })
 
-  it('用例9: 流事件包含 status', async () => {
-    await waitForProcessingCleared(firstConversationId)
-
-    const events: StreamEvent[] = []
-
-    const handle = await client.chat(
-      { messages: [{ id: '9', content: '帮我搜索一下记忆' }], modelId, kbId },
-      (event) => events.push(event),
+  it('用例11: 流事件包含 status 事件', async () => {
+    const result = await chatAndWait(
+      {
+        messages: [{ id: '11', content: '帮我搜索一下记忆' }],
+        modelId,
+        kbId,
+        conversationId: convId1,
+      },
+      true,
     )
-    await handle.done
 
-    const statusEvents = events.filter((e) => e.type === 'status')
+    const statusEvents = result.events.filter((e) => e.type === 'status')
     expect(statusEvents.length).toBeGreaterThanOrEqual(1)
+
+    const validStatuses: string[] = [
+      'searchingWeb',
+      'searchingMemory',
+      'summarizing',
+      'memoryProgress',
+      'thinking',
+      'recognizing',
+      'fetchingUrl',
+    ]
+    for (const se of statusEvents) {
+      expect(validStatuses).toContain((se as Record<string, unknown>).status as string)
+    }
   })
 
-  it('用例10: 取消进行中的对话 — 流收到 done 事件', async () => {
-    await waitForProcessingCleared(firstConversationId)
-
-    const handle = await client.chat(
-      { messages: [{ id: '10', content: '请详细解释量子力学的原理' }], modelId, kbId },
+  it('用例12: 聊天完成后消息正确保存', async () => {
+    await chatAndWait(
+      {
+        messages: [{ id: '12', content: '测试消息持久化' }],
+        modelId,
+        kbId,
+        conversationId: convId1,
+      },
+      false,
     )
 
-    await new Promise((resolve) => setTimeout(resolve, 500))
+    const msgResult = await client.getMessages(convId1, { page: 1, limit: 50 })
 
-    await client.cancel(handle.conversationId)
+    const userMsgs = msgResult.messages.filter((m) => m.role === 'user')
+    const assistantMsgs = msgResult.messages.filter((m) => m.role === 'assistant')
 
-    const result = await handle.done
-    expect(result).toBeTruthy()
+    expect(assistantMsgs.length).toBeGreaterThan(0)
+    expect(assistantMsgs[assistantMsgs.length - 1].content).toBeTruthy()
+    expect(userMsgs[userMsgs.length - 1].tokens).toBeGreaterThan(0)
   })
 
-  it('用例11: 取消 — 缺少 conversationId 返回 400', async () => {
-    try {
-      await client.cancel('')
-    } catch (err) {
-      expect(err).toBeInstanceOf(PostMemError)
-      expect((err as PostMemError).status).toBe(400)
-    }
+  it('用例13: 重发消息 — 删除后续消息并重新生成', async () => {
+    const msgResult = await client.getMessages(convId1, { page: 1, limit: 50 })
+    const assistantMsgs = msgResult.messages.filter((m) => m.role === 'assistant')
+    const lastAssistantMsg = assistantMsgs[assistantMsgs.length - 1]
+    const previousTotal = msgResult.total
+
+    const result = await chatAndWait(
+      {
+        messages: [],
+        modelId,
+        kbId,
+        conversationId: convId1,
+        regenerateMessageId: lastAssistantMsg.id,
+      },
+      true,
+    )
+
+    expect(result.fullContent).toBeTruthy()
+
+    const msgResultAfter = await client.getMessages(convId1, { page: 1, limit: 50 })
+    const newAssistantMsgs = msgResultAfter.messages.filter((m) => m.role === 'assistant')
+    const newLastAssistant = newAssistantMsgs[newAssistantMsgs.length - 1]
+
+    expect(newLastAssistant.content).toBeTruthy()
+    expect(newLastAssistant.id).not.toBe(lastAssistantMsg.id)
+    expect(msgResultAfter.total).toBeLessThan(previousTotal)
+  })
+
+  it('用例14: 重发后继续聊天 — 新消息追加在重发内容之后', async () => {
+    const msgResultBefore = await client.getMessages(convId1, { page: 1, limit: 50 })
+
+    const result = await chatAndWait(
+      {
+        messages: [{ id: '14', content: '重发后继续聊天' }],
+        modelId,
+        kbId,
+        conversationId: convId1,
+      },
+      true,
+    )
+
+    expect(result.conversationId).toBe(convId1)
+    expect(result.fullContent).toBeTruthy()
+
+    const msgResultAfter = await client.getMessages(convId1, { page: 1, limit: 50 })
+
+    expect(msgResultAfter.total).toBeGreaterThan(msgResultBefore.total)
+
+    const lastUserMsg = msgResultAfter.messages.filter((m) => m.role === 'user').slice(-1)[0]
+    const lastAssistantMsg = msgResultAfter.messages.filter((m) => m.role === 'assistant').slice(-1)[0]
+
+    expect(lastUserMsg.content).toContain('重发后继续聊天')
+    expect(lastAssistantMsg.content).toBeTruthy()
   })
 })
