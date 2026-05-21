@@ -50,12 +50,6 @@ export function createFinalizeNode(deps: GraphDependencies) {
       reasoningTokens: state.reasoningTokens ?? undefined,
     })
 
-    await deps.sseService.clearProcessing(state.conversationId)
-
-    await new Promise(resolve => setTimeout(resolve, 1000))
-    await deps.sseService.clearMessageStream()
-    await deps.sseService.clearCancelled(state.conversationId)
-
     logger.info('[ChatGraph] finalize 完成', { conversationId: state.conversationId })
 
     return {}

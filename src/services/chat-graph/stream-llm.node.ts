@@ -4,6 +4,8 @@ import { DoneReason } from '@/src/types'
 import { logger } from '@/src/lib/logger'
 import { Errors } from '@/src/lib/errors'
 
+const STREAM_TIMEOUT_MS = 10_000
+
 export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalanceError: (err: unknown) => boolean) {
   return async function streamLLMNode(state: ChatState): Promise<Partial<ChatState>> {
     if (state.cancelled) {
@@ -16,13 +18,17 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
     let reasoningTokens = 0
     let finishReason = ''
 
+    const controller = new AbortController()
+    const timeoutId = setTimeout(() => controller.abort(), STREAM_TIMEOUT_MS)
+
     try {
       logger.info('[ChatGraph] streamLLM 开始', {
         conversationId: state.conversationId,
         thinkingEffort: (state as any).thinkingEffort,
         finalMessageCount: state.finalMessages.length,
       })
-      const stream = await (state.agent as { stream: (messages: unknown[]) => AsyncIterable<Record<string, unknown>> }).stream(state.finalMessages)
+      const stream = await (state.agent as { stream: (messages: unknown[], options?: { signal?: AbortSignal }) => AsyncIterable<Record<string, unknown>> }).stream(state.finalMessages, { signal: controller.signal })
+      clearTimeout(timeoutId)
 
       let thinkingCount = 0
       let chunkCount = 0
@@ -76,8 +82,15 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
           })
         }
       }
+      clearTimeout(timeoutId)
       logger.info('[ChatGraph] streamLLM 流结束', { thinkingCount, chunkCount, fullContentLength: fullContent.length })
     } catch (err) {
+      clearTimeout(timeoutId)
+      if ((err as Error)?.name === 'AbortError') {
+        const timeoutErr = Errors.badRequest('等AI响应的时间太长，稍后重试')
+        deps.onError(timeoutErr)
+        throw timeoutErr
+      }
       deps.onError(err)
       if (isInsufficientBalanceError(err)) {
         logger.error('[ChatGraph] 提供商 API 欠费', { conversationId: state.conversationId, errorMessage: (err as Error).message })

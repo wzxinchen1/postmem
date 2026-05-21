@@ -12,7 +12,7 @@ import { AgentService } from '@/src/services/agent.service'
 import { SystemTokensService } from '@/src/services/system-tokens.service'
 import { createChatGraph } from '@/src/services/chat-graph'
 import { logger } from '@/src/lib/logger'
-import { Errors } from '@/src/lib/errors'
+import { Errors, AppError } from '@/src/lib/errors'
 import { createId } from '@paralleldrive/cuid2'
 import type { ChatCompletionRequest, ChatMessageImage } from '@/src/types'
 
@@ -176,7 +176,9 @@ export class ChatService {
       agentService: this.agentService,
       systemTokensService: this.systemTokensService,
       onError: (error) => {
-        const appError = Errors.internalError(error instanceof Error ? error.message : String(error))
+        const appError = error instanceof AppError
+          ? error
+          : Errors.internalError(error instanceof Error ? error.message : String(error))
         logger.error('[ChatGraph] 流式响应异常', { conversationId: convId, errorMessage: appError.message, errorDetails: appError.details, stack: error instanceof Error ? error.stack : undefined })
         this.sseService.emit({ type: 'error', message: appError.message })
       },

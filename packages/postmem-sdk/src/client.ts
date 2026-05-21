@@ -191,6 +191,10 @@ export class PostMemClient {
             totalTokens = event.totalTokens
             completionTokens = event.completionTokens
             reasoningTokens = event.reasoningTokens
+            this.cleanup().catch(() => {})
+            break
+          case 'error':
+            this.cleanup().catch(() => {})
             break
         }
       }, { signal: options?.signal })
@@ -200,6 +204,7 @@ export class PostMemClient {
 
     const encoder = new TextEncoder()
     const reader = this.streamReader
+    const cleanup = () => this.cleanup().catch(() => {})
 
     const stream = new ReadableStream({
       async start(controller) {
@@ -226,6 +231,9 @@ export class PostMemClient {
           await reader.consume((event: StreamEvent) => {
             const data = JSON.stringify(event)
             controller.enqueue(encoder.encode(`data: ${data}\n\n`))
+            if (event.type === 'done' || event.type === 'error') {
+              cleanup()
+            }
           })
         } finally {
           clearInterval(keepAliveInterval)
@@ -247,6 +255,10 @@ export class PostMemClient {
 
   async cancel(conversationId: string): Promise<void> {
     await this.http.post<void>('/api/chat/cancel', { conversationId })
+  }
+
+  async cleanup(conversationId?: string): Promise<void> {
+    await this.http.post<void>('/api/chat/cleanup', { conversationId })
   }
 
   async getMessage(messageId: string): Promise<ChatMessage> {
