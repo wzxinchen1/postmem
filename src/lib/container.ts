@@ -47,7 +47,7 @@ container.register({
   initService: asClass(InitService).scoped(),
   llmResilienceService: asClass(LLMResilienceService).scoped(),
   agentService: asClass(AgentService).scoped(),
-  systemTokensService: asClass(SystemTokensService).singleton(),
+  systemTokensService: asClass(SystemTokensService).scoped(),
 })
 
 export default container

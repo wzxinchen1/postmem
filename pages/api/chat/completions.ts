@@ -3,6 +3,7 @@ import { ConversationService } from '@/src/services/conversation.service'
 import { SSEService } from '@/src/services/sse.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 import { logger } from '@/src/lib/logger'
+import { AppError } from '@/src/lib/errors'
 
 interface Deps {
   chatService: ChatService
@@ -89,7 +90,7 @@ export default createApiHandler<Deps>({
         })
         logger.info('[completions] chat completed')
       } catch (error) {
-        logger.error('[completions] Chat error', { errorMessage: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
+        logger.error('[completions] Chat error', error instanceof AppError ? error : { errorMessage: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined })
       }
     })()
 

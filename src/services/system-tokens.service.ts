@@ -8,44 +8,24 @@ const REDIS_KEY_PROMPT = 'system_tokens:default_prompt'
 const CALIBRATION_USER_MESSAGE = '1'
 
 export class SystemTokensService {
-  private defaultCalibrated = false
-  private nonDefaultTokens: number | null = null
-
   async getSystemTokens(systemPrompt: string, agent: unknown): Promise<number> {
-    if (this.defaultCalibrated) {
-      if (this.nonDefaultTokens !== null) {
-        logger.info('[SystemTokens] 使用内存中的非默认提示词 token', { systemTokens: this.nonDefaultTokens })
-        return this.nonDefaultTokens
-      }
-
-      const tokens = await this.calibrate(systemPrompt, agent)
-      this.nonDefaultTokens = tokens
-      logger.info('[SystemTokens] 校准非默认提示词 token 存入内存', { systemTokens: tokens })
-      return tokens
-    }
-
     const cachedPrompt = await redis.get(REDIS_KEY_PROMPT)
     const cachedTokens = await redis.get(REDIS_KEY_TOKENS)
 
     if (cachedPrompt !== null && cachedTokens !== null) {
       if (cachedPrompt === systemPrompt) {
-        this.defaultCalibrated = true
         logger.info('[SystemTokens] 默认提示词与缓存一致，使用缓存 token', { systemTokens: Number(cachedTokens) })
         return Number(cachedTokens)
       }
 
       const tokens = await this.calibrate(systemPrompt, agent)
-      await redis.set(REDIS_KEY_PROMPT, systemPrompt)
-      await redis.set(REDIS_KEY_TOKENS, String(tokens))
-      this.defaultCalibrated = true
-      logger.info('[SystemTokens] 默认提示词已变更，重新校准并缓存', { systemTokens: tokens })
+      logger.info('[SystemTokens] 非默认提示词，校准完成', { systemTokens: tokens })
       return tokens
     }
 
     const tokens = await this.calibrate(systemPrompt, agent)
     await redis.set(REDIS_KEY_PROMPT, systemPrompt)
     await redis.set(REDIS_KEY_TOKENS, String(tokens))
-    this.defaultCalibrated = true
     logger.info('[SystemTokens] 首次校准默认提示词 token 并缓存', { systemTokens: tokens })
     return tokens
   }
