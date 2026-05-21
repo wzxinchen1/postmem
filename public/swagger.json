@@ -15,6 +15,36 @@
     }
   ],
   "paths": {
+    "/api/__warmup": {
+      "get": {
+        "summary": "GET /api/__warmup",
+        "description": "GET /api/__warmup",
+        "tags": [
+          "Other"
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/chat/cancel": {
       "post": {
         "summary": "POST /api/chat/cancel",
@@ -422,6 +452,36 @@
               "default": 20
             }
           }
+        ],
+        "responses": {
+          "200": {
+            "description": "成功响应",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "type": "object",
+                  "properties": {
+                    "success": {
+                      "type": "boolean",
+                      "example": true
+                    },
+                    "data": {
+                      "type": "object"
+                    }
+                  }
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/chat/message": {
+      "get": {
+        "summary": "GET /api/chat/message",
+        "description": "GET /api/chat/message",
+        "tags": [
+          "Chat"
         ],
         "responses": {
           "200": {

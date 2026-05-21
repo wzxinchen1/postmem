@@ -37,6 +37,7 @@ export const ChatGraphState = Annotation.Root({
   recognizedText: Annotation<string>,
   fetchedUrlContent: Annotation<string>,
   systemTokens: Annotation<number>,
+  lastUserMessageId: Annotation<string>,
 })
 
 export type ChatState = typeof ChatGraphState.State

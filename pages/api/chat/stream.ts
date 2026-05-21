@@ -93,7 +93,7 @@ export default async function handler(req: any, res: any) {
       await new Promise(resolve => setTimeout(resolve, POLL_INTERVAL_MS))
     }
   } catch (err) {
-    logger.error('[stream] SSE stream error', err)
+    logger.error('[stream] SSE 流异常，连接终止', err)
     clearInterval(keepAliveInterval)
     res.end()
   }

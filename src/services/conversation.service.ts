@@ -222,6 +222,13 @@ export class ConversationService {
     })
   }
 
+  async updateMessageContent(messageId: string, content: string): Promise<void> {
+    await this.prisma.chatMessage.update({
+      where: { id: messageId },
+      data: { content },
+    })
+  }
+
   async updateMessageTokens(messageId: string, tokens: number, totalTokens: number): Promise<void> {
     await this.prisma.chatMessage.update({
       where: { id: messageId },

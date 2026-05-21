@@ -1,7 +1,6 @@
 import type { ChatState } from './types'
 import type { GraphDependencies } from './index'
 import { DoneReason } from '@/src/types'
-import { createId } from '@paralleldrive/cuid2'
 import { logger } from '@/src/lib/logger'
 import { Errors } from '@/src/lib/errors'
 
@@ -10,9 +9,6 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
     if (state.cancelled) {
       return {}
     }
-
-    const aiMessageId = createId()
-    await deps.sseService.emit({ type: 'messageId', role: 'assistant', id: aiMessageId })
 
     let fullContent = ''
     let apiTotalPromptTokens = 0

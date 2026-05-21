@@ -115,6 +115,7 @@ export class ChatService {
 
     let images: ChatMessageImage[] = []
     let urls: string[] = []
+    let userMessageId = ''
 
     if (regenerateMessageId) {
       const originalMessage = await this.conversationService.getMessage(regenerateMessageId)
@@ -137,8 +138,8 @@ export class ChatService {
       if (lastMessage.urls) {
         urls = lastMessage.urls as string[]
       }
-      const userMessageId = createId()
-      await this.conversationService.addMessageWithId({
+      userMessageId = createId()
+      const savedMessage = await this.conversationService.addMessageWithId({
         id: userMessageId,
         conversationId: convId,
         role: 'user',
@@ -149,8 +150,11 @@ export class ChatService {
         images: lastMessage.images,
         urls: lastMessage.urls,
       })
-      await this.sseService.emit({ type: 'messageId', role: 'user', id: userMessageId })
+      await this.sseService.emit({ type: 'messageId', role: 'user', id: userMessageId, message: savedMessage })
     }
+
+    const aiMessageId = createId()
+    await this.sseService.emit({ type: 'messageId', role: 'assistant', id: aiMessageId })
 
     if (await this.sseService.isCancelled(convId)) {
       await this.sseService.clearCancelled(convId)
@@ -203,6 +207,7 @@ export class ChatService {
         hasVisionCapability: false,
         recognizedText: '',
         fetchedUrlContent: '',
+        lastUserMessageId: userMessageId ?? '',
       })
 
       if (result.cancelled) {

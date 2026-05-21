@@ -9,9 +9,9 @@ import { logger } from '@/src/lib/logger'
 export function createSearchNode(deps: GraphDependencies) {
   async function buildSystemContext(searchResult: string, memoryText: string, recognizedText: string, agent: unknown) {
     const systemPrompt = Prompts.chatSystemRole(
-      searchResult || undefined,
-      memoryText || undefined,
-      recognizedText || undefined,
+      searchResult,
+      memoryText,
+      recognizedText,
     )
     const systemTokens = await deps.systemTokensService.getSystemTokens(systemPrompt, agent)
     return { systemPrompt, systemTokens }
@@ -133,7 +133,7 @@ export function createSearchNode(deps: GraphDependencies) {
     const { systemPrompt, systemTokens } = await buildSystemContext(
       searchResult,
       memoryText,
-      state.recognizedText ?? '',
+      state.recognizedText,
       state.agent,
     )
 
@@ -162,16 +162,34 @@ export function createSearchNode(deps: GraphDependencies) {
           ...finalLangchainMessages.slice(lastUserMsgIndex + 1),
         ]
       }
+    } else if (state.recognizedText) {
+      const lastUserMsgIndex = finalLangchainMessages.findLastIndex(m => m instanceof HumanMessage)
+      if (lastUserMsgIndex !== -1) {
+        const originalMsg = finalLangchainMessages[lastUserMsgIndex]
+        const originalContent = typeof originalMsg.content === 'string' ? originalMsg.content : ''
+        const injectedContent = `${originalContent}\n\n[用户上传了图片，图片描述如下]\n${state.recognizedText}`
+        finalLangchainMessages = [
+          ...finalLangchainMessages.slice(0, lastUserMsgIndex),
+          new HumanMessage({ content: injectedContent }),
+          ...finalLangchainMessages.slice(lastUserMsgIndex + 1),
+        ]
+        if (state.lastUserMessageId) {
+          await deps.conversationService.updateMessageContent(state.lastUserMessageId, injectedContent)
+        }
+      }
     }
 
     const mergedUrls = [...new Set([...state.urls, ...fetchedUrls])]
+
+    const filledPrompt = Prompts.fillCurrentTime(systemPrompt)
+    logger.info('[ChatGraph] 本轮系统提示词', { conversationId: state.conversationId, systemPrompt: filledPrompt })
 
     return {
       searchResult,
       memoryText,
       systemTokens,
       urls: mergedUrls,
-      finalMessages: [new SystemMessage(Prompts.fillCurrentTime(systemPrompt)), ...finalLangchainMessages],
+      finalMessages: [new SystemMessage(filledPrompt), ...finalLangchainMessages],
     }
   }
 }

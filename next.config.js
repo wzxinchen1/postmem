@@ -6,7 +6,7 @@ const nextConfig = {
   webpack: (config, { dev }) => {
     if (dev) {
       config.watchOptions = {
-        ignored: /.*/,
+        ignored: /node_modules/,
       }
     }
     return config

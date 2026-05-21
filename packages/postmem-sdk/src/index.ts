@@ -1,13 +1,40 @@
 export { PostMemClient } from './client'
 export { StreamReader } from './stream-reader'
-export { PostMemError, DoneReason, StreamStatus, ThinkingEffort } from './types'
+export { PostMemError, StreamStatus, ThinkingEffort, DoneReason } from './types'
 export type {
+  PostMemConfig,
   ChatMessageInput,
   ChatMessageImage,
   ChatRequest,
   ChatMessage,
   Conversation,
-  PostMemConfig,
   ChatResult,
+  ChatMessageListResult,
+  StreamEvent,
+  KnowledgeBaseInfo,
+  KnowledgeBaseStats,
+  SearchSourceInfo,
+  IngestMessage,
+  IngestTextResponse,
+  IngestMessagesResponse,
+  IngestStreamEvent,
+  Vendor,
+  CreateVendorRequest,
+  UpdateVendorRequest,
+  Provider,
+  CreateProviderRequest,
+  UpdateProviderRequest,
+  Model,
+  CreateModelRequest,
+  UpdateModelRequest,
+  ModelCapability,
+  ProviderTreeNode,
+  ModelTreeNode,
+  Session,
+  SessionStats,
+  AppSettings,
+  ChatSettingInfo,
+  ValidateModelsResult,
+  WarmupResult,
+  WarmupRouteEntry,
 } from './types'
-export type { StreamEvent } from './types'

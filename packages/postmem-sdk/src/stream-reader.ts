@@ -7,7 +7,7 @@ interface StreamReaderConfig {
 }
 
 export class StreamReader {
-  private baseUrl: string
+  readonly baseUrl: string
   private requestTimeout: number
 
   constructor(config: StreamReaderConfig) {
@@ -19,79 +19,81 @@ export class StreamReader {
     onEvent: (event: StreamEvent) => void,
     options?: { signal?: AbortSignal },
   ): Promise<void> {
-    if (typeof onEvent !== 'function') {
-      throw PostMemError.validation('onEvent callback is required')
-    }
-
     const externalSignal = options?.signal
     if (externalSignal?.aborted) return
 
-    let retryDelay = 1000
+    const controller = new AbortController()
+
+    if (this.requestTimeout > 0) {
+      setTimeout(() => controller.abort(), this.requestTimeout)
+    }
+
+    if (externalSignal) {
+      if (externalSignal.aborted) return
+      externalSignal.addEventListener('abort', () => controller.abort(), { once: true })
+    }
+
+    let response: Response
+    try {
+      response = await fetch(`${this.baseUrl}/api/chat/stream`, {
+        signal: controller.signal,
+      })
+    } catch (error) {
+      if (error instanceof DOMException && error.name === 'AbortError') {
+        throw PostMemError.timeout()
+      }
+      throw PostMemError.network(error instanceof Error ? error.message : String(error))
+    }
+
+    if (!response.ok) {
+      throw new PostMemError(response.status, `Stream request failed: ${response.status}`)
+    }
+
+    const reader = response.body?.getReader()
+    if (!reader) {
+      throw PostMemError.serverError('Failed to get response reader')
+    }
+
+    const decoder = new TextDecoder()
+    let buffer = ''
 
     while (true) {
       if (externalSignal?.aborted) return
 
-      const controller = new AbortController()
-
-      if (this.requestTimeout > 0) {
-        setTimeout(() => controller.abort(), this.requestTimeout)
-      }
-
-      if (externalSignal) {
-        if (externalSignal.aborted) return
-        externalSignal.addEventListener('abort', () => controller.abort(), { once: true })
-      }
-
+      let done: boolean
+      let value: Uint8Array
       try {
-        const response = await fetch(`${this.baseUrl}/api/chat/stream`, {
-          signal: controller.signal,
-        })
-
-        if (!response.ok) {
-          throw new PostMemError(response.status, `Stream request failed: ${response.status}`)
+        const result = await reader.read()
+        done = result.done
+        value = result.value!
+      } catch (error) {
+        if (error instanceof DOMException && error.name === 'AbortError') {
+          return
         }
-
-        const reader = response.body?.getReader()
-        if (!reader) {
-          throw PostMemError.serverError('Failed to get response reader')
-        }
-
-        const decoder = new TextDecoder()
-        let buffer = ''
-
-        retryDelay = 1000
-
-        while (true) {
-          const { done, value } = await reader.read()
-          if (done) break
-
-          buffer += decoder.decode(value, { stream: true })
-          const lines = buffer.split('\n')
-          buffer = lines.pop() || ''
-
-          for (const line of lines) {
-            const trimmed = line.trim()
-            if (!trimmed.startsWith('data:')) continue
-
-            const jsonStr = trimmed.slice(5).trim()
-            if (!jsonStr || jsonStr === '[DONE]') continue
-
-            let event: StreamEvent
-            try {
-              event = JSON.parse(jsonStr)
-            } catch {
-              continue
-            }
-
-            onEvent(event)
-          }
-        }
-      } catch {
-        if (externalSignal?.aborted) return
+        throw PostMemError.network(error instanceof Error ? error.message : String(error))
       }
+      if (done) break
 
-      await new Promise(resolve => setTimeout(resolve, retryDelay))
-      retryDelay = Math.min(retryDelay * 2, 30_000)
+      buffer += decoder.decode(value, { stream: true })
+      const lines = buffer.split('\n')
+      buffer = lines.pop() || ''
+
+      for (const line of lines) {
+        const trimmed = line.trim()
+        if (!trimmed.startsWith('data:')) continue
+
+        const jsonStr = trimmed.slice(5).trim()
+        if (!jsonStr || jsonStr === '[DONE]') continue
+
+        let event: StreamEvent
+        try {
+          event = JSON.parse(jsonStr)
+        } catch {
+          continue
+        }
+
+        onEvent(event)
+      }
     }
   }
 }
