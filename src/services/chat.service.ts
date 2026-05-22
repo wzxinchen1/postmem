@@ -130,7 +130,9 @@ export class ChatService {
       }
 
       await this.conversationService.removeMessagesAfter(convId, regenerateMessageId)
-    } else if (messages.length > 0) {
+    } else {
+      logger.info('[ChatService] messages 分支判断', { conversationId: convId, messagesLength: messages?.length, hasMessages: messages?.length > 0, regenerateMessageId, messagesCount: Array.isArray(messages) ? messages.length : 'not-array' })
+      if (messages.length > 0) {
       const lastMessage = messages[messages.length - 1]
       if (lastMessage.images) {
         images = lastMessage.images as ChatMessageImage[]
@@ -151,6 +153,7 @@ export class ChatService {
         urls: lastMessage.urls,
       })
       await this.sseService.emit({ type: 'messageId', role: 'user', id: userMessageId, message: savedMessage })
+      }
     }
 
     const aiMessageId = createId()

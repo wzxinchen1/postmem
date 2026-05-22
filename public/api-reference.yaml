@@ -48,6 +48,19 @@ Response Body:
   400: 请求参数错误 (ErrorResponse)
   409: 冲突（重复） (ErrorResponse)
 
+### POST /api/chat/cleanup
+
+Request Body:
+  - `conversationId`: string (required)
+
+Response Body:
+  200: 成功响应 (object)
+    { success: boolean, data: object }
+  201: 创建成功 (object)
+    { success: boolean, data: object }
+  400: 请求参数错误 (ErrorResponse)
+  409: 冲突（重复） (ErrorResponse)
+
 ### POST /api/chat/completions
 
 Request Body:

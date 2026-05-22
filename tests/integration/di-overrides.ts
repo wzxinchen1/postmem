@@ -34,6 +34,10 @@ export function setSearchDisabled(disabled: boolean): void {
   Object.assign(getStore(), { searchDisabled: disabled })
 }
 
+export function getSearchDisabled(): boolean {
+  return getStore().searchDisabled ?? false
+}
+
 export function createTestOverrides() {
   return {
     chatSettingService: asValue(mockChatSettingProvider),

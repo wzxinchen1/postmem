@@ -3,11 +3,33 @@ import { fileURLToPath } from 'url'
 import path from 'path'
 import fs from 'fs'
 import http from 'http'
+import winston from 'winston'
+import { SeqTransport } from '@datalust/winston-seq'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') })
+
+const testLogger = winston.createLogger({
+  level: 'info',
+  format: winston.format.combine(
+    winston.format.errors({ stack: true }),
+    winston.format.json(),
+  ),
+  defaultMeta: { application: 'postmem-test-runner' },
+  transports: [
+    new winston.transports.Console({
+      format: winston.format.combine(
+        winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
+        winston.format.printf(({ timestamp, level, message }) => `${timestamp} [${level}] [runner]: ${message}`),
+      ),
+    }),
+    ...(process.env.SEQ_URL
+      ? [new SeqTransport({ serverUrl: process.env.SEQ_URL, apiKey: process.env.SEQ_API_KEY, onError: (e: Error) => console.error('[Seq] test runner transport error:', e) })]
+      : []),
+  ],
+})
 
 process.env.INTEGRATION_TEST = 'true'
 
@@ -17,10 +39,16 @@ export interface TestContext {
 
 export type TestFn = (ctx: TestContext) => Promise<void>
 
+export interface TestOptions {
+  /** 该测试是否需要搜索。默认 false。声明 true 的测试允许产生搜索事件，false 的测试不允许 */
+  search?: boolean
+}
+
 interface TestCase {
   name: string
   fn: TestFn
   timeoutMs: number
+  search: boolean
 }
 
 interface TestResult {
@@ -77,8 +105,16 @@ export function before(fn: TestFn): void {
   beforeFns.push(fn)
 }
 
-export function test(name: string, fn: TestFn, timeoutMs = DEFAULT_TIMEOUT) {
-  tests.push({ name, fn, timeoutMs })
+export function test(name: string, fn: TestFn, timeoutOrOptions?: number | TestOptions & { timeoutMs?: number }) {
+  let timeoutMs = DEFAULT_TIMEOUT
+  let search = false
+  if (typeof timeoutOrOptions === 'number') {
+    timeoutMs = timeoutOrOptions
+  } else if (timeoutOrOptions) {
+    timeoutMs = timeoutOrOptions.timeoutMs ?? DEFAULT_TIMEOUT
+    search = timeoutOrOptions.search ?? false
+  }
+  tests.push({ name, fn, timeoutMs, search })
 }
 
 async function runWithTimeout(fn: TestFn, ctx: TestContext, timeoutMs: number): Promise<void> {
@@ -235,17 +271,25 @@ async function runTests(): Promise<void> {
 
     const start = Date.now()
     logInfo(`${label} 开始... (超时 ${tc.timeoutMs}ms)`)
+    testLogger.info(`test_start`, { index: i + 1, total: tests.length, name: tc.name, search: tc.search })
     try {
+      // 根据测试的 search 选项自动管理 searchDisabled
+      const { setSearchDisabled } = await import('./helpers')
+      setSearchDisabled(!tc.search)
+
       await runWithTimeout(tc.fn, ctx, tc.timeoutMs)
-      const { checkMessageTokens } = await import('./helpers')
+      const { checkMessageTokens, assertNoSearchWhenDisabled } = await import('./helpers')
       await checkMessageTokens()
+      await assertNoSearchWhenDisabled(tc.search)
       const durationMs = Date.now() - start
+      testLogger.info(`test_pass`, { index: i + 1, name: tc.name, durationMs })
       logSuccess(`${label} (${durationMs}ms)`)
       results.push({ name: tc.name, passed: true, durationMs })
     } catch (err: unknown) {
       const durationMs = Date.now() - start
       const message = err instanceof Error ? err.message : String(err)
       const stack = err instanceof Error ? err.stack : undefined
+      testLogger.error(`test_fail`, { index: i + 1, name: tc.name, durationMs, error: message })
       logFail(`${label} (${durationMs}ms)`)
       console.error(`  \x1b[31m${message}\x1b[0m`)
       if (stack) {
