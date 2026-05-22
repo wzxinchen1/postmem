@@ -271,12 +271,13 @@ export class ConversationService {
     let [messages, total] = await Promise.all([
       this.prisma.chatMessage.findMany({
         where,
-        orderBy: { createdAt: 'asc' },
+        orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
       }),
       this.prisma.chatMessage.count({ where }),
     ])
+    messages.reverse()
 
     if (total === 0) {
       const welcomeTokens = await this.getWelcomeTokens()

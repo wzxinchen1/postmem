@@ -103,22 +103,43 @@ export async function getWebpageCount(): Promise<number> {
   return count
 }
 
+/**
+ * 等待并验证聊天相关的 Redis key 全部清理完毕。
+ *
+ * 正常聊天完成后的清理逻辑（`chat.service.ts:225`）：
+ *   - chat:processing:{convId}   — 在 graph invoke 的 finally 中清除
+ *   - chat:cancel:{convId}       — 启动时 init.node 先 clearCancelled，正常流程不会残留
+ *
+ * 如果 consume 或服务端清理失效，将抛出超时异常。
+ */
 export async function waitForProcessingCleared(conversationId: string, timeoutMs = 30_000): Promise<void> {
   const redis = new Redis(REDIS_CONFIG)
-  const key = `chat:processing:${conversationId}`
+  const convId = conversationId
+  const keys = [`chat:processing:${convId}`, `chat:cancel:${convId}`]
   const start = Date.now()
 
-  while (Date.now() - start < timeoutMs) {
-    const exists = await redis.exists(key)
-    if (exists === 0) {
-      await redis.quit()
-      return
+  try {
+    while (Date.now() - start < timeoutMs) {
+      const remaining = await redis.exists(...keys)
+      if (remaining === 0) {
+        return
+      }
+      await new Promise((resolve) => setTimeout(resolve, 200))
     }
-    await new Promise((resolve) => setTimeout(resolve, 200))
-  }
 
-  await redis.quit()
-  throw new Error(`等待 processing 状态清理超时 (${timeoutMs}ms), conversationId: ${conversationId}`)
+    // 超时后查看到底哪个 key 还活着
+    const alive: string[] = []
+    for (const key of keys) {
+      if (await redis.exists(key)) {
+        alive.push(key)
+      }
+    }
+    throw new Error(
+      `聊天清理超时 (${timeoutMs}ms), conversationId=${convId}, 残留 key: ${alive.join(', ') || '未知'}`
+    )
+  } finally {
+    await redis.quit()
+  }
 }
 
 /**
@@ -219,10 +240,9 @@ class EventListener {
 let activeListener: EventListener | null = null
 
 export async function startConsume(client: PostMemClient): Promise<void> {
-  // 每次（含 retry）启动 consume 前清空 Redis SSE 流残留，防止旧事件被 listener 误收
+  // 每次启动 consume 前清理 Redis 残留（如上次测试失败留下的 key），避免干扰
   const redis = new Redis(REDIS_CONFIG)
   await redis.del('chat:global')
-  // 清理残留的 processing 标记
   const stream = redis.scanStream({ match: 'chat:processing:*', count: 100 })
   const keys: string[] = await new Promise((resolve, reject) => {
     const collected: string[] = []
