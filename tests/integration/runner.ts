@@ -334,6 +334,10 @@ export async function run(): Promise<void> {
   let exitCode = 0
 
   try {
+    // 在 Next.js webpack 编译前通过 globalThis 注入 DI override
+    const { createTestOverrides } = await import('./di-overrides')
+    ;(globalThis as any).__POSTMEM_TEST_DI_OVERRIDES = createTestOverrides()
+
     await startServer()
     await runTests()
     printSummary()

@@ -21,14 +21,14 @@ import { InitService } from '@/src/services/init.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 import { AgentService } from '@/src/services/agent.service'
 import { SystemTokensService } from '@/src/services/system-tokens.service'
-import { createTestOverrides } from '@/tests/integration/di-overrides'
-import { logger } from './logger'
 
-const isTest = process.env.INTEGRATION_TEST === 'true'
-logger.info("isTest:"+isTest);
 export const container = createContainer({
   injectionMode: InjectionMode.PROXY,
 })
+
+const testDiOverrides = (globalThis as any).__POSTMEM_TEST_DI_OVERRIDES as
+  | { chatSettingService: ReturnType<typeof asValue> }
+  | undefined
 
 container.register({
   prisma: asValue(prisma as PrismaClient),
@@ -45,8 +45,8 @@ container.register({
   sseService: asClass(SSEService).scoped(),
   searchService: asClass(SearchService).scoped(),
   chatMemoryService: asClass(ChatMemoryService).scoped(),
-  chatSettingService: isTest
-    ? createTestOverrides().chatSettingService
+  chatSettingService: testDiOverrides
+    ? testDiOverrides.chatSettingService
     : asClass(ChatSettingService).scoped(),
   chatModelFactory: asClass(ChatModelFactory).scoped(),
   chatService: asClass(ChatService).scoped(),
