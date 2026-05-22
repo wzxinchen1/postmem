@@ -8,20 +8,27 @@ import type { StreamEvent, ChatRequest } from '../../packages/postmem-sdk/dist/i
 import { getSearchDisabled as getMemorySearchDisabled, getWebSearchDisabled } from './di-overrides'
 
 const BASE_URL = `http://localhost:${process.env.PORT || 3000}`
+const isDev = process.env.env === 'dev'
 
-// 测试日志：直接连 Seq，与每次聊天的 SSE 事件一一对应
+// 测试日志
 export const testLogger = winston.createLogger({
-  level: 'info',
+  level: isDev ? 'debug' : 'info',
   format: winston.format.combine(
     winston.format.errors({ stack: true }),
     winston.format.json(),
   ),
-  defaultMeta: { application: 'postmem-test' },
+  defaultMeta: { application: 'postmem-test', env: isDev ? 'dev' : 'production' },
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(
         winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
-        winston.format.printf(({ timestamp, level, message }) => `${timestamp} [${level}] [test]: ${message}`),
+        winston.format.errors({ stack: true }),
+        winston.format.printf(({ timestamp, level, message, ...meta }) => {
+          const metaStr = Object.keys(meta).filter(k => typeof k !== 'symbol').length
+            ? `\n${JSON.stringify(meta, null, isDev ? 2 : 0)}`
+            : ''
+          return `${timestamp} [${level}] [test]: ${message}${metaStr}`
+        }),
       ),
     }),
     ...(process.env.SEQ_URL
@@ -567,3 +574,4 @@ export async function checkMessageTokens(): Promise<void> {
 }
 
 export { setMockChatSetting, setSearchDisabled, getSearchDisabled, setWebSearchDisabled, getWebSearchDisabled } from './di-overrides'
+export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockSearchNeeds, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, resetMockLLMStore } from './mock-llm'

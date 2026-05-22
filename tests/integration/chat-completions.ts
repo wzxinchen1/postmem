@@ -19,6 +19,8 @@ import {
   assertContains,
   assertNotEqual,
   setMockChatSetting,
+  setMockChatResponseRules,
+  setMockStreamChunkDelay,
   diagnoseMemories,
 } from './helpers'
 import type { PostMemClient } from '../../packages/postmem-sdk/dist/index.mjs'
@@ -35,6 +37,17 @@ setup(async () => {
   kbId = await getTestKbId()
   modelId = await getTestModelId()
   await startConsume(client)
+
+  // 配置 mock LLM 响应规则：用户消息包含 keyword → 返回对应 response
+  // 注意：CutModelService 的 mock 由 MockCutModelAgent 通过 system prompt 严格匹配，
+  // 不受此处 chat 规则影响，两者完全分离。
+  setMockChatResponseRules([
+    { keyword: '动态规划', response: '动态规划（Dynamic Programming，简称DP）是一种将复杂问题分解为子问题的算法策略。' },
+    { keyword: '量子力学', response: '量子力学是描述微观粒子行为的物理学理论，核心概念包括波粒二象性和不确定性原理。' },
+    { keyword: '搜索', response: '以下是为您搜索到的相关信息。' },
+    { keyword: '之前', response: '根据之前的对话记录，您之前提到过动态规划（DP）相关的话题。动态规划是一种重要的算法思想。' },
+    { keyword: '回忆', response: '根据记忆搜索结果，您之前让我解释过动态规划。动态规划是一种将复杂问题分解为子问题的算法策略。' },
+  ])
 })
 
 before(async () => {
@@ -108,6 +121,9 @@ test('缺少 messages — 返回 400', async () => {
 test('同一对话正在处理时再次请求 → 400', async () => {
   await waitForProcessingCleared(convId1)
 
+  // 每个 chunk 间隔 10ms，等 10ms 后发第二次请求，此时 processing 仍在
+  setMockStreamChunkDelay(10)
+
   const firstChat = chatAndWait(client, {
     messages: [{ id: '5', content: '请简单解释量子力学的原理' }],
     modelId,
@@ -115,7 +131,7 @@ test('同一对话正在处理时再次请求 → 400', async () => {
     conversationId: convId1,
   })
 
-  await new Promise((resolve) => setTimeout(resolve, 500))
+  await new Promise((resolve) => setTimeout(resolve, 10))
 
   const secondRes = await fetch(`${getBaseUrl()}/api/chat/completions`, {
     method: 'POST',
@@ -132,7 +148,12 @@ test('同一对话正在处理时再次请求 → 400', async () => {
   const text = await secondRes.text()
   assertContains(text, '尚未处理完成', 'response body')
 
-  await firstChat
+  // 等待第一个请求完成，然后恢复默认延迟
+  try {
+    await firstChat
+  } finally {
+    setMockStreamChunkDelay(0)
+  }
 }, CHAT_TIMEOUT)
 
 test('首 token 时间 ≤ 10s', async () => {

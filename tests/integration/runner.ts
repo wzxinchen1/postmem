@@ -11,13 +11,15 @@ const __dirname = path.dirname(__filename)
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') })
 
+const isDev = process.env.env === 'dev'
+
 const testLogger = winston.createLogger({
-  level: 'info',
+  level: isDev ? 'debug' : 'info',
   format: winston.format.combine(
     winston.format.errors({ stack: true }),
     winston.format.json(),
   ),
-  defaultMeta: { application: 'postmem-test-runner' },
+  defaultMeta: { application: 'postmem-test-runner', env: isDev ? 'dev' : 'production' },
   transports: [
     new winston.transports.Console({
       format: winston.format.combine(
@@ -78,6 +80,11 @@ const BASE_URL = `http://localhost:${PORT}`
 const retryMode = process.argv.includes('retry')
 export function isRetryMode(): boolean {
   return retryMode
+}
+
+const realLLMMode = process.argv.includes('--real-llm')
+export function isRealLLMMode(): boolean {
+  return realLLMMode
 }
 
 function log(message: string) {
@@ -336,7 +343,11 @@ export async function run(): Promise<void> {
   try {
     // 在 Next.js webpack 编译前通过 globalThis 注入 DI override
     const { createTestOverrides } = await import('./di-overrides')
-    ;(globalThis as any).__POSTMEM_TEST_DI_OVERRIDES = createTestOverrides()
+    ;(globalThis as any).__POSTMEM_TEST_DI_OVERRIDES = createTestOverrides(realLLMMode)
+
+    if (realLLMMode) {
+      logInfo('--real-llm 模式：LLM 走真实调用，搜索仍为 mock')
+    }
 
     await startServer()
     await runTests()

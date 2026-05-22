@@ -26,8 +26,17 @@ export const container = createContainer({
   injectionMode: InjectionMode.PROXY,
 })
 
+interface TestDIOverrides {
+  chatSettingService?: ReturnType<typeof asValue>
+  chatModelFactory?: ReturnType<typeof asValue>
+  llmResilienceService?: ReturnType<typeof asValue>
+  agentService?: ReturnType<typeof asValue>
+  vendorService?: ReturnType<typeof asValue>
+  searchService?: ReturnType<typeof asClass>
+}
+
 const testDiOverrides = (globalThis as any).__POSTMEM_TEST_DI_OVERRIDES as
-  | { chatSettingService: ReturnType<typeof asValue> }
+  | TestDIOverrides
   | undefined
 
 container.register({
@@ -41,18 +50,22 @@ container.register({
   providerService: asClass(ProviderService).scoped(),
   modelService: asClass(ModelService).scoped(),
   providerValidateService: asClass(ProviderValidateService).scoped(),
-  vendorService: asClass(VendorService).scoped(),
+  vendorService: testDiOverrides?.vendorService
+    ?? asClass(VendorService).scoped(),
   sseService: asClass(SSEService).scoped(),
-  searchService: asClass(SearchService).scoped(),
+  searchService: testDiOverrides?.searchService
+    ?? asClass(SearchService).scoped(),
   chatMemoryService: asClass(ChatMemoryService).scoped(),
-  chatSettingService: testDiOverrides
-    ? testDiOverrides.chatSettingService
-    : asClass(ChatSettingService).scoped(),
-  chatModelFactory: asClass(ChatModelFactory).scoped(),
+  chatSettingService: testDiOverrides?.chatSettingService
+    ?? asClass(ChatSettingService).scoped(),
+  chatModelFactory: testDiOverrides?.chatModelFactory
+    ?? asClass(ChatModelFactory).scoped(),
   chatService: asClass(ChatService).scoped(),
   initService: asClass(InitService).scoped(),
-  llmResilienceService: asClass(LLMResilienceService).scoped(),
-  agentService: asClass(AgentService).scoped(),
+  llmResilienceService: testDiOverrides?.llmResilienceService
+    ?? asClass(LLMResilienceService).scoped(),
+  agentService: testDiOverrides?.agentService
+    ?? asClass(AgentService).scoped(),
   systemTokensService: asClass(SystemTokensService).scoped(),
 })
 
