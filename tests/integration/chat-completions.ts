@@ -21,6 +21,7 @@ import {
   setMockChatSetting,
   setMockChatResponseRules,
   setMockStreamChunkDelay,
+  setModelHasVision,
   diagnoseMemories,
 } from './helpers'
 import type { PostMemClient } from '../../packages/postmem-sdk/dist/index.mjs'
@@ -47,6 +48,8 @@ setup(async () => {
     { keyword: '搜索', response: '以下是为您搜索到的相关信息。' },
     { keyword: '之前', response: '根据之前的对话记录，您之前提到过动态规划（DP）相关的话题。动态规划是一种重要的算法思想。' },
     { keyword: '回忆', response: '根据记忆搜索结果，您之前让我解释过动态规划。动态规划是一种将复杂问题分解为子问题的算法策略。' },
+    { keyword: '链接内容', response: '我查看了您提供的链接 https://example.com，这是一个关于示例网站的页面，用于测试链接抓取功能。' },
+    { keyword: '测试图片', response: '这是您上传的图片，描述内容：这是一张测试图片的描述。' },
   ])
 })
 
@@ -454,5 +457,141 @@ test('互联网搜索: 第二次搜索 — 相同消息命中缓存，web_pages 
   const countAfter = await getWebpageCount()
   assertEqual(countAfter, countBefore, 'web_pages count unchanged after cached search')
 }, { memorySearch: false, webSearch: true, timeoutMs: 30_000})
+
+// ════════════════════════════════════════════
+// 链接测试
+// ════════════════════════════════════════════
+
+test('链接: 发送链接 — 触发 fetchingUrl 状态事件', async () => {
+  const result = await chatAndWait(client, {
+    messages: [{ id: 'link-1', content: '请查看这个链接内容', urls: ['https://example.com'] }],
+    modelId,
+    kbId,
+    conversationId: convId1,
+  })
+
+  // 验证1: fetchingUrl 状态事件出现
+  const fetchingUrlEvents = result.events.filter(
+    (e) => (e as Record<string, unknown>).status === 'fetchingUrl',
+  )
+  assertGreaterThan(fetchingUrlEvents.length, 0, '没有收到 fetchingUrl 状态消息')
+
+  // 验证2: 回答提及了链接内容（证明 fetchedUrlContent 已传递到 LLM 上下文）
+  assertContains(result.fullContent, '链接', 'response references link content')
+  assertContains(result.fullContent, 'https://example.com', 'response contains the URL')
+
+  // 验证3: 保存的消息包含 urls 字段
+  const msgResult = await client.getMessages(convId1, { page: 1, limit: 50 })
+  const lastUserMsg = msgResult.messages
+    .filter((m) => m.role === 'user')
+    .slice(-1)[0]
+  assertTruthy(lastUserMsg.urls, 'message has urls field')
+  assertEqual(lastUserMsg.urls!.length, 1, 'urls count')
+  assertEqual(lastUserMsg.urls![0], 'https://example.com', 'url value')
+}, 30_000)
+
+// ════════════════════════════════════════════
+// 图片测试
+// ════════════════════════════════════════════
+
+// 最小有效 PNG（1×1 像素红色点）, data URI 方便测试中直接使用
+const TEST_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+
+test('图片: 模型无 vision — recognizing 事件 + 识图描述注入到用户消息', async () => {
+  // 强制报告模型不支持 vision，走 recognizeImage 节点调用 vision agent
+  setModelHasVision(false)
+
+  const result = await chatAndWait(client, {
+    messages: [{
+      id: 'img-no-vision',
+      content: '描述这张图片的内容',
+      images: [{ url: TEST_IMAGE_DATA_URI, mimeType: 'image/png' }],
+    }],
+    modelId,
+    kbId,
+    conversationId: convId1,
+  })
+
+  try {
+    // 验证1: recognizing 状态事件出现（vision agent 被调用）
+    const recognizingEvents = result.events.filter(
+      (e) => (e as Record<string, unknown>).status === 'recognizing',
+    )
+    assertGreaterThan(recognizingEvents.length, 0, '没有收到 recognizing 状态消息')
+
+    // 验证2: 识图描述被注入到用户消息（search.node.ts 第 190 行 updateMessageContent）
+    const msgResult = await client.getMessages(convId1, { page: 1, limit: 50 })
+    const lastUserMsg = msgResult.messages
+      .filter((m) => m.role === 'user')
+      .slice(-1)[0]
+    assertContains(lastUserMsg.content, '图片描述如下', 'recognized text injected into user message')
+
+    // 验证3: 消息中 images 字段保存正确
+    assertTruthy(lastUserMsg.images, 'message has images field')
+    assertGreaterThan(lastUserMsg.images!.length, 0, 'images count > 0')
+  } finally {
+    // 恢复默认设置，避免影响后续测试
+    setModelHasVision(true)
+  }
+}, 30_000)
+
+test('图片: 模型有 vision — recognizing 跳过，无注入文本', async () => {
+  // 强制报告模型支持 vision
+  setModelHasVision(true)
+
+  await chatAndWait(client, {
+    messages: [{
+      id: 'img-with-vision',
+      content: '用 vision 能力处理这张图片',
+      images: [{ url: TEST_IMAGE_DATA_URI, mimeType: 'image/png' }],
+    }],
+    modelId,
+    kbId,
+    conversationId: convId1,
+  })
+
+  // 验证: 用户消息中没有注入标记（vision 路径不调用 recognizeImage 节点，不发生 injection）
+  const msgResult = await client.getMessages(convId1, { page: 1, limit: 50 })
+  const lastUserMsg = msgResult.messages
+    .filter((m) => m.role === 'user')
+    .slice(-1)[0]
+  assertEqual(lastUserMsg.content.includes('图片描述如下'), false, 'vision 模型不应有识图注入文本')
+}, 30_000)
+
+test('图片: 单条消息最多 5 张图片 — 超过返回 400', async () => {
+  const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: [{
+        id: 'img-over-5',
+        content: '测试多张图片',
+        images: Array.from({ length: 6 }, () => ({ url: TEST_IMAGE_DATA_URI, mimeType: 'image/png' })),
+      }],
+      modelId,
+      kbId,
+    }),
+  })
+
+  assertEqual(res.status, 400, 'status')
+}, 15_000)
+
+test('链接: URLs 超过 5 个 — 返回 400', async () => {
+  const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: [{
+        id: 'link-over-5',
+        content: '测试多个链接',
+        urls: Array.from({ length: 6 }, (_, i) => `https://example.com/${i + 1}`),
+      }],
+      modelId,
+      kbId,
+    }),
+  })
+
+  assertEqual(res.status, 400, 'status')
+}, 15_000)
 
 run()

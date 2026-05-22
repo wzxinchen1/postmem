@@ -573,5 +573,5 @@ export async function checkMessageTokens(): Promise<void> {
   }
 }
 
-export { setMockChatSetting, setSearchDisabled, getSearchDisabled, setWebSearchDisabled, getWebSearchDisabled } from './di-overrides'
+export { setMockChatSetting, setSearchDisabled, getSearchDisabled, setWebSearchDisabled, getWebSearchDisabled, setModelHasVision } from './di-overrides'
 export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockSearchNeeds, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, resetMockLLMStore } from './mock-llm'

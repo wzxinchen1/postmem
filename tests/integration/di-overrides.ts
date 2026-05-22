@@ -1,5 +1,5 @@
 import { asValue, asClass } from 'awilix'
-import type { ChatSettingInfo } from '../../src/types'
+import type { ChatSettingInfo, Model } from '../../src/types'
 import type { IChatSettingProvider } from '../../src/interfaces/chat-setting-provider'
 import { mockLLMResilienceService, mockChatModelFactoryObj, mockAgentServiceObj, mockVendorServiceObj, MockSearchService } from './mock-llm'
 
@@ -48,6 +48,88 @@ export function getWebSearchDisabled(): boolean {
   return getStore().webSearchDisabled ?? false
 }
 
+// ─── Mock ModelService（控制 hasVisionCapability） ───────────
+//
+// get() 从真实数据库查模型，但可动态覆盖 capabilities 中的 vision 能力。
+// getDefaultByCapability 走真实 DB 查询，确保 setup 阶段能获取默认模型。
+// 其余方法不感知 hasVision 控制。
+
+import { PrismaPg } from '@prisma/adapter-pg'
+import { PrismaClient } from '../../src/generated/prisma/client/client'
+import type { ModelCapability } from '../../src/types'
+
+const MODEL_STORE_KEY = Symbol.for('postmem:test:model-store')
+
+interface ModelStore {
+  hasVision: boolean
+}
+
+function getModelStore(): ModelStore {
+  if (!(globalThis as any)[MODEL_STORE_KEY]) {
+    ;(globalThis as any)[MODEL_STORE_KEY] = { hasVision: true }
+  }
+  return (globalThis as any)[MODEL_STORE_KEY]
+}
+
+/** 设置 mock 模型是否报告 vision 能力（影响 recognizeImage 节点是否跳过识图） */
+export function setModelHasVision(hasVision: boolean): void {
+  getModelStore().hasVision = hasVision
+}
+
+function createMockPrisma() {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+  return new PrismaClient({ adapter })
+}
+
+async function fetchModelBase(id: string) {
+  const prisma = createMockPrisma()
+  try {
+    const model = await prisma.model.findUnique({
+      where: { id },
+      include: { provider: true },
+    })
+    if (!model) return null
+    return model as unknown as Model
+  } finally {
+    await prisma.$disconnect()
+  }
+}
+
+async function fetchDefaultModel(capability: string) {
+  const prisma = createMockPrisma()
+  try {
+    const model = await prisma.model.findFirst({
+      where: { isDefault: true, isActive: true, capabilities: { has: capability } },
+      include: { provider: true },
+    })
+    if (!model) return null
+    return model as unknown as Model
+  } finally {
+    await prisma.$disconnect()
+  }
+}
+
+const mockModelServiceObj = {
+  get: async (id: string) => {
+    const base = await fetchModelBase(id)
+    if (!base) return null
+    const hasVision = getModelStore().hasVision
+    const capabilities = hasVision
+      ? [...new Set([...base.capabilities, 'vision' as ModelCapability])]
+      : base.capabilities.filter(c => c !== 'vision')
+    return { ...base, capabilities } as Model
+  },
+  list: async () => [],
+  listByProvider: async () => [],
+  getDefaultByCapability: async (capability: string) => {
+    return fetchDefaultModel(capability)
+  },
+  create: async () => { throw new Error('mock: create not supported') },
+  update: async () => { throw new Error('mock: update not supported') },
+  delete: async () => { throw new Error('mock: delete not supported') },
+  exists: async () => false,
+}
+
 /**
  * 创建测试 DI 覆盖。
  *
@@ -61,6 +143,8 @@ export function createTestOverrides(realLLM = false) {
     chatSettingService: asValue(mockChatSettingProvider),
     // searchService: 避免真实 Tavily API 调用，两种模式都需要
     searchService: asClass(MockSearchService as any).scoped(),
+    // modelService: mock，支持动态切换 hasVisionCapability
+    modelService: asValue(mockModelServiceObj),
   }
 
   if (!realLLM) {

@@ -33,6 +33,7 @@ interface TestDIOverrides {
   agentService?: ReturnType<typeof asValue>
   vendorService?: ReturnType<typeof asValue>
   searchService?: ReturnType<typeof asClass>
+  modelService?: ReturnType<typeof asValue>
 }
 
 const testDiOverrides = (globalThis as any).__POSTMEM_TEST_DI_OVERRIDES as
@@ -48,7 +49,8 @@ container.register({
   cutModelService: asClass(CutModelService).scoped(),
   kbService: asClass(KBService).scoped(),
   providerService: asClass(ProviderService).scoped(),
-  modelService: asClass(ModelService).scoped(),
+  modelService: testDiOverrides?.modelService
+    ?? asClass(ModelService).scoped(),
   providerValidateService: asClass(ProviderValidateService).scoped(),
   vendorService: testDiOverrides?.vendorService
     ?? asClass(VendorService).scoped(),
