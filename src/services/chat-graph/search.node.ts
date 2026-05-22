@@ -6,6 +6,8 @@ import { Errors } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
 import { logger } from '@/src/lib/logger'
 
+const isTest = process.env.INTEGRATION_TEST === 'true'
+
 export function createSearchNode(deps: GraphDependencies) {
   async function buildSystemContext(searchResult: string, memoryText: string, recognizedText: string, agent: unknown) {
     const systemPrompt = Prompts.chatSystemRole(
@@ -34,6 +36,21 @@ export function createSearchNode(deps: GraphDependencies) {
 
     if (await deps.sseService.isCancelled(state.conversationId)) {
       return { cancelled: true }
+    }
+
+    // tree-shake: 测试模式下可通过 searchDisabled 完全跳过搜索
+    if (isTest) {
+      const chatSetting = await deps.chatSettingService.get()
+      if (chatSetting.searchDisabled) {
+        logger.info('[ChatGraph] search 跳过（searchDisabled）')
+        const { systemPrompt, systemTokens } = await buildSystemContext('', '', '', state.agent)
+        return {
+          searchResult: '',
+          memoryText: '',
+          systemTokens,
+          finalMessages: [new SystemMessage(Prompts.fillCurrentTime(systemPrompt)), ...state.langchainMessages],
+        }
+      }
     }
 
     const recentMessages = state.langchainMessages.slice(-6).map(msg => {

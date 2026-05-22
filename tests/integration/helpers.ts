@@ -197,6 +197,11 @@ export async function chatAndWait(
   await donePromise
   result.events = events
 
+  // LLM 返回空内容时给出明确错误，避免下游断言迷惑
+  if (!result.fullContent && !result.error) {
+    throw new Error(`LLM 返回了空内容 (conversationId=${conversationId})，可能是瞬时空响应或模型异常`)
+  }
+
   await waitForProcessingCleared(conversationId)
 
   return result
@@ -272,4 +277,4 @@ export async function checkMessageTokens(): Promise<void> {
   }
 }
 
-export { setMockChatSetting } from './di-overrides'
+export { setMockChatSetting, setSearchDisabled } from './di-overrides'

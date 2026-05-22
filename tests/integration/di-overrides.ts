@@ -12,6 +12,7 @@ function getStore(): ChatSettingInfo {
       maxOutputTokens: null,
       searchLinkCount: 10,
       chunkCharRange: '200-500',
+      searchDisabled: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -27,6 +28,10 @@ const mockChatSettingProvider: IChatSettingProvider = {
 
 export function setMockChatSetting(settings: Partial<ChatSettingInfo>): void {
   Object.assign(getStore(), settings)
+}
+
+export function setSearchDisabled(disabled: boolean): void {
+  Object.assign(getStore(), { searchDisabled: disabled })
 }
 
 export function createTestOverrides() {

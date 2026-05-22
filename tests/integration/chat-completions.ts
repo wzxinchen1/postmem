@@ -17,6 +17,7 @@ import {
   assertContains,
   assertNotEqual,
   setMockChatSetting,
+  setSearchDisabled,
 } from './helpers'
 import type { PostMemClient } from '../../packages/postmem-sdk/dist/index.mjs'
 
@@ -32,6 +33,7 @@ setup(async () => {
   kbId = await getTestKbId()
   modelId = await getTestModelId()
   startConsume(client)
+  setSearchDisabled(true)
 })
 
 before(async () => {
@@ -218,6 +220,8 @@ test('流事件包含 messageId（user + assistant）', async () => {
 }, CHAT_TIMEOUT)
 
 test('流事件包含 status 事件', async () => {
+  setSearchDisabled(false)
+
   const result = await chatAndWait(
     client,
     {
@@ -228,6 +232,8 @@ test('流事件包含 status 事件', async () => {
     },
     true,
   )
+
+  setSearchDisabled(true)
 
   const statusEvents = result.events.filter((e) => e.type === 'status')
   assertGreaterThan(statusEvents.length, 0, 'statusEvents count >= 1')
