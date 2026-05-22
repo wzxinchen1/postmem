@@ -8,14 +8,14 @@ import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelCapab
 import { SessionService } from '@/src/services/session.service'
 import { VendorService } from './vendor.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
-import { ChatSettingService } from '@/src/services/chat-setting.service'
+import type { IChatSettingProvider } from '@/src/interfaces/chat-setting-provider'
 
 interface CutModelDependencies {
   prisma: PrismaClient
   sessionService: SessionService
   vendorService: VendorService
   llmResilienceService: LLMResilienceService
-  chatSettingService: ChatSettingService
+  chatSettingService: IChatSettingProvider
 }
 
 export class CutModelService {
@@ -23,7 +23,7 @@ export class CutModelService {
   private sessionService: SessionService
   private vendorService: VendorService
   private llmResilienceService: LLMResilienceService
-  private chatSettingService: ChatSettingService
+  private chatSettingService: IChatSettingProvider
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map<string, { model: Model; provider: Provider }>()
 
   private static readonly MAX_RETRIES = 5
@@ -58,7 +58,7 @@ export class CutModelService {
     })
 
     if (!model || !model.provider || !model.provider.vendor) {
-      throw Errors.cutModelError('未配置默认对话模型，请在 /admin/models 页面配置')
+      throw Errors.internalError('未配置默认对话模型，请在 /admin/models 页面配置')
     }
 
     const result: { model: Model; provider: Provider } = {
@@ -102,7 +102,7 @@ export class CutModelService {
 
   private async createModel(model: Model, provider: Provider): Promise<BaseChatModel> {
     if (!provider.vendor) {
-      throw Errors.cutModelError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     return this.vendorService.createModel(provider.vendor, {
@@ -139,17 +139,25 @@ export class CutModelService {
       content: prompt,
     })
 
+    logger.info('[CutModelService] callLLM', {
+      prompt,
+      model: model.name,
+      provider: provider.name,
+      sessionId,
+    })
     const response = await chatModel.invoke([
       new SystemMessage(systemPrompt),
       new HumanMessage(prompt),
     ])
-
+    logger.info('[CutModelService] callLLM response', {
+      response,
+    })
     const content = response.content.toString()
 
     const messageMetadata: Record<string, unknown> = { model: model.name }
 
     if (response.additional_kwargs == null) {
-      throw Errors.cutModelError(`LLM SDK 返回的 additional_kwargs 为 null，可能是 SDK 版本不兼容`)
+      throw Errors.internalError(`LLM SDK 返回的 additional_kwargs 为 null，可能是 SDK 版本不兼容`)
     }
 
     const additionalKwargs = response.additional_kwargs
@@ -182,23 +190,39 @@ export class CutModelService {
     let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= CutModelService.MAX_RETRIES; attempt++) {
+      let content: string
       try {
-        const content = await this.callLLM(prompt, systemPrompt, model, provider, sessionId)
-        const parsed = this.llmResilienceService.parseJSON<unknown>(content)
-        return validator(parsed)
+        content = await this.callLLM(prompt, systemPrompt, model, provider, sessionId)
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
 
-        logger.error('[CutModelService] callLLMAndValidate 失败', {
+        logger.error('[CutModelService] LLM 调用失败，准备重试', {
           attempt,
           maxRetries: CutModelService.MAX_RETRIES,
           errorMessage: lastError.message,
+          stack: lastError.stack,
+        })
+        continue
+      }
+
+      try {
+        const parsed = this.llmResilienceService.parseJSON<unknown>(content)
+        return validator(parsed)
+      } catch (parseError) {
+        lastError = parseError instanceof Error ? parseError : new Error(String(parseError))
+
+        logger.error('[CutModelService] 解析/校验失败，准备重试', {
+          attempt,
+          maxRetries: CutModelService.MAX_RETRIES,
+          errorMessage: lastError.message,
+          stack: lastError.stack,
         })
       }
     }
 
-    throw Errors.cutModelError(
-      `LLM 调用失败，已重试 ${CutModelService.MAX_RETRIES} 次: ${lastError?.message}`
+    throw Errors.internalError(
+      `LLM 调用失败，已重试 ${CutModelService.MAX_RETRIES} 次`,
+      lastError ?? new Error('未知错误')
     )
   }
 
@@ -206,7 +230,7 @@ export class CutModelService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.cutModelError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     const session = await this.sessionService.create({
@@ -226,11 +250,11 @@ export class CutModelService {
 
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
       if (!raw || typeof raw !== 'object') {
-        throw Errors.cutModelError('响应格式无效: 缺少 cutPoints 数组')
+        throw Errors.internalError('响应格式无效: 缺少 cutPoints 数组')
       }
       const obj = raw as { cutPoints?: unknown }
       if (!obj.cutPoints || !Array.isArray(obj.cutPoints)) {
-        throw Errors.cutModelError('响应格式无效: 缺少 cutPoints 数组')
+        throw Errors.internalError('响应格式无效: 缺少 cutPoints 数组')
       }
       return obj as { cutPoints: any[] }
     })
@@ -247,7 +271,7 @@ export class CutModelService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.cutModelError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     const session = await this.sessionService.create({
@@ -267,11 +291,11 @@ export class CutModelService {
 
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
       if (!raw || typeof raw !== 'object') {
-        throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
+        throw Errors.internalError('响应格式无效: 缺少 groups 数组')
       }
       const obj = raw as { groups?: unknown }
       if (!obj.groups || !Array.isArray(obj.groups)) {
-        throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
+        throw Errors.internalError('响应格式无效: 缺少 groups 数组')
       }
       return obj as { groups: any[] }
     })
@@ -280,10 +304,10 @@ export class CutModelService {
 
     return parsed.groups.map((group: any) => {
       if (group.messageIds == null) {
-        throw Errors.cutModelError('LLM 返回的 group 缺少 messageIds 字段')
+        throw Errors.internalError('LLM 返回的 group 缺少 messageIds 字段')
       }
       if (!Array.isArray(group.messageIds)) {
-        throw Errors.cutModelError(`LLM 返回的 messageIds 不是数组，实际类型: ${typeof group.messageIds}`)
+        throw Errors.internalError(`LLM 返回的 messageIds 不是数组，实际类型: ${typeof group.messageIds}`)
       }
       return {
         messageIds: group.messageIds,
@@ -297,7 +321,7 @@ export class CutModelService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.cutModelError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     const session = await this.sessionService.create({
@@ -317,11 +341,11 @@ export class CutModelService {
 
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
       if (!raw || typeof raw !== 'object') {
-        throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
+        throw Errors.internalError('响应格式无效: 缺少 groups 数组')
       }
       const obj = raw as { groups?: unknown }
       if (!obj.groups || !Array.isArray(obj.groups)) {
-        throw Errors.cutModelError('响应格式无效: 缺少 groups 数组')
+        throw Errors.internalError('响应格式无效: 缺少 groups 数组')
       }
       return obj as { groups: any[] }
     })
@@ -339,7 +363,7 @@ export class CutModelService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.cutModelError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     const session = await this.sessionService.create({
@@ -362,11 +386,11 @@ export class CutModelService {
 
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
       if (!raw || typeof raw !== 'object') {
-        throw Errors.cutModelError('响应格式无效: 缺少 chunks 数组或数组为空')
+        throw Errors.internalError('响应格式无效: 缺少 chunks 数组或数组为空')
       }
       const obj = raw as { chunks?: unknown }
       if (!obj.chunks || !Array.isArray(obj.chunks) || (obj.chunks as any[]).length === 0) {
-        throw Errors.cutModelError('响应格式无效: 缺少 chunks 数组或数组为空')
+        throw Errors.internalError('响应格式无效: 缺少 chunks 数组或数组为空')
       }
       return obj as { chunks: any[] }
     })
@@ -375,10 +399,10 @@ export class CutModelService {
 
     return parsed.chunks.map((chunk: any, i: number) => {
       if (!chunk.title || !chunk.title.trim()) {
-        throw Errors.cutModelError(`LLM 返回的 chunk #${i} 缺少 title`)
+        throw Errors.internalError(`LLM 返回的 chunk #${i} 缺少 title`)
       }
       if (!chunk.content || !chunk.content.trim()) {
-        throw Errors.cutModelError(`LLM 返回的 chunk #${i} 缺少 content`)
+        throw Errors.internalError(`LLM 返回的 chunk #${i} 缺少 content`)
       }
       return {
         index: i,
@@ -401,7 +425,7 @@ export class CutModelService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.cutModelError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     const session = await this.sessionService.create({
@@ -427,19 +451,19 @@ export class CutModelService {
     const validActions = ['skip', 'merge', 'new']
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
       if (!raw || typeof raw !== 'object') {
-        throw Errors.cutModelError('响应格式无效: 缺少 action 或 action 值不合法')
+        throw Errors.internalError('响应格式无效: 缺少 action 或 action 值不合法')
       }
       const obj = raw as { action?: unknown; reason?: unknown; targetId?: unknown; mergedContent?: unknown }
       if (!obj.action || !validActions.includes(obj.action as string)) {
-        throw Errors.cutModelError('响应格式无效: 缺少 action 或 action 值不合法')
+        throw Errors.internalError('响应格式无效: 缺少 action 或 action 值不合法')
       }
       const action = obj.action as 'skip' | 'merge' | 'new'
       if (action === 'merge') {
         if (obj.targetId == null || typeof obj.targetId !== 'number' || obj.targetId < 1 || obj.targetId > existingMemories.length) {
-          throw Errors.cutModelError('响应格式无效: merge 操作必须指定有效的 targetId')
+          throw Errors.internalError('响应格式无效: merge 操作必须指定有效的 targetId')
         }
         if (!obj.mergedContent || typeof obj.mergedContent !== 'string' || obj.mergedContent.trim().length === 0) {
-          throw Errors.cutModelError('响应格式无效: merge 操作必须提供 mergedContent')
+          throw Errors.internalError('响应格式无效: merge 操作必须提供 mergedContent')
         }
       }
       return obj as { action: string; reason?: string; targetId?: number | null; mergedContent?: string | null }
@@ -457,7 +481,7 @@ export class CutModelService {
     }
 
     if (!parsed.reason) {
-      throw Errors.cutModelError('LLM 响应缺少 reason 字段')
+      throw Errors.internalError('LLM 响应缺少 reason 字段')
     }
 
     return { action, reason: parsed.reason, targetMemoryId, mergedContent }
@@ -479,7 +503,7 @@ export class CutModelService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.cutModelError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     const session = await this.sessionService.create({
@@ -500,14 +524,14 @@ export class CutModelService {
 
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
       if (!raw || typeof raw !== 'object') {
-        throw Errors.cutModelError('响应格式无效: 缺少 action 或 action 值不合法')
+        throw Errors.internalError('响应格式无效: 缺少 action 或 action 值不合法')
       }
       const obj = raw as { action?: unknown; topicName?: unknown; reason?: unknown }
       if (!obj.action || !['select', 'create'].includes(obj.action as string)) {
-        throw Errors.cutModelError('响应格式无效: 缺少 action 或 action 值不合法')
+        throw Errors.internalError('响应格式无效: 缺少 action 或 action 值不合法')
       }
       if (obj.action === 'select' && !obj.topicName) {
-        throw Errors.cutModelError('响应格式无效: select 操作必须指定 topicName')
+        throw Errors.internalError('响应格式无效: select 操作必须指定 topicName')
       }
       return obj as { action: string; topicName?: string; reason?: string }
     })
@@ -515,7 +539,7 @@ export class CutModelService {
     await this.sessionService.complete(session.id)
 
     if (!parsed.reason) {
-      throw Errors.cutModelError('LLM 响应缺少 reason 字段')
+      throw Errors.internalError('LLM 响应缺少 reason 字段')
     }
 
     return {
@@ -529,7 +553,7 @@ export class CutModelService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.cutModelError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     const session = await this.sessionService.create({
@@ -550,14 +574,14 @@ export class CutModelService {
 
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
       if (!raw || typeof raw !== 'object') {
-        throw Errors.cutModelError('响应格式无效: 缺少 name')
+        throw Errors.internalError('响应格式无效: 缺少 name')
       }
       const obj = raw as { name?: unknown; description?: unknown }
       if (!obj.name || typeof obj.name !== 'string' || obj.name.trim().length === 0) {
-        throw Errors.cutModelError('响应格式无效: 缺少 name')
+        throw Errors.internalError('响应格式无效: 缺少 name')
       }
       if (!obj.description || typeof obj.description !== 'string' || obj.description.trim().length === 0) {
-        throw Errors.cutModelError('响应格式无效: 缺少 description')
+        throw Errors.internalError('响应格式无效: 缺少 description')
       }
       return obj as { name: string; description: string }
     })
@@ -579,7 +603,7 @@ export class CutModelService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.cutModelError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     const session = await this.sessionService.create({
@@ -600,11 +624,11 @@ export class CutModelService {
 
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
       if (!raw || typeof raw !== 'object') {
-        throw Errors.cutModelError('响应格式无效: 缺少 topics 数组')
+        throw Errors.internalError('响应格式无效: 缺少 topics 数组')
       }
       const obj = raw as { topics?: unknown }
       if (!obj.topics || !Array.isArray(obj.topics) || (obj.topics as any[]).length === 0) {
-        throw Errors.cutModelError('响应格式无效: 缺少 topics 数组')
+        throw Errors.internalError('响应格式无效: 缺少 topics 数组')
       }
       return obj as { topics: any[] }
     })
@@ -630,7 +654,7 @@ export class CutModelService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.cutModelError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     const session = await this.sessionService.create({
@@ -656,11 +680,11 @@ export class CutModelService {
       prompt, systemPrompt, model, provider, session.id,
       (raw) => {
         if (!raw || typeof raw !== 'object') {
-          throw Errors.cutModelError('响应格式无效: 缺少 plans 数组或数组为空')
+          throw Errors.internalError('响应格式无效: 缺少 plans 数组或数组为空')
         }
         const obj = raw as { plans?: unknown }
         if (!obj.plans || !Array.isArray(obj.plans) || obj.plans.length === 0) {
-          throw Errors.cutModelError('响应格式无效: 缺少 plans 数组或数组为空')
+          throw Errors.internalError('响应格式无效: 缺少 plans 数组或数组为空')
         }
 
         const validTopicNames = new Set(existingTopics.map((t) => t.name))
@@ -668,22 +692,22 @@ export class CutModelService {
         for (let i = 0; i < obj.plans.length; i++) {
           const p = (obj.plans as any[])[i]
           if (p == null || typeof p !== 'object') {
-            throw Errors.cutModelError(`响应格式无效: plans[${i}] 不是有效对象`)
+            throw Errors.internalError(`响应格式无效: plans[${i}] 不是有效对象`)
           }
           if (p.index == null || p.index < 0) {
-            throw Errors.cutModelError(`响应格式无效: plans[${i}] 缺少有效的 index`)
+            throw Errors.internalError(`响应格式无效: plans[${i}] 缺少有效的 index`)
           }
           if (!p.action || !['select', 'create'].includes(p.action)) {
-            throw Errors.cutModelError(`响应格式无效: plans[${i}] 的 action 值不合法`)
+            throw Errors.internalError(`响应格式无效: plans[${i}] 的 action 值不合法`)
           }
           if (p.action === 'select' && !p.topicName) {
-            throw Errors.cutModelError(`响应格式无效: plans[${i}] select 操作必须指定 topicName`)
+            throw Errors.internalError(`响应格式无效: plans[${i}] select 操作必须指定 topicName`)
           }
           if (p.action === 'create' && !p.newTopicName) {
-            throw Errors.cutModelError(`响应格式无效: plans[${i}] create 操作必须指定 newTopicName`)
+            throw Errors.internalError(`响应格式无效: plans[${i}] create 操作必须指定 newTopicName`)
           }
           if (p.action === 'select' && !validTopicNames.has(p.topicName)) {
-            throw Errors.cutModelError(
+            throw Errors.internalError(
               `plans[${i}] 的 topicName "${p.topicName}" 不在已有主题列表中，必须是已有主题的短名称（如 ${Array.from(validTopicNames).slice(0, 3).join('、')} 等）`
             )
           }
@@ -697,7 +721,7 @@ export class CutModelService {
 
     const plans = parsed.plans.map((p) => {
       if (!p.reason) {
-        throw Errors.cutModelError('LLM 响应中某个 topic 计划缺少 reason 字段')
+        throw Errors.internalError('LLM 响应中某个 topic 计划缺少 reason 字段')
       }
       return {
         index: p.index,

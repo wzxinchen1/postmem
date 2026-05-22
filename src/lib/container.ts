@@ -21,7 +21,11 @@ import { InitService } from '@/src/services/init.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 import { AgentService } from '@/src/services/agent.service'
 import { SystemTokensService } from '@/src/services/system-tokens.service'
+import { createTestOverrides } from '@/tests/integration/di-overrides'
+import { logger } from './logger'
 
+const isTest = process.env.INTEGRATION_TEST === 'true'
+logger.info("isTest:"+isTest);
 export const container = createContainer({
   injectionMode: InjectionMode.PROXY,
 })
@@ -41,7 +45,9 @@ container.register({
   sseService: asClass(SSEService).scoped(),
   searchService: asClass(SearchService).scoped(),
   chatMemoryService: asClass(ChatMemoryService).scoped(),
-  chatSettingService: asClass(ChatSettingService).scoped(),
+  chatSettingService: isTest
+    ? createTestOverrides().chatSettingService
+    : asClass(ChatSettingService).scoped(),
   chatModelFactory: asClass(ChatModelFactory).scoped(),
   chatService: asClass(ChatService).scoped(),
   initService: asClass(InitService).scoped(),

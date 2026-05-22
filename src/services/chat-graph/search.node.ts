@@ -48,12 +48,6 @@ export function createSearchNode(deps: GraphDependencies) {
       }
     })
 
-    logger.info('[ChatGraph] search recentMessages', {
-      langchainCount: state.langchainMessages.length,
-      recentCount: recentMessages.length,
-      messages: recentMessages.map(m => ({ role: m.role, contentLen: m.content.length, contentPreview: m.content.slice(0, 50) })),
-    })
-
     let searchNeeds: { needSearchWeb: boolean; webKeywords: string[]; needSearchMemory: boolean; memoryQuery: string | null }
     try {
       searchNeeds = await deps.searchService.analyzeSearchNeeds(
@@ -182,7 +176,6 @@ export function createSearchNode(deps: GraphDependencies) {
     const mergedUrls = [...new Set([...state.urls, ...fetchedUrls])]
 
     const filledPrompt = Prompts.fillCurrentTime(systemPrompt)
-    logger.info('[ChatGraph] 本轮系统提示词', { conversationId: state.conversationId, systemPrompt: filledPrompt })
 
     return {
       searchResult,

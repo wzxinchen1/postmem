@@ -1,6 +1,5 @@
 import type { ChatState } from './types'
 import type { GraphDependencies } from './index'
-import type { ChatMessage } from '@/src/types'
 import { logger } from '@/src/lib/logger'
 
 export function createSaveMemoryNode(deps: GraphDependencies) {
@@ -16,39 +15,26 @@ export function createSaveMemoryNode(deps: GraphDependencies) {
 
     const chatSetting = await deps.chatSettingService.get()
     const memoryThreshold = chatSetting.memoryContextThreshold * 1000
+    logger.info('[ChatGraph] memoryThreshold', { memoryThreshold })
 
-    const KEEP_RECENT_COUNT = 3
-    const maxMemoryIndex = chatMessages.length - KEEP_RECENT_COUNT
+    // 只收集未记忆的消息，已记忆消息不参与阈值计算
+    const unmemoriedMessages = chatMessages.filter(msg => !msg.memoried)
 
-    let firstUnmemoriedIndex = -1
-    for (let i = 0; i < maxMemoryIndex; i++) {
-      if (!chatMessages[i].memoried) {
-        firstUnmemoriedIndex = i
-        break
-      }
-    }
-
-    if (firstUnmemoriedIndex === -1) {
+    if (unmemoriedMessages.length === 0) {
       return {}
     }
 
-    const unmemoriedMessages: ChatMessage[] = []
-    for (let i = firstUnmemoriedIndex; i < maxMemoryIndex; i++) {
-      unmemoriedMessages.push(chatMessages[i])
-    }
-
-    let currentTokens = 0
+    // 计算未记忆消息的 token 总量
+    let unmemoriedTokens = 0
     for (const msg of unmemoriedMessages) {
-      currentTokens += msg.tokens
-      if (currentTokens >= memoryThreshold) {
-        break
-      }
+      unmemoriedTokens += msg.tokens
     }
 
-    if (currentTokens < memoryThreshold) {
+    if (unmemoriedTokens < memoryThreshold) {
       return {}
     }
 
+    // 触发记忆后，全部未记忆消息都参与记忆
     const memorizedMessageIds = await deps.chatMemoryService.createMemory(
       unmemoriedMessages,
       state.conversationId,

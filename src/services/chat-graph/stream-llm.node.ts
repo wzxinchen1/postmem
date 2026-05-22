@@ -100,6 +100,7 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
     }
 
     const chatMessages = await deps.conversationService.getMessages(state.conversationId)
+    // 倒减只用未记忆消息的 token，已记忆消息的 token 是旧值（被记忆前计算的），不代表本轮实际消耗
     const allHistory = chatMessages.filter(m => !m.memoried)
     const lastUserMsgIndex = allHistory.findLastIndex(m => m.role === 'user')
     const historyMessages = lastUserMsgIndex !== -1

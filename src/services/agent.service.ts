@@ -2,7 +2,7 @@ import type { Model, Vendor } from '@/src/types'
 import { ChatModelFactory } from '@/src/services/chat-model-factory.service'
 import { ModelService } from '@/src/services/model.service'
 import { ProviderService } from '@/src/services/provider.service'
-import { ChatSettingService } from '@/src/services/chat-setting.service'
+import type { IChatSettingProvider } from '@/src/interfaces/chat-setting-provider'
 import { Errors } from '@/src/lib/errors'
 import { logger } from '@/src/lib/logger'
 
@@ -10,14 +10,14 @@ interface Dependencies {
   chatModelFactory: ChatModelFactory
   modelService: ModelService
   providerService: ProviderService
-  chatSettingService: ChatSettingService
+  chatSettingService: IChatSettingProvider
 }
 
 export class AgentService {
   private chatModelFactory: ChatModelFactory
   private modelService: ModelService
   private providerService: ProviderService
-  private chatSettingService: ChatSettingService
+  private chatSettingService: IChatSettingProvider
 
   constructor({ chatModelFactory, modelService, providerService, chatSettingService }: Dependencies) {
     this.chatModelFactory = chatModelFactory

@@ -41,7 +41,7 @@ export class EmbeddingService {
     })
 
     if (!model || !model.provider || !model.provider.vendor) {
-      throw Errors.embeddingError('未配置默认嵌入模型，请在 /admin/models 页面配置')
+      throw Errors.internalError('未配置默认嵌入模型，请在 /admin/models 页面配置')
     }
 
     const result = { model: model as unknown as Model, provider: model.provider as unknown as Provider }
@@ -53,7 +53,7 @@ export class EmbeddingService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.embeddingError('提供商缺少厂商信息')
+      throw Errors.internalError('提供商缺少厂商信息')
     }
 
     const vendor = provider.vendor

@@ -1,5 +1,6 @@
 import winston from 'winston'
 import { SeqTransport } from '@datalust/winston-seq'
+import util from 'util'
 
 const seqUrl = process.env.SEQ_URL
 const seqApiKey = process.env.SEQ_API_KEY
@@ -10,7 +11,7 @@ const transports: winston.transport[] = [
       winston.format.colorize(),
       winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
       winston.format.printf(({ timestamp, level, message, ...meta }) => {
-        const metaStr = Object.keys(meta).length ? ` ${JSON.stringify(meta)}` : ''
+        const metaStr = Object.keys(meta).length ? `\n${util.inspect(meta, { colors: true, depth: 4 })}` : ''
         return `${timestamp} [${level}]: ${message}${metaStr}`
       })
     ),

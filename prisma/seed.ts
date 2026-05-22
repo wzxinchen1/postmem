@@ -1,6 +1,7 @@
 import 'dotenv/config'
 import { PrismaClient } from '../src/generated/prisma/client/client'
 import { PrismaPg } from '@prisma/adapter-pg'
+import { logger } from '../src/lib/logger'
 import { vendors } from './vendor-seed'
 
 const adapter = new PrismaPg({ 
@@ -10,7 +11,7 @@ const adapter = new PrismaPg({
 const prisma = new PrismaClient({ adapter })
 
 async function main() {
-  console.log('Seeding vendors...')
+  logger.info('[Seed] Seeding vendors...')
   
   for (const vendor of vendors) {
     await prisma.vendor.upsert({
@@ -18,15 +19,15 @@ async function main() {
       update: vendor,
       create: vendor,
     })
-    console.log(`  ✓ ${vendor.name}`)
+    logger.info(`[Seed] ✓ ${vendor.name}`)
   }
   
-  console.log('Done!')
+  logger.info('[Seed] Done!')
 }
 
 main()
   .catch((e) => {
-    console.error(e)
+    logger.error('[Seed] 种子数据初始化失败', e as Error)
     process.exit(1)
   })
   .finally(async () => {

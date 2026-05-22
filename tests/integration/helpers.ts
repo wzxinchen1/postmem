@@ -52,6 +52,14 @@ export async function cleanupConversations(): Promise<void> {
   const prisma = new PrismaClient({ adapter })
   await prisma.chatMessage.deleteMany()
   await prisma.conversation.deleteMany()
+  await prisma.memory.deleteMany()
+  await prisma.$disconnect()
+}
+
+export async function cleanupMemories(): Promise<void> {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+  const prisma = new PrismaClient({ adapter })
+  await prisma.memory.deleteMany()
   await prisma.$disconnect()
 }
 
@@ -132,12 +140,9 @@ export async function chatAndWait(
     requestStartTime,
   }
 
-  let chatSent = false
   let listenerRef: EventListener | null = null
   const donePromise = new Promise<void>((resolve) => {
     const listener: EventListener = (event) => {
-      if (!chatSent) return
-
       if (collectEvents) {
         events.push({ ...event, _timestamp: Date.now() } as StreamEvent & { _timestamp: number })
       }
@@ -188,12 +193,11 @@ export async function chatAndWait(
   }
 
   result.conversationId = conversationId
-  chatSent = true
 
   await donePromise
   result.events = events
 
-  console.log(`[chatAndWait] 完成: convId=${conversationId}, content.length=${result.fullContent.length}, error=${result.error}, events=[${events.map((e: any) => e.type).join(',')}]`)
+  await waitForProcessingCleared(conversationId)
 
   return result
 }
@@ -245,3 +249,27 @@ export function assertNotEqual<T>(actual: T, expected: T, label?: string): void 
     throw new Error(`${prefix}期望值不等于 ${JSON.stringify(expected)}，但实际相等`)
   }
 }
+
+export async function checkMessageTokens(): Promise<void> {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+  const prisma = new PrismaClient({ adapter })
+  try {
+    const badMessages = await prisma.chatMessage.findMany({
+      where: {
+        OR: [
+          { tokens: { lte: 0 } },
+          { totalTokens: { lte: 0 } },
+        ],
+      },
+      select: { id: true, role: true, tokens: true, totalTokens: true, conversationId: true },
+    })
+    if (badMessages.length > 0) {
+      const details = badMessages.map(m => `id=${m.id} role=${m.role} tokens=${m.tokens} totalTokens=${m.totalTokens} convId=${m.conversationId}`)
+      throw new Error(`发现 token 异常消息: ${details.join('; ')}`)
+    }
+  } finally {
+    await prisma.$disconnect()
+  }
+}
+
+export { setMockChatSetting } from './di-overrides'

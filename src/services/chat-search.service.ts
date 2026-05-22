@@ -4,7 +4,7 @@ import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import { tavily } from '@tavily/core'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 import { AgentService } from '@/src/services/agent.service'
-import { ChatSettingService } from '@/src/services/chat-setting.service'
+import type { IChatSettingProvider } from '@/src/interfaces/chat-setting-provider'
 import { SSEService } from '@/src/services/sse.service'
 import { Prompts } from '@/src/lib/prompts'
 import { Errors, AppError } from '@/src/lib/errors'
@@ -29,7 +29,7 @@ interface Dependencies {
   prisma: PrismaClient
   llmResilienceService: LLMResilienceService
   agentService: AgentService
-  chatSettingService: ChatSettingService
+  chatSettingService: IChatSettingProvider
   sseService: SSEService
 }
 
@@ -37,7 +37,7 @@ export class SearchService {
   private prisma: PrismaClient
   private llmResilienceService: LLMResilienceService
   private agentService: AgentService
-  private chatSettingService: ChatSettingService
+  private chatSettingService: IChatSettingProvider
   private sseService: SSEService
   private tavilyApiKey: string
 
@@ -63,10 +63,6 @@ export class SearchService {
       : ''
 
     const lastMessage = recentMessages[recentMessages.length - 1]
-    logger.info('[SearchService] analyzeSearchNeeds 入参', {
-      recentCount: recentMessages.length,
-      messages: recentMessages.map(m => ({ role: m.role, contentLen: m.content?.length, contentPreview: m.content?.slice(0, 50) })),
-    })
     if (!lastMessage?.content) throw Errors.badRequest('缺少最新消息内容')
     const currentQuery = lastMessage.content
     if (!currentQuery) {
@@ -157,7 +153,7 @@ export class SearchService {
       }
     } catch (e) {
       const originalError = e instanceof Error ? e : new Error(String(e))
-      throw Errors.internalError(`Tavily 搜索失败: ${originalError.message}`)
+      throw Errors.internalError('Tavily 搜索失败', originalError)
     }
 
     const searchItems = tavilyResults.slice(0, linkCount)
@@ -276,7 +272,8 @@ export class SearchService {
           return content
         } catch (err) {
           if (err instanceof AppError) throw err
-          throw Errors.internalError(`链接 ${url} PDF 解析失败: ${err instanceof Error ? err.message : String(err)}`)
+          const pdfErr = err instanceof Error ? err : new Error(String(err))
+          throw Errors.internalError(`链接 ${url} PDF 解析失败`, pdfErr)
         }
       }
 
@@ -295,7 +292,8 @@ export class SearchService {
       return content
     } catch (err) {
       if (err instanceof AppError) throw err
-      throw Errors.internalError(`链接 ${url} 获取失败: ${err instanceof Error ? err.message : String(err)}`)
+      const fetchErr = err instanceof Error ? err : new Error(String(err))
+      throw Errors.internalError(`链接 ${url} 获取失败`, fetchErr)
     }
   }
 

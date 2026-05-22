@@ -28,8 +28,15 @@ export function createInitNode(deps: GraphDependencies) {
 
     const chatMessages = await deps.conversationService.getMessages(state.conversationId)
     const langchainMessages: (HumanMessage | AIMessage)[] = []
+
+    // 收集最近 10 条已记忆消息，保持原始顺序
+    const memoriedMessages = chatMessages.filter(msg => msg.memoried)
+    const recentMemoriedIds = new Set(
+      memoriedMessages.slice(-10).map(msg => msg.id)
+    )
+
     for (const msg of chatMessages) {
-      if (!msg.memoried) {
+      if (!msg.memoried || recentMemoriedIds.has(msg.id)) {
         if (msg.role === 'user') {
           langchainMessages.push(new HumanMessage(msg.content))
         } else if (msg.role === 'assistant') {

@@ -1,10 +1,11 @@
-import { test, run } from './runner'
+import { test, run, setup, before } from './runner'
 import type { TestContext } from './runner'
 import {
   createClient,
   getTestKbId,
   getTestModelId,
   cleanupConversations,
+  cleanupMemories,
   waitForProcessingCleared,
   startConsume,
   chatAndWait,
@@ -15,6 +16,7 @@ import {
   assertLessThanOrEqual,
   assertContains,
   assertNotEqual,
+  setMockChatSetting,
 } from './helpers'
 import type { PostMemClient } from '../../packages/postmem-sdk/dist/index.mjs'
 
@@ -25,13 +27,18 @@ let kbId: string
 let modelId: string
 let convId1: string
 
-test('空库时聊天 — 自动创建新对话并返回有效 ChatResult', async (ctx: TestContext) => {
-  await cleanupConversations()
+setup(async () => {
   client = createClient()
   kbId = await getTestKbId()
   modelId = await getTestModelId()
   startConsume(client)
+})
 
+before(async () => {
+  await cleanupConversations()
+})
+
+test('空库时聊天 — 自动创建新对话并返回有效 ChatResult', async (ctx: TestContext) => {
   const result = await chatAndWait(
     client,
     {
@@ -111,17 +118,16 @@ test('缺少 messages — 返回 400', async () => {
 test('同一对话正在处理时再次请求 → 400', async () => {
   await waitForProcessingCleared(convId1)
 
-  const firstRes = await fetch(`${getBaseUrl()}/api/chat/completions`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({
+  const firstChat = chatAndWait(
+    client,
+    {
       messages: [{ id: '5', content: '请详细解释量子力学的原理' }],
       modelId,
       kbId,
       conversationId: convId1,
-    }),
-  })
-  assertEqual(firstRes.ok, true, 'firstRes.ok')
+    },
+    true,
+  )
 
   await new Promise((resolve) => setTimeout(resolve, 500))
 
@@ -140,7 +146,7 @@ test('同一对话正在处理时再次请求 → 400', async () => {
   const text = await secondRes.text()
   assertContains(text, '尚未处理完成', 'response body')
 
-  await waitForProcessingCleared(convId1)
+  await firstChat
 }, CHAT_TIMEOUT)
 
 test('首 token 时间 ≤ 10s', async () => {
@@ -322,5 +328,176 @@ test('重发后继续聊天 — 新消息追加在重发内容之后', async () 
   assertContains(lastUserMsg.content, '重发后继续聊天', 'lastUserMsg.content')
   assertTruthy(lastAssistantMsg.content, 'lastAssistantMsg.content')
 }, CHAT_TIMEOUT)
+
+
+test('短对话第1轮', async () => {
+  await chatAndWait(
+    client,
+    {
+      messages: [{ id: 'mem-short-1', content: '你好' }],
+      modelId,
+      kbId,
+      conversationId: convId1,
+    },
+    true,
+  )
+})
+
+test('短对话第2轮', async () => {
+  await chatAndWait(
+    client,
+    {
+      messages: [{ id: 'mem-short-2', content: '是的' }],
+      modelId,
+      kbId,
+      conversationId: convId1,
+    },
+    true,
+  )
+})
+
+test('短对话第3轮', async () => {
+  await chatAndWait(
+    client,
+    {
+      messages: [{ id: 'mem-short-3', content: '很好' }],
+      modelId,
+      kbId,
+      conversationId: convId1,
+    },
+    true,
+  )
+})
+
+test('记忆: 触发后全部未记忆消息均被记忆，只剩本轮新增', async () => {
+  await cleanupMemories()
+
+  const msgResultBefore = await client.getMessages(convId1, { page: 1, limit: 100 })
+  const unmemoriedBefore = msgResultBefore.messages.filter((m) => !m.memoried)
+
+  // 只用未记忆消息的 token 计算阈值，确保触发
+  const unmemoriedTokenSum = unmemoriedBefore.reduce((sum, m) => sum + m.tokens, 0)
+  const thresholdK = unmemoriedTokenSum / 1000
+
+  const totalChars = unmemoriedBefore.reduce((sum, m) => sum + m.content.length, 0)
+  const chunkSize = Math.max(20, Math.round(totalChars / 4))
+  const chunkMin = Math.max(10, Math.round(chunkSize * 0.6))
+  const chunkMax = Math.round(chunkSize * 1.4)
+
+  setMockChatSetting({
+    memoryContextThreshold: thresholdK,
+    chunkCharRange: `${chunkMin}-${chunkMax}`,
+  })
+
+  const triggerResult = await chatAndWait(
+    client,
+    {
+      messages: [{ id: 'mem-trigger', content: '什么是动态规划？要简洁回答。' }],
+      modelId,
+      kbId,
+      conversationId: convId1,
+    },
+    true,
+  )
+  await waitForProcessingCleared(convId1)
+
+  const msgResultAfter = await client.getMessages(convId1, { page: 1, limit: 100 })
+  const memoriedMsgs = msgResultAfter.messages.filter((m) => m.memoried)
+  const unmemoriedAfter = msgResultAfter.messages.filter((m) => !m.memoried)
+
+  // 验证1: 有消息被记忆
+  assertGreaterThan(memoriedMsgs.length, 0, 'memoried messages count')
+
+  // 验证2: 触发后未记忆消息只剩本轮新增（1条用户 + 1条助手 = 最多2条）
+  assertLessThanOrEqual(unmemoriedAfter.length, 2, 'only current round messages remain unmemoried')
+
+  // 验证3: 之前所有未记忆消息 + 本轮用户消息都被标记为 memoried（本轮用户消息也参与了 SaveMemory）
+  assertGreaterThan(memoriedMsgs.length, unmemoriedBefore.length, 'all previously unmemoried + current user message are memoried')
+
+  // 验证4: 流事件中包含 summarizing 状态
+  const summarizingEvents = triggerResult.events.filter(
+    (e) => (e as Record<string, unknown>).status === 'summarizing',
+  )
+  assertGreaterThan(summarizingEvents.length, 0, 'summarizing status events during memory save')
+}, 300_000)
+
+test('记忆: 已记忆消息不参与阈值计算 — 第二次触发只计算未记忆消息', async () => {
+  // 恢复高阈值，发几轮短对话积累未记忆消息
+  setMockChatSetting({
+    memoryContextThreshold: 9999,
+    chunkCharRange: '200-500',
+  })
+
+  await chatAndWait(
+    client,
+    { messages: [{ id: 'mem-2nd-1', content: '第二次记忆测试第一轮' }], modelId, kbId, conversationId: convId1 },
+    false,
+  )
+  await chatAndWait(
+    client,
+    { messages: [{ id: 'mem-2nd-2', content: '第二次记忆测试第二轮' }], modelId, kbId, conversationId: convId1 },
+    false,
+  )
+
+  const msgResultBefore = await client.getMessages(convId1, { page: 1, limit: 100 })
+  const unmemoriedBefore = msgResultBefore.messages.filter((m) => !m.memoried)
+  const memoriedBefore = msgResultBefore.messages.filter((m) => m.memoried)
+
+  // 确认已有已记忆消息（来自前一个测试）
+  assertGreaterThan(memoriedBefore.length, 0, 'has memoried messages from previous test')
+
+  // 只用未记忆消息的 token 计算阈值（已记忆消息不参与）
+  const unmemoriedTokenSum = unmemoriedBefore.reduce((sum, m) => sum + m.tokens, 0)
+  const thresholdK = unmemoriedTokenSum / 1000
+
+  setMockChatSetting({
+    memoryContextThreshold: thresholdK,
+  })
+
+  await chatAndWait(
+    client,
+    { messages: [{ id: 'mem-2nd-trigger', content: '触发第二次记忆' }], modelId, kbId, conversationId: convId1 },
+    true,
+  )
+  await waitForProcessingCleared(convId1)
+
+  const msgResultAfter = await client.getMessages(convId1, { page: 1, limit: 100 })
+  const unmemoriedAfter = msgResultAfter.messages.filter((m) => !m.memoried)
+
+  // 验证: 第二次触发后，之前的未记忆消息全部被记忆，只剩本轮新增
+  assertLessThanOrEqual(unmemoriedAfter.length, 2, 'only current round messages remain unmemoried after 2nd trigger')
+}, 300_000)
+
+test('记忆: memoried 消息不可重发 — 返回 400', async () => {
+  const msgResult = await client.getMessages(convId1, { page: 1, limit: 100 })
+  const memoriedMsg = msgResult.messages.find((m) => m.memoried)
+
+  if (!memoriedMsg) {
+    throw new Error('没有找到已记忆的消息，前置用例可能未触发记忆')
+  }
+
+  const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({
+      messages: [],
+      modelId,
+      kbId,
+      conversationId: convId1,
+      regenerateMessageId: memoriedMsg.id,
+    }),
+  })
+
+  assertEqual(res.status, 400, 'status for memoried regenerate')
+  const text = await res.text()
+  assertContains(text, '已记忆', 'error message contains 已记忆')
+})
+
+test('记忆: 恢复阈值设置', async () => {
+  setMockChatSetting({
+    memoryContextThreshold: 9999,
+    chunkCharRange: '200-500',
+  })
+})
 
 run()

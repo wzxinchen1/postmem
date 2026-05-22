@@ -1,12 +1,15 @@
-import { ChildProcess, spawn } from 'child_process'
 import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import path from 'path'
+import fs from 'fs'
+import http from 'http'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = path.dirname(__filename)
 
 dotenv.config({ path: path.resolve(__dirname, '../../.env') })
+
+process.env.INTEGRATION_TEST = 'true'
 
 export interface TestContext {
   baseUrl: string
@@ -27,12 +30,24 @@ interface TestResult {
   error?: string
 }
 
+interface RunState {
+  failedIndex: number
+  timestamp: string
+}
+
 const DEFAULT_TIMEOUT = 60_000
+const STATE_FILE = path.resolve(__dirname, '.run-state.json')
 const results: TestResult[] = []
 const tests: TestCase[] = []
 
-let serverProcess: ChildProcess | null = null
-const BASE_URL = `http://localhost:${process.env.PORT || 3000}`
+let httpServer: http.Server | null = null
+const PORT = Number(process.env.PORT) || 3000
+const BASE_URL = `http://localhost:${PORT}`
+
+const retryMode = process.argv.includes('retry')
+export function isRetryMode(): boolean {
+  return retryMode
+}
 
 function log(message: string) {
   const timestamp = new Date().toISOString().slice(11, 19)
@@ -49,6 +64,17 @@ function logFail(message: string) {
 
 function logInfo(message: string) {
   log(`\x1b[36m→\x1b[0m ${message}`)
+}
+
+const setupFns: TestFn[] = []
+const beforeFns: TestFn[] = []
+
+export function setup(fn: TestFn): void {
+  setupFns.push(fn)
+}
+
+export function before(fn: TestFn): void {
+  beforeFns.push(fn)
 }
 
 export function test(name: string, fn: TestFn, timeoutMs = DEFAULT_TIMEOUT) {
@@ -76,7 +102,6 @@ async function waitForServer(maxRetries = 60, intervalMs = 2000): Promise<boolea
         return true
       }
     } catch {
-      // Server not ready yet
     }
     await new Promise((resolve) => setTimeout(resolve, intervalMs))
   }
@@ -92,82 +117,113 @@ async function isServerRunning(): Promise<boolean> {
   }
 }
 
+const SERVER_STARTUP_TIMEOUT = 120_000
+
 async function startServer(): Promise<void> {
   if (await isServerRunning()) {
     logSuccess('检测到服务器已在运行，跳过启动')
     return
   }
 
-  logInfo('正在启动服务器...')
+  logInfo('正在启动服务器（同进程模式）...')
 
-  serverProcess = spawn('node', ['node_modules/.bin/next', 'dev', '-p', String(process.env.PORT || 3000)], {
-    cwd: path.resolve(__dirname, '../..'),
-    stdio: 'pipe',
-    env: { ...process.env },
+  const startupPromise = (async () => {
+    const next = await import('next')
+    const app = next.default({ dev: true, dir: path.resolve(__dirname, '../..') })
+    const handler = app.getRequestHandler()
+
+    await app.prepare()
+
+    httpServer = http.createServer(handler)
+    await new Promise<void>((resolve) => {
+      httpServer!.listen(PORT, () => resolve())
+    })
+  })()
+
+  const timeoutPromise = new Promise<never>((_, reject) => {
+    setTimeout(() => reject(new Error(`服务器启动超时 (${SERVER_STARTUP_TIMEOUT}ms)`)), SERVER_STARTUP_TIMEOUT)
   })
 
-  serverProcess.stdout?.on('data', (data: Buffer) => {
-    const text = data.toString().trim()
-    if (text) {
-      log(`[server:stdout] ${text}`)
-    }
-  })
-
-  serverProcess.stderr?.on('data', (data: Buffer) => {
-    const text = data.toString().trim()
-    if (text) {
-      log(`[server:stderr] ${text}`)
-    }
-  })
-
-  serverProcess.on('error', (err) => {
-    log(`[server:error] ${err.message}`)
-  })
-
-  serverProcess.on('exit', (code) => {
-    log(`[server:exit] code=${code}`)
-    serverProcess = null
-  })
+  await Promise.race([startupPromise, timeoutPromise])
 
   logInfo('等待服务器就绪...')
   const ready = await waitForServer()
   if (!ready) {
-    throw new Error('服务器启动超时')
+    throw new Error('服务器就绪检查超时')
   }
   logSuccess('服务器已就绪')
 }
 
 async function stopServer(): Promise<void> {
-  if (!serverProcess) return
+  if (!httpServer) return
 
   logInfo('正在停止服务器...')
-  serverProcess.kill('SIGTERM')
-
   await new Promise<void>((resolve) => {
-    const timeout = setTimeout(() => {
-      serverProcess?.kill('SIGKILL')
-      resolve()
-    }, 10000)
-
-    serverProcess?.on('exit', () => {
-      clearTimeout(timeout)
-      resolve()
-    })
+    httpServer!.close(() => resolve())
   })
-
-  serverProcess = null
+  httpServer = null
   logInfo('服务器已停止')
+}
+
+function loadRunState(): RunState | null {
+  try {
+    const raw = fs.readFileSync(STATE_FILE, 'utf-8')
+    return JSON.parse(raw) as RunState
+  } catch {
+    return null
+  }
+}
+
+function saveRunState(failedIndex: number): void {
+  const state: RunState = { failedIndex, timestamp: new Date().toISOString() }
+  fs.writeFileSync(STATE_FILE, JSON.stringify(state, null, 2))
+}
+
+function clearRunState(): void {
+  try {
+    fs.unlinkSync(STATE_FILE)
+  } catch {
+  }
 }
 
 async function runTests(): Promise<void> {
   const ctx: TestContext = { baseUrl: BASE_URL }
   let hasFailure = false
 
+  let startIndex = 0
+  if (retryMode) {
+    const state = loadRunState()
+    if (state) {
+      startIndex = state.failedIndex
+      logInfo(`retry 模式：从第 ${startIndex + 1} 个用例 "${tests[startIndex]?.name}" 继续`)
+      logInfo(`上次失败时间：${state.timestamp}`)
+      for (let i = 0; i < startIndex; i++) {
+        results.push({ name: tests[i].name, passed: true, durationMs: 0 })
+      }
+    } else {
+      logInfo('retry 模式：未找到上次运行状态，从头开始')
+    }
+  }
+
   log('')
-  log(`\x1b[1m开始运行 ${tests.length} 个测试用例\x1b[0m`)
+  log(`\x1b[1m开始运行 ${tests.length - startIndex} 个测试用例（共 ${tests.length} 个）\x1b[0m`)
   log('')
 
-  for (let i = 0; i < tests.length; i++) {
+  if (startIndex === 0) {
+    for (const fn of setupFns) {
+      await fn(ctx)
+    }
+    for (const fn of beforeFns) {
+      await fn(ctx)
+    }
+  } else {
+    for (const fn of setupFns) {
+      await fn(ctx)
+    }
+    logInfo('retry 模式：跳过 before 钩子（不清理数据库）')
+  }
+
+  for (let i = startIndex; i < tests.length; i++) {
     const tc = tests[i]
     const label = `[${i + 1}/${tests.length}] ${tc.name}`
 
@@ -181,6 +237,8 @@ async function runTests(): Promise<void> {
     logInfo(`${label} 开始... (超时 ${tc.timeoutMs}ms)`)
     try {
       await runWithTimeout(tc.fn, ctx, tc.timeoutMs)
+      const { checkMessageTokens } = await import('./helpers')
+      await checkMessageTokens()
       const durationMs = Date.now() - start
       logSuccess(`${label} (${durationMs}ms)`)
       results.push({ name: tc.name, passed: true, durationMs })
@@ -196,6 +254,7 @@ async function runTests(): Promise<void> {
       }
       results.push({ name: tc.name, passed: false, durationMs, error: message })
       hasFailure = true
+      saveRunState(i)
     }
   }
 }
@@ -230,13 +289,13 @@ export async function run(): Promise<void> {
     const failed = results.filter((r) => !r.passed).length
     if (failed > 0) {
       exitCode = 1
+    } else {
+      clearRunState()
     }
   } catch (err) {
     logFail(`运行器异常: ${err instanceof Error ? err.message : String(err)}`)
     exitCode = 1
   } finally {
-    await stopServer()
+    process.exit(exitCode)
   }
-
-  process.exit(exitCode)
 }

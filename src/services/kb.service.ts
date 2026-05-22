@@ -98,7 +98,7 @@ export class KBService {
     })
 
     if (!kb) {
-      throw Errors.projectNotFound(name)
+      throw Errors.internalError(`知识库 '${name}' 不存在`)
     }
 
     return {
@@ -1018,7 +1018,7 @@ export class KBService {
     })
 
     if (!memory) {
-      throw Errors.memoryNotFound(id)
+      throw Errors.internalError(`片段 ID ${id} 不存在`)
     }
 
     await this.prisma.memory.delete({

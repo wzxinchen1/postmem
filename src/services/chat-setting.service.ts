@@ -1,7 +1,8 @@
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { ChatSettingInfo } from '@/src/types'
+import type { IChatSettingProvider } from '@/src/interfaces/chat-setting-provider'
 
-export class ChatSettingService {
+export class ChatSettingService implements IChatSettingProvider {
   private prisma: PrismaClient
 
   constructor({ prisma }: { prisma: PrismaClient }) {

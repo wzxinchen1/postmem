@@ -59,9 +59,9 @@ export class ConversationService {
   }
 
   async addMessage(data: AddChatMessageRequest): Promise<ChatMessage> {
-    if (data.tokens === undefined) throw Errors.badRequest('消息缺少 tokens 字段')
-    if (data.totalTokens === undefined) throw Errors.badRequest('消息缺少 totalTokens 字段')
-    if (data.memoried === undefined) throw Errors.badRequest('消息缺少 memoried 字段')
+    if (data.tokens === undefined) throw Errors.internalError('addMessage 缺少 tokens 字段')
+    if (data.totalTokens === undefined) throw Errors.internalError('addMessage 缺少 totalTokens 字段')
+    if (data.memoried === undefined) throw Errors.internalError('addMessage 缺少 memoried 字段')
 
     const isWelcome = data.metadata?.isWelcome === true
 
@@ -180,9 +180,9 @@ export class ConversationService {
   }
 
   async addMessageWithId(data: AddChatMessageRequest & { id: string }): Promise<ChatMessage> {
-    if (data.tokens === undefined) throw Errors.badRequest('消息缺少 tokens 字段')
-    if (data.totalTokens === undefined) throw Errors.badRequest('消息缺少 totalTokens 字段')
-    if (data.memoried === undefined) throw Errors.badRequest('消息缺少 memoried 字段')
+    if (data.tokens === undefined) throw Errors.internalError('addMessageWithId 缺少 tokens 字段')
+    if (data.totalTokens === undefined) throw Errors.internalError('addMessageWithId 缺少 totalTokens 字段')
+    if (data.memoried === undefined) throw Errors.internalError('addMessageWithId 缺少 memoried 字段')
 
     const isWelcome = data.metadata?.isWelcome === true
 

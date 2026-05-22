@@ -46,10 +46,10 @@ export class LLMResilienceService {
 
   async invokeWithRetry(options: LLMInvokeOptions): Promise<LLMInvokeResult> {
     if (options.maxRetries === undefined || options.maxRetries === null) {
-      throw Errors.badRequest('invokeWithRetry 缺少 maxRetries 参数')
+      throw Errors.internalError('invokeWithRetry 缺少 maxRetries 参数')
     }
     if (options.timeoutMs === undefined || options.timeoutMs === null) {
-      throw Errors.badRequest('invokeWithRetry 缺少 timeoutMs 参数')
+      throw Errors.internalError('invokeWithRetry 缺少 timeoutMs 参数')
     }
     const maxRetries = options.maxRetries
     const timeoutMs = options.timeoutMs
@@ -103,7 +103,7 @@ export class LLMResilienceService {
     validator: (parsed: unknown) => T
   ): Promise<ValidateResult<T>> {
     if (options.maxRetries === undefined || options.maxRetries === null) {
-      throw Errors.badRequest('invokeWithValidation 缺少 maxRetries 参数')
+      throw Errors.internalError('invokeWithValidation 缺少 maxRetries 参数')
     }
     const maxRetries = options.maxRetries
     let lastError: Error | null = null
@@ -141,10 +141,10 @@ export class LLMResilienceService {
 
   async streamWithRetry(options: LLMStreamOptions): Promise<LLMStreamResult> {
     if (options.maxRetries === undefined || options.maxRetries === null) {
-      throw Errors.badRequest('streamWithRetry 缺少 maxRetries 参数')
+      throw Errors.internalError('streamWithRetry 缺少 maxRetries 参数')
     }
     if (options.timeoutMs === undefined || options.timeoutMs === null) {
-      throw Errors.badRequest('streamWithRetry 缺少 timeoutMs 参数')
+      throw Errors.internalError('streamWithRetry 缺少 timeoutMs 参数')
     }
     const maxRetries = options.maxRetries
     const timeoutMs = options.timeoutMs
@@ -245,6 +245,17 @@ export class LLMResilienceService {
     )
   }
 
+  /**
+   * 安全 JSON 解析：封装 try-catch，解析失败返回 null
+   */
+  private safeJsonParse(input: string): unknown {
+    try {
+      return JSON.parse(input)
+    } catch {
+      return null
+    }
+  }
+
   parseJSON<T>(rawContent: string): T {
     let jsonStr = rawContent.trim()
 
@@ -268,19 +279,20 @@ export class LLMResilienceService {
       .replace(/\/\/.*$/gm, '')
       .replace(/\/\*[\s\S]*?\*\//g, '')
 
-    try {
-      return JSON.parse(jsonStr)
-    } catch (parseError) {
-      const repaired = this.tryRepairJSON(jsonStr)
-      if (repaired !== null) {
-        logger.info('[LLMResilience] JSON 修复成功')
-        return repaired as T
-      }
-
-      throw Errors.internalError(
-        `JSON 解析失败: ${parseError instanceof Error ? parseError.message : String(parseError)}`
-      )
+    const firstResult = this.safeJsonParse(jsonStr)
+    if (firstResult !== null) {
+      return firstResult as T
     }
+
+    const repaired = this.tryRepairJSON(jsonStr)
+    if (repaired !== null) {
+      logger.info('[LLMResilience] JSON 修复成功')
+      return repaired as T
+    }
+
+    throw Errors.internalError(
+      `JSON 解析失败: ${jsonStr.slice(0, 200)}`
+    )
   }
 
   private tryRepairJSON(jsonStr: string): unknown | null {
@@ -293,12 +305,8 @@ export class LLMResilienceService {
     ]
 
     for (const repair of repairs) {
-      try {
-        const repaired = repair(jsonStr)
-        return JSON.parse(repaired)
-      } catch {
-        continue
-      }
+      const result = this.safeJsonParse(repair(jsonStr))
+      if (result !== null) return result
     }
 
     return null

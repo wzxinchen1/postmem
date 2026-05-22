@@ -90,10 +90,10 @@ export class VendorService {
 
   private validateCode(code: string): void {
     if (!code.includes('module.exports')) {
-      throw Errors.badRequest('Factory code must export using module.exports')
+      throw Errors.internalError('Factory code must export using module.exports')
     }
     if (!code.includes('createModel')) {
-      throw Errors.badRequest('Factory code must have createModel method')
+      throw Errors.internalError('Factory code must have createModel method')
     }
   }
 }

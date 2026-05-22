@@ -2,7 +2,7 @@ import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import { ConversationService } from '@/src/services/conversation.service'
 import { SearchService } from '@/src/services/chat-search.service'
 import { ChatMemoryService } from '@/src/services/chat-memory.service'
-import { ChatSettingService } from '@/src/services/chat-setting.service'
+import type { IChatSettingProvider } from '@/src/interfaces/chat-setting-provider'
 import { ChatModelFactory } from '@/src/services/chat-model-factory.service'
 import { SSEService } from '@/src/services/sse.service'
 import { ProviderService } from '@/src/services/provider.service'
@@ -25,7 +25,7 @@ interface Dependencies {
   conversationService: ConversationService
   searchService: SearchService
   chatMemoryService: ChatMemoryService
-  chatSettingService: ChatSettingService
+  chatSettingService: IChatSettingProvider
   chatModelFactory: ChatModelFactory
   sseService: SSEService
   providerService: ProviderService
@@ -40,7 +40,7 @@ export class ChatService {
   private conversationService: ConversationService
   private searchService: SearchService
   private chatMemoryService: ChatMemoryService
-  private chatSettingService: ChatSettingService
+  private chatSettingService: IChatSettingProvider
   private chatModelFactory: ChatModelFactory
   private sseService: SSEService
   private providerService: ProviderService
@@ -209,7 +209,7 @@ export class ChatService {
         hasVisionCapability: false,
         recognizedText: '',
         fetchedUrlContent: '',
-        lastUserMessageId: userMessageId ?? '',
+        lastUserMessageId: userMessageId,
       })
 
       if (result.cancelled) {
