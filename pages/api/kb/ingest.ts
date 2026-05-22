@@ -62,7 +62,7 @@ async function handleTextIngestStream(req: NextApiRequest, res: NextApiResponse)
     let errorCode = 'INTERNAL_ERROR'
 
     if (error instanceof AppError) {
-      errorMessage = error.details || error.message
+      errorMessage = error.message
       errorCode = error.code
     } else if (error instanceof Error) {
       errorMessage = error.message
