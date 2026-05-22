@@ -522,7 +522,7 @@ export interface ChatCompletionResponse {
  */
 export interface SearchNeedsResult {
   searchWebReason: string
-  searchWebMemoryReason: string
+  searchMemoryReason: string
   needSearchWeb: boolean
   webKeywords: string[]
   needSearchMemory: boolean
@@ -591,7 +591,9 @@ export interface ChatSettingInfo {
   searchLinkCount: number
   chunkCharRange: string
   /** @internal 测试专用：禁用搜索（不存数据库，仅 DI mock 生效） */
-  searchDisabled?: boolean
+  memorySearchDisabled?: boolean
+  /** @internal 测试专用：禁用互联网搜索（不存数据库，仅 DI mock 生效） */
+  webSearchDisabled?: boolean
   createdAt: Date
   updatedAt: Date
 }

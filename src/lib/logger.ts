@@ -11,7 +11,11 @@ const transports: winston.transport[] = [
       winston.format.colorize(),
       winston.format.timestamp({ format: 'YYYY-MM-DD HH:mm:ss' }),
       winston.format.printf(({ timestamp, level, message, ...meta }) => {
-        const metaStr = Object.keys(meta).length ? `\n${util.inspect(meta, { colors: true, depth: 4 })}` : ''
+        // 过滤 winston 内部 Symbol 属性（如 Symbol(message)/Symbol(splat)），避免重复输出
+        const cleanMeta = Object.fromEntries(
+          Object.entries(meta).filter(([k]) => typeof k !== 'symbol'),
+        )
+        const metaStr = Object.keys(cleanMeta).length ? `\n${util.inspect(cleanMeta, { colors: true, depth: 4 })}` : ''
         return `${timestamp} [${level}]: ${message}${metaStr}`
       })
     ),
@@ -24,7 +28,7 @@ if (seqUrl) {
       serverUrl: seqUrl,
       apiKey: seqApiKey,
       onError: (e: Error) => {
-        console.error('[Seq] Transport error:', e)
+        console.error('SEQ记日志失败:', e)
       },
     })
   )

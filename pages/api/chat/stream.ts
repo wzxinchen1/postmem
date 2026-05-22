@@ -29,7 +29,6 @@ import { logger } from '@/src/lib/logger'
  *   - 看不懂不要改，去问人，不要猜
  */
 
-const encoder = new TextEncoder()
 const GLOBAL_STREAM_KEY = 'chat:global'
 const POLL_INTERVAL_MS = 200
 const KEEP_ALIVE_MS = 30000

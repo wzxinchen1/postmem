@@ -72,7 +72,7 @@ export default createApiHandler<Deps>({
       }
     }
 
-    ;(async () => {
+    ; (async () => {
       try {
         await deps.chatService.chat({
           messages: messages.map(m => ({
@@ -92,9 +92,7 @@ export default createApiHandler<Deps>({
       } catch (error) {
         logger.error('[completions] Chat error', { modelId, kbId, conversationId: convId, error: error instanceof AppError ? error : { errorMessage: error instanceof Error ? error.message : String(error), stack: error instanceof Error ? error.stack : undefined } })
         const errMsg = error instanceof AppError ? error.message : (error instanceof Error ? error.message : '内部错误')
-        try {
-          await deps.sseService.emit({ type: 'error', message: errMsg })
-        } catch { /* fire-and-forget: SSE 发送失败不影响主流程 */ }
+        await deps.sseService.emit({ type: 'error', message: errMsg })
       }
     })()
 

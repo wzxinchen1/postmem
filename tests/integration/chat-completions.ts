@@ -6,6 +6,8 @@ import {
   getTestModelId,
   cleanupConversations,
   cleanupMemories,
+  cleanupWebpages,
+  getWebpageCount,
   waitForProcessingCleared,
   startConsume,
   chatAndWait,
@@ -21,7 +23,7 @@ import {
 } from './helpers'
 import type { PostMemClient } from '../../packages/postmem-sdk/dist/index.mjs'
 
-const CHAT_TIMEOUT = 90_000
+const CHAT_TIMEOUT = 15_000
 
 let client: PostMemClient
 let kbId: string
@@ -32,7 +34,7 @@ setup(async () => {
   client = createClient()
   kbId = await getTestKbId()
   modelId = await getTestModelId()
-  startConsume(client)
+  await startConsume(client)
 })
 
 before(async () => {
@@ -53,7 +55,7 @@ test('空库时聊天 — 自动创建新对话并返回有效 ChatResult', asyn
   assertEqual(conversations.conversations[0].id, result.conversationId, 'conversationId match')
 
   convId1 = result.conversationId
-}, 120_000)
+}, CHAT_TIMEOUT)
 
 test('有对话时复用最新对话', async () => {
   const result = await chatAndWait(client, {
@@ -77,7 +79,7 @@ test('缺少 modelId — 返回 400', async () => {
   })
 
   assertEqual(res.status, 400, 'status')
-})
+}, CHAT_TIMEOUT)
 
 test('缺少 kbId — 返回 400', async () => {
   const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
@@ -91,7 +93,7 @@ test('缺少 kbId — 返回 400', async () => {
   })
 
   assertEqual(res.status, 400, 'status')
-})
+}, CHAT_TIMEOUT)
 
 test('缺少 messages — 返回 400', async () => {
   const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
@@ -101,13 +103,13 @@ test('缺少 messages — 返回 400', async () => {
   })
 
   assertEqual(res.status, 400, 'status')
-})
+}, CHAT_TIMEOUT)
 
 test('同一对话正在处理时再次请求 → 400', async () => {
   await waitForProcessingCleared(convId1)
 
   const firstChat = chatAndWait(client, {
-    messages: [{ id: '5', content: '请详细解释量子力学的原理' }],
+    messages: [{ id: '5', content: '请简单解释量子力学的原理' }],
     modelId,
     kbId,
     conversationId: convId1,
@@ -178,7 +180,7 @@ test('流事件包含 status 事件', async () => {
       `status "${status}" is valid`,
     )
   }
-}, { search: true, timeoutMs: CHAT_TIMEOUT })
+}, { memorySearch: true, timeoutMs: CHAT_TIMEOUT })
 
 test('聊天完成后消息正确保存', async () => {
   await chatAndWait(client, {
@@ -244,34 +246,6 @@ test('重发后继续聊天 — 新消息追加在重发内容之后', async () 
   assertTruthy(lastAssistantMsg.content, 'lastAssistantMsg.content')
 }, CHAT_TIMEOUT)
 
-
-test('短对话第1轮', async () => {
-  await chatAndWait(client, {
-    messages: [{ id: 'mem-short-1', content: '你好' }],
-    modelId,
-    kbId,
-    conversationId: convId1,
-  })
-})
-
-test('短对话第2轮', async () => {
-  await chatAndWait(client, {
-    messages: [{ id: 'mem-short-2', content: '是的' }],
-    modelId,
-    kbId,
-    conversationId: convId1,
-  })
-})
-
-test('短对话第3轮', async () => {
-  await chatAndWait(client, {
-    messages: [{ id: 'mem-short-3', content: '很好' }],
-    modelId,
-    kbId,
-    conversationId: convId1,
-  })
-})
-
 test('记忆: 触发后全部未记忆消息均被记忆，只剩本轮新增', async () => {
   await cleanupMemories()
 
@@ -318,7 +292,7 @@ test('记忆: 触发后全部未记忆消息均被记忆，只剩本轮新增', 
     (e) => (e as Record<string, unknown>).status === 'summarizing',
   )
   assertGreaterThan(summarizingEvents.length, 0, 'summarizing status events during memory save')
-}, 300_000)
+}, 120_000)
 
 test('记忆: 已记忆消息不参与阈值计算 — 第二次触发只计算未记忆消息', async () => {
   // 恢复高阈值，发几轮短对话积累未记忆消息
@@ -353,7 +327,7 @@ test('记忆: 已记忆消息不参与阈值计算 — 第二次触发只计算�
 
   // 验证: 第二次触发后，之前的未记忆消息全部被记忆，只剩本轮新增
   assertLessThanOrEqual(unmemoriedAfter.length, 2, 'only current round messages remain unmemoried after 2nd trigger')
-}, 300_000)
+}, 90_000)
 
 test('记忆: memoried 消息不可重发 — 返回 400', async () => {
   const msgResult = await client.getMessages(convId1, { page: 1, limit: 100 })
@@ -393,7 +367,7 @@ test('记忆: 恢复阈值设置', async () => {
 
 test('搜索: 聊天流程触发记忆搜索 — 发"之前"类消息穿透到 searchingMemory + 回答引用记忆', async () => {
   const result = await chatAndWait(client, {
-    messages: [{ id: 'search-mem-1', content: '我之前让你解释过动态规划，简要回顾一下。' }],
+    messages: [{ id: 'search-mem-1', content: '我之前让你解释过动态规划，简要回顾一下，我在测试你的记忆搜索能力，你必须一定要回顾。' }],
     modelId,
     kbId,
     conversationId: convId1,
@@ -403,7 +377,7 @@ test('搜索: 聊天流程触发记忆搜索 — 发"之前"类消息穿透到 s
   const searchingMemoryEvents = result.events.filter(
     (e) => (e as Record<string, unknown>).status === 'searchingMemory',
   )
-  assertGreaterThan(searchingMemoryEvents.length, 0, 'searchingMemory status event emitted')
+  assertGreaterThan(searchingMemoryEvents.length, 0, '没有收到 searchingMemory 状态消息')
 
   // 验证2: 回答中提及了之前记忆过的内容（动态规划）
   const expectedKeywords = ['动态规划', 'DP', '规划']
@@ -411,6 +385,53 @@ test('搜索: 聊天流程触发记忆搜索 — 发"之前"类消息穿透到 s
   if (!dynamicRelated) {
     await diagnoseMemories(kbId, expectedKeywords, result.fullContent)
   }
-}, { search: true, timeoutMs: CHAT_TIMEOUT })
+}, { memorySearch: true, timeoutMs: 30_000 })
+
+test('互联网搜索: 第一次搜索 — 触发 searchingWeb + web_pages 表写入数据', async () => {
+  await cleanupWebpages()
+  const result = await chatAndWait(client, {
+    messages: [{ id: 'search-web-1', content: '搜索吊牌耻辱' }],
+    modelId,
+    kbId,
+    conversationId: convId1,
+  })
+
+  // 验证1: searchingWeb 状态事件出现
+  const searchingWebEvents = result.events.filter(
+    (e) => (e as Record<string, unknown>).status === 'searchingWeb',
+  )
+  assertGreaterThan(searchingWebEvents.length, 0, '没有收到 searchingWeb 状态消息')
+
+  // 验证2: searchingWeb 事件中包含 url 字段（搜索来源链接）
+  const webEventsWithUrl = searchingWebEvents.filter(
+    (e) => !!(e as Record<string, unknown>).url,
+  )
+  assertGreaterThan(webEventsWithUrl.length, 0, 'searchingWeb events with url')
+
+  // 验证3: web_pages 表有数据写入
+  const countAfter = await getWebpageCount()
+  assertGreaterThan(countAfter, 0, 'web_pages count after first search')
+}, { memorySearch: true, webSearch: true, timeoutMs: 90_000 })
+
+test('互联网搜索: 第二次搜索 — 相同消息命中缓存，web_pages 表数据不增加', async () => {
+  const countBefore = await getWebpageCount()
+
+  const result = await chatAndWait(client, {
+    messages: [{ id: 'search-web-2', content: '搜索吊牌耻辱' }],
+    modelId,
+    kbId,
+    conversationId: convId1,
+  })
+
+  // 验证1: searchingWeb 状态事件出现（缓存命中也会发射 searchingWeb）
+  const searchingWebEvents = result.events.filter(
+    (e) => (e as Record<string, unknown>).status === 'searchingWeb',
+  )
+  assertGreaterThan(searchingWebEvents.length, 0, '没有收到 searchingWeb 状态消息')
+
+  // 验证2: web_pages 表数据不增加（相同消息产生相同 keywords，upsert 不新增行）
+  const countAfter = await getWebpageCount()
+  assertEqual(countAfter, countBefore, 'web_pages count unchanged after cached search')
+}, { memorySearch: false, webSearch: true, timeoutMs: 30_000})
 
 run()

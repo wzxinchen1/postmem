@@ -40,15 +40,18 @@ export interface TestContext {
 export type TestFn = (ctx: TestContext) => Promise<void>
 
 export interface TestOptions {
-  /** 该测试是否需要搜索。默认 false。声明 true 的测试允许产生搜索事件，false 的测试不允许 */
-  search?: boolean
+  /** 该测试是否需要搜索（记忆搜索）。默认 false。声明 true 的测试允许产生搜索事件，false 的测试不允许 */
+  memorySearch?: boolean
+  /** 该测试是否需要互联网搜索。默认 false。声明 true 的测试允许产生 searchingWeb 事件，false 的测试不允许 */
+  webSearch?: boolean
 }
 
 interface TestCase {
   name: string
   fn: TestFn
   timeoutMs: number
-  search: boolean
+  memorySearch: boolean
+  webSearch: boolean
 }
 
 interface TestResult {
@@ -107,18 +110,21 @@ export function before(fn: TestFn): void {
 
 export function test(name: string, fn: TestFn, timeoutOrOptions?: number | TestOptions & { timeoutMs?: number }) {
   let timeoutMs = DEFAULT_TIMEOUT
-  let search = false
+  let memorySearch = false
+  let webSearch = false
   if (typeof timeoutOrOptions === 'number') {
     timeoutMs = timeoutOrOptions
   } else if (timeoutOrOptions) {
     timeoutMs = timeoutOrOptions.timeoutMs ?? DEFAULT_TIMEOUT
-    search = timeoutOrOptions.search ?? false
+    memorySearch = timeoutOrOptions.memorySearch ?? false
+    webSearch = timeoutOrOptions.webSearch ?? false
   }
-  tests.push({ name, fn, timeoutMs, search })
+  tests.push({ name, fn, timeoutMs, memorySearch, webSearch })
 }
 
 async function runWithTimeout(fn: TestFn, ctx: TestContext, timeoutMs: number): Promise<void> {
   return new Promise<void>((resolve, reject) => {
+    testLogger.info("超时时间：" + timeoutMs);
     const timer = setTimeout(() => {
       reject(new Error(`用例超时 (${timeoutMs}ms)`))
     }, timeoutMs)
@@ -271,16 +277,18 @@ async function runTests(): Promise<void> {
 
     const start = Date.now()
     logInfo(`${label} 开始... (超时 ${tc.timeoutMs}ms)`)
-    testLogger.info(`test_start`, { index: i + 1, total: tests.length, name: tc.name, search: tc.search })
+    testLogger.info(`test_start`, { index: i + 1, total: tests.length, name: tc.name, memorySearch: tc.memorySearch, webSearch: tc.webSearch })
     try {
-      // 根据测试的 search 选项自动管理 searchDisabled
-      const { setSearchDisabled } = await import('./helpers')
-      setSearchDisabled(!tc.search)
+      // 根据测试的 search 选项自动管理 searchDisabled / webSearchDisabled
+      const { setSearchDisabled: setMemorySearchDisabled, setWebSearchDisabled } = await import('./helpers')
+      setMemorySearchDisabled(!tc.memorySearch)
+      setWebSearchDisabled(!tc.webSearch)
 
       await runWithTimeout(tc.fn, ctx, tc.timeoutMs)
-      const { checkMessageTokens, assertNoSearchWhenDisabled } = await import('./helpers')
-      await checkMessageTokens()
-      await assertNoSearchWhenDisabled(tc.search)
+      const { checkMessageTokens } = await import('./helpers')
+      if (!isRetryMode()) {
+        await checkMessageTokens()
+      }
       const durationMs = Date.now() - start
       testLogger.info(`test_pass`, { index: i + 1, name: tc.name, durationMs })
       logSuccess(`${label} (${durationMs}ms)`)

@@ -12,7 +12,8 @@ function getStore(): ChatSettingInfo {
       maxOutputTokens: null,
       searchLinkCount: 10,
       chunkCharRange: '200-500',
-      searchDisabled: false,
+      memorySearchDisabled: false,
+      webSearchDisabled: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -31,11 +32,19 @@ export function setMockChatSetting(settings: Partial<ChatSettingInfo>): void {
 }
 
 export function setSearchDisabled(disabled: boolean): void {
-  Object.assign(getStore(), { searchDisabled: disabled })
+  Object.assign(getStore(), { memorySearchDisabled: disabled })
 }
 
 export function getSearchDisabled(): boolean {
-  return getStore().searchDisabled ?? false
+  return getStore().memorySearchDisabled ?? false
+}
+
+export function setWebSearchDisabled(disabled: boolean): void {
+  Object.assign(getStore(), { webSearchDisabled: disabled })
+}
+
+export function getWebSearchDisabled(): boolean {
+  return getStore().webSearchDisabled ?? false
 }
 
 export function createTestOverrides() {

@@ -140,7 +140,6 @@ export class CutModelService {
     })
 
     logger.info('[CutModelService] callLLM', {
-      prompt,
       model: model.name,
       provider: provider.name,
       sessionId,
@@ -149,9 +148,7 @@ export class CutModelService {
       new SystemMessage(systemPrompt),
       new HumanMessage(prompt),
     ])
-    logger.info('[CutModelService] callLLM response', {
-      response,
-    })
+    logger.info('[CutModelService] callLLM responsed')
     const content = response.content.toString()
 
     const messageMetadata: Record<string, unknown> = { model: model.name }

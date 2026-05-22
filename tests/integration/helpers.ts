@@ -5,6 +5,7 @@ import Redis from 'ioredis'
 import winston from 'winston'
 import { SeqTransport } from '@datalust/winston-seq'
 import type { StreamEvent, ChatRequest } from '../../packages/postmem-sdk/dist/index.mjs'
+import { getSearchDisabled as getMemorySearchDisabled, getWebSearchDisabled } from './di-overrides'
 
 const BASE_URL = `http://localhost:${process.env.PORT || 3000}`
 
@@ -87,6 +88,21 @@ export async function cleanupMemories(): Promise<void> {
   await prisma.$disconnect()
 }
 
+export async function cleanupWebpages(): Promise<void> {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+  const prisma = new PrismaClient({ adapter })
+  await prisma.webPage.deleteMany()
+  await prisma.$disconnect()
+}
+
+export async function getWebpageCount(): Promise<number> {
+  const adapter = new PrismaPg({ connectionString: process.env.DATABASE_URL! })
+  const prisma = new PrismaClient({ adapter })
+  const count = await prisma.webPage.count()
+  await prisma.$disconnect()
+  return count
+}
+
 export async function waitForProcessingCleared(conversationId: string, timeoutMs = 30_000): Promise<void> {
   const redis = new Redis(REDIS_CONFIG)
   const key = `chat:processing:${conversationId}`
@@ -105,69 +121,157 @@ export async function waitForProcessingCleared(conversationId: string, timeoutMs
   throw new Error(`等待 processing 状态清理超时 (${timeoutMs}ms), conversationId: ${conversationId}`)
 }
 
-type EventListener = (event: StreamEvent) => void
+/**
+ * 每次 chatAndWait 创建一个 EventListener 实例，
+ * 注册到全局转发器接收 SSE 事件，在 done/error 时自动完成。
+ * 搜索事件直接从 result.events 中检查，无需全局收集。
+ */
+class EventListener {
+  private resolve!: () => void
+  private events: StreamEvent[] = []
+  private fullContent = ''
+  private chunkCount = 0
+  private error?: string
+  private userTokens?: number
+  private userTotalTokens?: number
+  private totalTokens?: number
+  private completionTokens?: number
+  private reasoningTokens?: number
+  private requestStartTime: number
 
-class EventDispatcher {
-  private listeners: EventListener[] = []
-  private started = false
-  /** 当前测试期间收集的搜索相关 status 事件 */
-  private searchStatusEvents: string[] = []
-
-  start(client: PostMemClient): void {
-    if (this.started) return
-    this.started = true
-
-    client.consume((event) => {
-      // 拦截搜索相关 status 事件，记录到当前测试的收集区
-      if (event.type === 'status') {
-        const status = (event as Record<string, unknown>).status as string
-        if (status === 'searchingMemory' || status === 'searchingWeb') {
-          this.searchStatusEvents.push(status)
-        }
-      }
-      for (const listener of this.listeners) {
-        listener(event)
-      }
-    }).catch(() => {})
+  constructor(requestStartTime: number) {
+    this.requestStartTime = requestStartTime
   }
 
-  addListener(listener: EventListener): void {
-    this.listeners.push(listener)
+  /** 全局转发器调用此方法将 SSE 事件推入 */
+  onEvent(event: StreamEvent): void {
+    this.events.push({ ...event, _timestamp: Date.now() } as StreamEvent & { _timestamp: number })
+
+    if (event.type === 'chunk') {
+      this.chunkCount++
+      this.fullContent += event.content
+      return
+    }
+
+    const e = event as Record<string, unknown>
+    let logData: Record<string, unknown>
+    if (event.type === 'status') {
+      logData = { eventType: event.type, status: e.status, message: e.message, url: e.url }
+    } else if (event.type === 'messageId') {
+      logData = { eventType: event.type, id: e.id, role: e.role, content: (e.message as Record<string, unknown> | undefined)?.content }
+    } else {
+      logData = { eventType: event.type, ...e }
+      delete logData._timestamp
+    }
+
+    const msgSuffix = event.type === 'status'
+      ? `(${e.status})${e.url ? ` url=${e.url}` : ''}`
+      : ''
+    testLogger.info(`[chatAndWait] 收到事件 ${event.type}${msgSuffix}`, logData)
+
+    if (event.type === 'done') {
+      this.error = event.error ?? undefined
+      this.userTokens = event.userTokens
+      this.userTotalTokens = event.userTotalTokens
+      this.totalTokens = event.totalTokens
+      this.completionTokens = event.completionTokens
+      this.reasoningTokens = event.reasoningTokens
+      this.resolve()
+    } else if (event.type === 'error') {
+      this.error = event.message
+      this.resolve()
+    }
   }
 
-  removeListener(listener: EventListener): void {
-    this.listeners = this.listeners.filter((l) => l !== listener)
+  /** 返回 Promise，在 done/error 事件到达时 resolve */
+  getDonePromise(): Promise<void> {
+    return new Promise<void>((resolve) => {
+      this.resolve = resolve
+    })
   }
 
-  /** 获取当前测试期间收集的搜索事件，然后清空 */
-  drainSearchEvents(): string[] {
-    const events = this.searchStatusEvents
-    this.searchStatusEvents = []
-    return events
+  /** 构建 ChatAndWaitResult（done/error 之后调用） */
+  buildResult(conversationId: string): ChatAndWaitResult {
+    return {
+      conversationId,
+      fullContent: this.fullContent,
+      error: this.error,
+      userTokens: this.userTokens,
+      userTotalTokens: this.userTotalTokens,
+      totalTokens: this.totalTokens,
+      completionTokens: this.completionTokens,
+      reasoningTokens: this.reasoningTokens,
+      events: this.events,
+      requestStartTime: this.requestStartTime,
+    }
+  }
+
+  getEventCount(): number {
+    return this.events.length
+  }
+
+  getEventTypes(): string {
+    return this.events.map(e => e.type).join(', ')
   }
 }
 
-const dispatcher = new EventDispatcher()
+/** 全局转发器：client.consume() 只能注册一次，将事件转发给当前活跃的 listener */
+let activeListener: EventListener | null = null
 
-export function startConsume(client: PostMemClient): void {
-  dispatcher.start(client)
+export async function startConsume(client: PostMemClient): Promise<void> {
+  // 每次（含 retry）启动 consume 前清空 Redis SSE 流残留，防止旧事件被 listener 误收
+  const redis = new Redis(REDIS_CONFIG)
+  await redis.del('chat:global')
+  // 清理残留的 processing 标记
+  const stream = redis.scanStream({ match: 'chat:processing:*', count: 100 })
+  const keys: string[] = await new Promise((resolve, reject) => {
+    const collected: string[] = []
+    stream.on('data', (batch: string[]) => collected.push(...batch))
+    stream.on('end', () => resolve(collected))
+    stream.on('error', reject)
+  })
+  if (keys.length > 0) {
+    await redis.del(...keys)
+  }
+  await redis.quit()
+
+  client.consume((event) => {
+    if (activeListener) {
+      activeListener.onEvent(event)
+    }
+  }).catch(() => {})
 }
 
 /**
- * 框架层 post-check：验证搜索护栏生效。
- * searchAllowed=false 的测试不应出现搜索事件；searchAllowed=true 的测试允许搜索事件（仅清空收集区）。
+ * 框架层护栏：验证搜索事件是否符合 searchDisabled / webSearchDisabled 设置。
+ * 直接从 result.events 中检查，不依赖任何全局收集。
  */
-export async function assertNoSearchWhenDisabled(searchAllowed: boolean): Promise<void> {
-  const searchEvents = dispatcher.drainSearchEvents()
-  if (searchAllowed) {
-    // 搜索测试允许产生搜索事件，清空即可
-    return
-  }
-  if (searchEvents.length > 0) {
-    throw new Error(
-      `搜索护栏失效：声明 search=false 的测试出现了搜索事件 ${JSON.stringify(searchEvents)}。` +
-      '该测试可能被搜索污染，请在 test() 选项中声明 { search: true } 或确保 searchDisabled 正确设置。'
+function assertNoSearchWhenDisabled(result: ChatAndWaitResult): void {
+  const memorySearchDisabled = getMemorySearchDisabled()
+  const webSearchDisabled = getWebSearchDisabled()
+
+  if (memorySearchDisabled) {
+    const memorySearchEvents = result.events.filter(
+      (e) => (e as Record<string, unknown>).status === 'searchingMemory',
     )
+    if (memorySearchEvents.length > 0) {
+      throw new Error(
+        `记忆搜索护栏失效：searchDisabled=true 时出现了 searchingMemory 事件（${memorySearchEvents.length} 个）。` +
+        '请在 test() 选项中声明 { search: true } 或确保 memorySearchDisabled 正确设置。'
+      )
+    }
+  }
+
+  if (webSearchDisabled) {
+    const webSearchEvents = result.events.filter(
+      (e) => (e as Record<string, unknown>).status === 'searchingWeb',
+    )
+    if (webSearchEvents.length > 0) {
+      throw new Error(
+        `互联网搜索护栏失效：webSearchDisabled=true 时出现了 searchingWeb 事件（${webSearchEvents.length} 个）。` +
+        '请在 test() 选项中声明 { webSearch: true } 或确保 webSearchDisabled 正确设置。'
+      )
+    }
   }
 }
 
@@ -189,84 +293,47 @@ export async function chatAndWait(
   request: ChatRequest,
 ): Promise<ChatAndWaitResult> {
   const requestStartTime = Date.now()
-  const events: StreamEvent[] = []
-  const result: ChatAndWaitResult = {
-    conversationId: '',
-    fullContent: '',
-    events: [],
-    requestStartTime,
-  }
-
-  let listenerRef: EventListener | null = null
-  let chunkCount = 0
   const seqCid = request.conversationId || request.messages?.[request.messages.length - 1]?.id || '?'
   testLogger.info(`[chatAndWait] 开始`, { seqCid, request })
 
-  const donePromise = new Promise<void>((resolve) => {
-    const listener: EventListener = (event) => {
-      events.push({ ...event, _timestamp: Date.now() } as StreamEvent & { _timestamp: number })
-
-      if (event.type === 'chunk') {
-        chunkCount++
-        result.fullContent += event.content
-        return
-      }
-
-      testLogger.info(`[chatAndWait] 收到事件 ${event.type}`, { seqCid, eventType: event.type, event })
-
-      if (event.type === 'done') {
-        result.error = event.error ?? undefined
-        result.userTokens = event.userTokens
-        result.userTotalTokens = event.userTotalTokens
-        result.totalTokens = event.totalTokens
-        result.completionTokens = event.completionTokens
-        result.reasoningTokens = event.reasoningTokens
-        dispatcher.removeListener(listener)
-        resolve()
-      } else if (event.type === 'error') {
-        result.error = event.message
-        dispatcher.removeListener(listener)
-        resolve()
-      }
-    }
-
-    listenerRef = listener
-    dispatcher.addListener(listener)
-  })
+  const listener = new EventListener(requestStartTime)
+  activeListener = listener
 
   let conversationId: string
 
-  if (request.regenerateMessageId && (!request.messages || request.messages.length === 0)) {
-    const res = await fetch(`${BASE_URL}/api/chat/completions`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify(request),
-    })
-    if (!res.ok) {
-      if (listenerRef) dispatcher.removeListener(listenerRef)
-      const text = await res.text()
-      throw new Error(`chat 请求失败 (HTTP ${res.status}): ${text}`)
+  try {
+    if (request.regenerateMessageId && (!request.messages || request.messages.length === 0)) {
+      const res = await fetch(`${BASE_URL}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(request),
+      })
+      if (!res.ok) {
+        const text = await res.text()
+        throw new Error(`chat 请求失败 (HTTP ${res.status}): ${text}`)
+      }
+      const body = await res.json()
+      conversationId = body.data?.conversationId ?? request.conversationId ?? ''
+      if (!conversationId) {
+        throw new Error(`chat 返回无 conversationId: ${JSON.stringify(body)}`)
+      }
+    } else {
+      conversationId = await client.chat(request)
     }
-    const body = await res.json()
-    conversationId = body.data?.conversationId ?? request.conversationId ?? ''
-    if (!conversationId) {
-      if (listenerRef) dispatcher.removeListener(listenerRef)
-      throw new Error(`chat 返回无 conversationId: ${JSON.stringify(body)}`)
-    }
-  } else {
-    conversationId = await client.chat(request)
+
+    await listener.getDonePromise()
+  } finally {
+    activeListener = null
   }
 
+  const result = listener.buildResult(conversationId)
   result.conversationId = conversationId
-  testLogger.info(`[chatAndWait] 获取到 conversationId`, { seqCid, conversationId })
 
-  await donePromise
-  result.events = events
-  testLogger.info(`[chatAndWait] 完成，共收到 ${events.length} 个事件`, {
+  testLogger.info(`[chatAndWait] 完成，共收到 ${listener.getEventCount()} 个事件`, {
     seqCid,
     conversationId,
-    eventCount: events.length,
-    eventTypes: events.map(e => e.type).join(', '),
+    eventCount: listener.getEventCount(),
+    eventTypes: listener.getEventTypes(),
   })
 
   // LLM 返回空内容时给出明确错误（仅成功响应时检查，error 终止时允许无内容）
@@ -289,11 +356,11 @@ export async function chatAndWait(
   }
 
   // 框架层不变量：SSE 事件序列必须符合源码发射顺序
-  // 源码链路: chat.service → messageId(user) → messageId(assistant) →
-  //   [可选: status/thinking] → stream-llm → chunk+ → finalize → done
-  //   异常时: ... → error（可能无 chunk）
   const isRegenerate = !!request.regenerateMessageId && (!request.messages || request.messages.length === 0)
-  assertEventSequence(events, conversationId, isRegenerate)
+  assertEventSequence(result.events, conversationId, isRegenerate)
+
+  // 框架层护栏：检查搜索事件是否符合 searchDisabled / webSearchDisabled 设置
+  assertNoSearchWhenDisabled(result)
 
   await waitForProcessingCleared(conversationId)
 
@@ -479,4 +546,4 @@ export async function checkMessageTokens(): Promise<void> {
   }
 }
 
-export { setMockChatSetting, setSearchDisabled, getSearchDisabled } from './di-overrides'
+export { setMockChatSetting, setSearchDisabled, getSearchDisabled, setWebSearchDisabled, getWebSearchDisabled } from './di-overrides'

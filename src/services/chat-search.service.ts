@@ -53,23 +53,15 @@ export class SearchService {
 
   async analyzeSearchNeeds(
     agent: ChatOpenAI,
-    recentMessages: { role: 'user' | 'assistant'; content: string }[]
+    recentMessages: { role: 'user' | 'assistant'; content: string }[],
+    options?: { includeWebSearch?: boolean; includeMemorySearch?: boolean }
   ): Promise<SearchNeedsResult> {
-    const historyMessages = recentMessages.slice(0, -1)
-    const historyText = historyMessages.length > 0
-      ? `| 角色 | 内容 |\n|------|------|\n${historyMessages.map(m =>
-        `| ${m.role === 'user' ? '用户' : 'AI'} | ${m.content.replace(/\n/g, ' ')} |`
-      ).join('\n')}`
-      : ''
+    const historyText = this.buildHistoryText(recentMessages)
+    const currentQuery = this.getCurrentQuery(recentMessages)
 
-    const lastMessage = recentMessages[recentMessages.length - 1]
-    if (!lastMessage?.content) throw Errors.badRequest('缺少最新消息内容')
-    const currentQuery = lastMessage.content
-    if (!currentQuery) {
-      throw Errors.internalError('未找到最新消息内容')
-    }
+    const prompt = Prompts.searchNeedsAnalysis(historyText, currentQuery, options)
 
-    const prompt = Prompts.searchNeedsAnalysis(historyText, currentQuery)
+    const validateFn = (parsed: unknown) => this.validateSearchNeedsResult(parsed, options)
 
     const result = await this.llmResilienceService.invokeWithValidation<SearchNeedsResult>(
       {
@@ -78,7 +70,7 @@ export class SearchService {
         maxRetries: 3,
         timeoutMs: 120_000,
       },
-      (parsed) => this.validateSearchNeedsResult(parsed)
+      validateFn
     )
 
     return result.data
@@ -98,6 +90,7 @@ export class SearchService {
     agent: ChatOpenAI,
     cachedWebpages: any[]
   ): Promise<boolean> {
+    logger.info("二次判断缓存是否足够回答:" + cachedWebpages?.length);
     if (!cachedWebpages || cachedWebpages.length === 0) {
       return true
     }
@@ -314,39 +307,69 @@ export class SearchService {
     return { url: webpage.url, summary: result.content.trim() }
   }
 
-  private validateSearchNeedsResult(parsed: unknown): SearchNeedsResult {
+  private validateSearchNeedsResult(
+    parsed: unknown,
+    options?: { includeWebSearch?: boolean; includeMemorySearch?: boolean }
+  ): SearchNeedsResult {
     if (typeof parsed !== 'object' || parsed === null) {
       throw new Error('解析结果不是有效对象')
     }
 
     const obj = parsed as Record<string, unknown>
 
-    if (typeof obj.searchWebReason !== 'string') {
-      throw new Error('searchWebReason 字段缺失或类型错误')
+    const includeWeb = options?.includeWebSearch !== false
+    const includeMemory = options?.includeMemorySearch !== false
+
+    if (includeWeb) {
+      if (typeof obj.searchWebReason !== 'string') {
+        throw new Error('searchWebReason 字段缺失或类型错误')
+      }
+      if (typeof obj.needSearchWeb !== 'boolean') {
+        throw new Error('needSearchWeb 字段缺失或类型错误')
+      }
+      if (!Array.isArray(obj.webKeywords) || !obj.webKeywords.every((k: unknown) => typeof k === 'string')) {
+        throw new Error('webKeywords 字段缺失或类型错误')
+      }
     }
-    if (typeof obj.searchWebMemoryReason !== 'string') {
-      throw new Error('searchWebMemoryReason 字段缺失或类型错误')
-    }
-    if (typeof obj.needSearchWeb !== 'boolean') {
-      throw new Error('needSearchWeb 字段缺失或类型错误')
-    }
-    if (!Array.isArray(obj.webKeywords) || !obj.webKeywords.every((k: unknown) => typeof k === 'string')) {
-      throw new Error('webKeywords 字段缺失或类型错误')
-    }
-    if (typeof obj.needSearchMemory !== 'boolean') {
-      throw new Error('needSearchMemory 字段缺失或类型错误')
-    }
-    if (typeof obj.memoryQuery !== 'string' && obj.memoryQuery !== null) {
-      throw new Error('memoryQuery 字段类型错误（必须为 string 或 null）')
+
+    if (includeMemory) {
+      if (typeof obj.searchMemoryReason !== 'string') {
+        throw new Error('searchMemoryReason 字段缺失或类型错误')
+      }
+      if (typeof obj.needSearchMemory !== 'boolean') {
+        throw new Error('needSearchMemory 字段缺失或类型错误')
+      }
+      if (typeof obj.memoryQuery !== 'string' && obj.memoryQuery !== null) {
+        throw new Error('memoryQuery 字段类型错误（必须为 string 或 null）')
+      }
     }
 
     return {
-      searchWebReason: obj.searchWebReason,
-      searchWebMemoryReason: obj.searchWebMemoryReason,
-      needSearchWeb: obj.needSearchWeb,
-      webKeywords: obj.webKeywords,
-      needSearchMemory: obj.needSearchMemory,
-      memoryQuery: obj.memoryQuery,
+      searchWebReason: includeWeb ? (obj.searchWebReason as string) : '',
+      searchMemoryReason: includeMemory ? (obj.searchMemoryReason as string) : '',
+      needSearchWeb: includeWeb ? (obj.needSearchWeb as boolean) : false,
+      webKeywords: includeWeb ? (obj.webKeywords as string[]) : [],
+      needSearchMemory: includeMemory ? (obj.needSearchMemory as boolean) : false,
+      memoryQuery: includeMemory ? (obj.memoryQuery as string | null) : null,
     }
+  }
+
+  private buildHistoryText(recentMessages: { role: string; content: string }[]): string {
+    const historyMessages = recentMessages.slice(0, -1)
+    return historyMessages.length > 0
+      ? `| 角色 | 内容 |\n|------|------|\n${historyMessages.map(m =>
+        `| ${m.role === 'user' ? '用户' : 'AI'} | ${m.content.replace(/\n/g, ' ')} |`
+      ).join('\n')}`
+      : ''
+  }
+
+  private getCurrentQuery(recentMessages: { role: string; content: string }[]): string {
+    const lastMessage = recentMessages[recentMessages.length - 1]
+    if (!lastMessage?.content) throw Errors.badRequest('缺少最新消息内容')
+    const currentQuery = lastMessage.content
+    if (!currentQuery) {
+      throw Errors.internalError('未找到最新消息内容')
+    }
+    return currentQuery
   }
 }

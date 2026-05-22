@@ -182,7 +182,7 @@ export class ChatService {
         const appError = error instanceof AppError
           ? error
           : Errors.internalError(error instanceof Error ? error.message : String(error))
-        logger.error('[ChatGraph] 流式响应异常', { conversationId: convId, errorMessage: appError.message, errorDetails: appError.details, stack: error instanceof Error ? error.stack : undefined })
+        logger.error('[ChatGraph] 流式响应异常', { conversationId: convId, errorMessage: appError.message, stack: error instanceof Error ? error.stack : undefined })
         this.sseService.emit({ type: 'error', message: appError.message })
       },
     })

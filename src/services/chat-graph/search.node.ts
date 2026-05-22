@@ -6,8 +6,6 @@ import { Errors } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
 import { logger } from '@/src/lib/logger'
 
-const isTest = process.env.INTEGRATION_TEST === 'true'
-
 export function createSearchNode(deps: GraphDependencies) {
   async function buildSystemContext(searchResult: string, memoryText: string, recognizedText: string, agent: unknown) {
     const systemPrompt = Prompts.chatSystemRole(
@@ -38,18 +36,20 @@ export function createSearchNode(deps: GraphDependencies) {
       return { cancelled: true }
     }
 
-    // tree-shake: 测试模式下可通过 searchDisabled 完全跳过搜索
-    if (isTest) {
-      const chatSetting = await deps.chatSettingService.get()
-      if (chatSetting.searchDisabled) {
-        logger.info('[ChatGraph] search 跳过（searchDisabled）')
-        const { systemPrompt, systemTokens } = await buildSystemContext('', '', '', state.agent)
-        return {
-          searchResult: '',
-          memoryText: '',
-          systemTokens,
-          finalMessages: [new SystemMessage(Prompts.fillCurrentTime(systemPrompt)), ...state.langchainMessages],
-        }
+    // 读取搜索启用状态，根据参数动态组合提示词
+    const chatSetting = await deps.chatSettingService.get()
+    const memorySearchEnabled = !chatSetting.memorySearchDisabled
+    const webSearchEnabled = !chatSetting.webSearchDisabled
+
+    // 如果两类搜索都被禁用，直接跳过分析
+    if (!memorySearchEnabled && !webSearchEnabled) {
+      logger.info('[ChatGraph] 两类搜索均已禁用，跳过分析')
+      const { systemPrompt, systemTokens } = await buildSystemContext('', '', '', state.agent)
+      return {
+        searchResult: '',
+        memoryText: '',
+        systemTokens,
+        finalMessages: [new SystemMessage(Prompts.fillCurrentTime(systemPrompt)), ...state.langchainMessages],
       }
     }
 
@@ -67,20 +67,23 @@ export function createSearchNode(deps: GraphDependencies) {
 
     let searchNeeds: { needSearchWeb: boolean; webKeywords: string[]; needSearchMemory: boolean; memoryQuery: string | null }
     try {
+      logger.info("判断是否需要搜索："+recentMessages[1].content);
       searchNeeds = await deps.searchService.analyzeSearchNeeds(
         state.agent as any,
-        recentMessages
+        recentMessages,
+        { includeWebSearch: webSearchEnabled, includeMemorySearch: memorySearchEnabled }
       )
     } catch (error) {
       deps.onError(error)
       throw error
     }
 
+    logger.info("判断结果", { searchNeeds });
     let searchResult = ''
     let memoryText = ''
     let fetchedUrls: string[] = []
 
-    if (searchNeeds.needSearchWeb && searchNeeds.webKeywords.length > 0) {
+    if (searchNeeds.needSearchWeb && searchNeeds.webKeywords.length > 0 && webSearchEnabled) {
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb })
 
       const cachedWebpages = await deps.searchService.getCachedWebpages(searchNeeds.webKeywords)
