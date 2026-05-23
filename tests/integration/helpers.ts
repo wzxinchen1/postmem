@@ -386,6 +386,56 @@ export async function chatAndWait(
   const isRegenerate = !!request.regenerateMessageId && (!request.messages || request.messages.length === 0)
   assertEventSequence(result.events, conversationId, isRegenerate)
 
+  // 框架层不变量：首响应时间检测
+  // - 有搜索/识图等预处理场景：测首 status 时间（验证服务基本可用，≤ 10s）
+  // - 简单聊天（无预处理）：测首 token 时间 TTFB（验证 LLM 基本处理能力，≤ 10s）
+  const hasPreprocessing = result.events.some((e) => e.type === 'status')
+  if (hasPreprocessing) {
+    const firstStatus = result.events.find((e) => e.type === 'status')!
+    const statusTimestamp = (firstStatus as Record<string, unknown>)?._timestamp as number | undefined
+    if (statusTimestamp) {
+      const timeToFirstStatus = statusTimestamp - result.requestStartTime
+      if (timeToFirstStatus > 10_000) {
+        throw new Error(
+          `首 status 超时 (conversationId=${conversationId}): ${timeToFirstStatus}ms，超过 10s 阈值。` +
+          `收到 ${result.events.length} 个事件`
+        )
+      }
+    }
+  } else {
+    const firstChunk = result.events.find((e) => e.type === 'chunk')
+    if (firstChunk) {
+      const chunkTimestamp = (firstChunk as Record<string, unknown>)?._timestamp as number | undefined
+      if (chunkTimestamp) {
+        const ttfb = chunkTimestamp - result.requestStartTime
+        if (ttfb > 10_000) {
+          throw new Error(
+            `首 token 超时 (conversationId=${conversationId}): TTFB=${ttfb}ms，超过 10s 阈值。` +
+            `收到 ${result.events.length} 个事件`
+          )
+        }
+      }
+    }
+  }
+
+  // 框架层不变量：消息已正确持久化
+  const msgResult = await client.getMessages(conversationId, { page: 1, limit: 50 })
+  const userMsgs = msgResult.messages.filter((m) => m.role === 'user')
+  const assistantMsgs = msgResult.messages.filter((m) => m.role === 'assistant')
+  if (assistantMsgs.length === 0) {
+    throw new Error(`消息持久化异常 (conversationId=${conversationId}): 缺少 assistant 消息`)
+  }
+  const lastAssistant = assistantMsgs[assistantMsgs.length - 1]
+  if (!lastAssistant.content) {
+    throw new Error(`消息持久化异常 (conversationId=${conversationId}): 最后一条 assistant 消息内容为空, id=${lastAssistant.id}`)
+  }
+  if (userMsgs.length > 0) {
+    const lastUser = userMsgs[userMsgs.length - 1]
+    if (typeof lastUser.tokens !== 'number' || lastUser.tokens <= 0) {
+      throw new Error(`消息持久化异常 (conversationId=${conversationId}): 最后一条 user 消息 token 异常, id=${lastUser.id}, tokens=${lastUser.tokens}`)
+    }
+  }
+
   // 框架层护栏：检查搜索事件是否符合 searchDisabled / webSearchDisabled 设置
   assertNoSearchWhenDisabled(result)
 

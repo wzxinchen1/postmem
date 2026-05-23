@@ -1,39 +1,44 @@
 /**
- * Mock LLM 集成测试。
+ * 真实 LLM 集成测试（无 mock 响应）。
  *
- * 使用 mock LLM 响应规则（keyword → response），确保测试结果可预测。
- * 验证完整的聊天流程：创建对话、消息持久化、重发、记忆、搜索、链接、图片等。
+ * 与 mock 版测试不同，这些测试不依赖可预测的 LLM 回复，
+ * 而是验证：
+ *   - 基础聊天流程是否正常（创建对话、复用、SSE 事件序列）
+ *   - 消息持久化是否正确
+ *   - 重发逻辑是否正常
+ *   - 参数校验是否生效
+ *   - 并发控制是否工作
+ *   - 记忆触发和事件
+ *   - 搜索/链接/图片功能的事件是否正常发射
  *
- * 运行方式：pnpm tsx tests/integration/chat-completions.ts
+ * 注意：记忆阈值（setMockChatSetting）和模型能力（setModelHasVision）
+ * 在两种模式下都是 mock 的。搜索服务在 real-LLM 模式下走真实实现
+ * （调用真实 Tavily API + LLM 摘要），搜索结果不可预测。
+ * 与 mock 版的区别：LLM 回复和搜索结果均不可预测。
+ *
+ * 运行方式：pnpm tsx tests/integration/chat-completions-real-llm.ts
+ * 或：pnpm tsx tests/integration/chat-completions-real-llm.ts --real-llm
  */
 import { test, run } from './runner'
 import { ChatTestFixture } from './test-base'
-import {
-  getBaseUrl,
-  setMockChatResponseRules,
-  setMockStreamChunkDelay,
-} from './helpers'
+import { getBaseUrl, setModelHasVision } from './helpers'
 
-const CHAT_TIMEOUT = 15_000
+const CHAT_TIMEOUT = 30_000
 
-class MockChatTest extends ChatTestFixture {
+class RealLLMChatTest extends ChatTestFixture {
   protected async doSetup(): Promise<void> {
-    // 配置 mock LLM 响应规则：用户消息包含 keyword → 返回对应 response
-    setMockChatResponseRules([
-      { keyword: '动态规划', response: '动态规划（Dynamic Programming，简称DP）是一种将复杂问题分解为子问题的算法策略。' },
-      { keyword: '量子力学', response: '量子力学是描述微观粒子行为的物理学理论，核心概念包括波粒二象性和不确定性原理。' },
-      { keyword: '搜索', response: '以下是为您搜索到的相关信息。' },
-      { keyword: '之前', response: '根据之前的对话记录，您之前提到过动态规划（DP）相关的话题。动态规划是一种重要的算法思想。' },
-      { keyword: '回忆', response: '根据记忆搜索结果，您之前让我解释过动态规划。动态规划是一种将复杂问题分解为子问题的算法策略。' },
-      { keyword: '链接内容', response: '我查看了您提供的链接 https://example.com，这是一个关于示例网站的页面，用于测试链接抓取功能。' },
-      { keyword: '测试图片', response: '这是您上传的图片，描述内容：这是一张测试图片的描述。' },
-    ])
+    // 真实 LLM 模式不需要 mock 响应规则
+    // 但记忆阈值、搜索等基础设施仍为 mock，通过 setMockChatSetting 控制
+    this.setMockChatSetting({
+      memoryContextThreshold: 9999,
+      chunkCharRange: '200-500',
+    })
   }
 
   runTests(): void {
     this.registerHooks()
 
-    test('空库时聊天 — 自动创建新对话并返回有效 ChatResult', async () => {
+    test('空库时聊天 — 自动创建新对话并返回有效 conversationId', async () => {
       const result = await this.chat({
         messages: [{ id: '1', content: '你好' }],
         modelId: this.modelId,
@@ -41,6 +46,7 @@ class MockChatTest extends ChatTestFixture {
       })
 
       this.assertTruthy(result.conversationId, 'conversationId')
+      this.assertTruthy(result.fullContent, 'fullContent')
 
       const conversations = await this.client.listConversations()
       this.assertEqual(conversations.total, 1, 'conversations.total')
@@ -51,12 +57,13 @@ class MockChatTest extends ChatTestFixture {
 
     test('有对话时复用最新对话', async () => {
       const result = await this.chat({
-        messages: [{ id: '2', content: '我叫什么？' }],
+        messages: [{ id: '2', content: '继续对话' }],
         modelId: this.modelId,
         kbId: this.kbId,
       })
 
       this.assertEqual(result.conversationId, this.convId1, 'conversationId')
+      this.assertTruthy(result.fullContent, 'fullContent')
     }, CHAT_TIMEOUT)
 
     test('缺少 modelId — 返回 400', async () => {
@@ -71,7 +78,7 @@ class MockChatTest extends ChatTestFixture {
       })
 
       this.assertEqual(res.status, 400, 'status')
-    }, CHAT_TIMEOUT)
+    })
 
     test('缺少 kbId — 返回 400', async () => {
       const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
@@ -85,7 +92,7 @@ class MockChatTest extends ChatTestFixture {
       })
 
       this.assertEqual(res.status, 400, 'status')
-    }, CHAT_TIMEOUT)
+    })
 
     test('缺少 messages — 返回 400', async () => {
       const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
@@ -95,22 +102,21 @@ class MockChatTest extends ChatTestFixture {
       })
 
       this.assertEqual(res.status, 400, 'status')
-    }, CHAT_TIMEOUT)
+    })
 
     test('同一对话正在处理时再次请求 → 400', async () => {
       await this.waitForProcessingCleared(this.convId1)
 
-      // 每个 chunk 间隔 10ms，等 10ms 后发第二次请求，此时 processing 仍在
-      setMockStreamChunkDelay(10)
-
+      // 用真实 LLM 流触发 processing 锁定，然后立即发第二次请求
       const firstChat = this.chat({
-        messages: [{ id: '5', content: '请简单解释量子力学的原理' }],
+        messages: [{ id: '5', content: '请用三句话解释量子力学' }],
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
       })
 
-      await new Promise((resolve) => setTimeout(resolve, 10))
+      // 等待很短时间，确保 processing 已锁定
+      await new Promise((resolve) => setTimeout(resolve, 200))
 
       const secondRes = await fetch(`${getBaseUrl()}/api/chat/completions`, {
         method: 'POST',
@@ -127,18 +133,9 @@ class MockChatTest extends ChatTestFixture {
       const text = await secondRes.text()
       this.assertContains(text, '尚未处理完成', 'response body')
 
-      // 等待第一个请求完成，然后恢复默认延迟
-      try {
-        await firstChat
-      } finally {
-        setMockStreamChunkDelay(0)
-      }
-    }, CHAT_TIMEOUT)
-
-    // 「chunk → done 序列」和「messageId(user + assistant)」已由框架层 assertEventSequence 自动验证，无需单独测试
-    // 「首 token 时间 ≤ 10s」已由 chatAndWait 框架层自动检测，无需单独测试
-    // 「status 事件合法性」由 StreamStatus 枚举编译时保证，无需运行时检查
-    // 「消息持久化正确性」已由 chatAndWait 框架层自动检查，无需单独测试
+      // 等待第一个请求完成
+      await firstChat
+    }, 60_000)
 
     test('重发消息 — 删除后续消息并重新生成', async () => {
       const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
@@ -167,7 +164,7 @@ class MockChatTest extends ChatTestFixture {
       const msgResultBefore = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
 
       const result = await this.chat({
-        messages: [{ id: '11', content: '重发后继续聊天' }],
+        messages: [{ id: '9', content: '重发后继续聊天' }],
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
@@ -185,6 +182,112 @@ class MockChatTest extends ChatTestFixture {
       this.assertContains(lastUserMsg.content, '重发后继续聊天', 'lastUserMsg.content')
       this.assertTruthy(lastAssistantMsg.content, 'lastAssistantMsg.content')
     }, CHAT_TIMEOUT)
+
+    test('链接: 发送链接 — 触发 fetchingUrl 状态事件', async () => {
+      const result = await this.chat({
+        messages: [{ id: '10', content: '请查看这个链接内容', urls: ['https://example.com'] }],
+        modelId: this.modelId,
+        kbId: this.kbId,
+        conversationId: this.convId1,
+      })
+
+      // 验证: fetchingUrl 状态事件出现
+      const fetchingUrlEvents = result.events.filter(
+        (e) => (e as Record<string, unknown>).status === 'fetchingUrl',
+      )
+      this.assertGreaterThan(fetchingUrlEvents.length, 0, '没有收到 fetchingUrl 状态消息')
+
+      // 验证: 保存的消息包含 urls 字段
+      const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
+      const lastUserMsg = msgResult.messages
+        .filter((m) => m.role === 'user')
+        .slice(-1)[0]
+      this.assertTruthy(lastUserMsg.urls, 'message has urls field')
+      this.assertEqual(lastUserMsg.urls!.length, 1, 'urls count')
+      this.assertEqual(lastUserMsg.urls![0], 'https://example.com', 'url value')
+    }, 60_000)
+
+    const TEST_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
+
+    // 注意：不测试"模型有 vision — 多模态输入"场景。
+    // 当前真实 LLM 使用 DeepSeek，其 API 不支持 OpenAI 的 image_url 多模态格式。
+    // 该场景由 mock 测试覆盖，逻辑简单无需真实 LLM 验证。
+
+    test('图片: 模型无 vision — recognizing 事件正常发射', async () => {
+      setModelHasVision(false)
+
+      const result = await this.chat({
+        messages: [{
+          id: '12',
+          content: '描述这张图片的内容',
+          images: [{ url: TEST_IMAGE_DATA_URI, mimeType: 'image/png' }],
+        }],
+        modelId: this.modelId,
+        kbId: this.kbId,
+        conversationId: this.convId1,
+      })
+
+      try {
+        // 验证: recognizing 状态事件出现
+        const recognizingEvents = result.events.filter(
+          (e) => (e as Record<string, unknown>).status === 'recognizing',
+        )
+        this.assertGreaterThan(recognizingEvents.length, 0, '没有收到 recognizing 状态消息')
+
+        // 验证: 识图描述被注入到用户消息
+        const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
+        const lastUserMsg = msgResult.messages
+          .filter((m) => m.role === 'user')
+          .slice(-1)[0]
+        this.assertContains(lastUserMsg.content, '图片描述如下', 'recognized text injected into user message')
+
+        // 验证: 消息中 images 字段保存正确
+        this.assertTruthy(lastUserMsg.images, 'message has images field')
+        this.assertGreaterThan(lastUserMsg.images!.length, 0, 'images count > 0')
+      } finally {
+        setModelHasVision(true)
+      }
+    }, CHAT_TIMEOUT)
+
+    test('图片: 单条消息最多 5 张图片 — 超过返回 400', async () => {
+      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{
+            id: '13',
+            content: '测试多张图片',
+            images: Array.from({ length: 6 }, () => ({ url: TEST_IMAGE_DATA_URI, mimeType: 'image/png' })),
+          }],
+          modelId: this.modelId,
+          kbId: this.kbId,
+        }),
+      })
+
+      this.assertEqual(res.status, 400, 'status')
+    }, CHAT_TIMEOUT)
+
+    test('链接: URLs 超过 5 个 — 返回 400', async () => {
+      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{
+            id: '14',
+            content: '测试多个链接',
+            urls: Array.from({ length: 6 }, (_, i) => `https://example.com/${i + 1}`),
+          }],
+          modelId: this.modelId,
+          kbId: this.kbId,
+        }),
+      })
+
+      this.assertEqual(res.status, 400, 'status')
+    }, CHAT_TIMEOUT)
+
+    // ════════════════════════════════════════════
+    // 记忆测试
+    // ════════════════════════════════════════════
 
     test('记忆: 触发后全部未记忆消息均被记忆，只剩本轮新增', async () => {
       await this.cleanupMemories()
@@ -224,7 +327,7 @@ class MockChatTest extends ChatTestFixture {
       // 验证2: 触发后未记忆消息只剩本轮新增（1条用户 + 1条助手 = 最多2条）
       this.assertLessThanOrEqual(unmemoriedAfter.length, 2, 'only current round messages remain unmemoried')
 
-      // 验证3: 之前所有未记忆消息 + 本轮用户消息都被标记为 memoried（本轮用户消息也参与了 SaveMemory）
+      // 验证3: 之前所有未记忆消息 + 本轮用户消息都被标记为 memoried
       this.assertGreaterThan(memoriedMsgs.length, unmemoriedBefore.length, 'all previously unmemoried + current user message are memoried')
 
       // 验证4: 流事件中包含 summarizing 状态
@@ -301,35 +404,28 @@ class MockChatTest extends ChatTestFixture {
     })
 
     // ════════════════════════════════════════════
-    // 搜索测试（完整聊天集成流程）
+    // 搜索测试
     // ════════════════════════════════════════════
 
-    test('搜索: 聊天流程触发记忆搜索 — 发"之前"类消息穿透到 searchingMemory + 回答引用记忆', async () => {
+    test('搜索: 聊天流程触发搜索事件', async () => {
       const result = await this.chat({
-        messages: [{ id: 'search-mem-1', content: '我之前让你解释过动态规划，简要回顾一下，我在测试你的记忆搜索能力，你必须一定要回顾。' }],
+        messages: [{ id: 'search-mem-1', content: '我之前让你解释过什么？帮我回忆一下。' }],
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
       })
 
-      // 验证1: searchingMemory 状态事件出现（证明 search node 被执行且 needSearchMemory=true）
+      // 真实 LLM 判断搜索需求，"之前"类消息应触发记忆搜索
       const searchingMemoryEvents = result.events.filter(
         (e) => (e as Record<string, unknown>).status === 'searchingMemory',
       )
       this.assertGreaterThan(searchingMemoryEvents.length, 0, '没有收到 searchingMemory 状态消息')
+    }, { memorySearch: true, timeoutMs: 60_000 })
 
-      // 验证2: 回答中提及了之前记忆过的内容（动态规划）
-      const expectedKeywords = ['动态规划', 'DP', '规划']
-      const dynamicRelated = expectedKeywords.some(kw => result.fullContent.includes(kw))
-      if (!dynamicRelated) {
-        await this.diagnoseMemories(this.kbId, expectedKeywords, result.fullContent)
-      }
-    }, { memorySearch: true, timeoutMs: 30_000 })
-
-    test('互联网搜索: 第一次搜索 — 触发 searchingWeb + web_pages 表写入数据', async () => {
+    test('互联网搜索: 搜索事件 + web_pages 表写入', async () => {
       await this.cleanupWebpages()
       const result = await this.chat({
-        messages: [{ id: 'search-web-1', content: '搜索吊牌耻辱' }],
+        messages: [{ id: 'search-web-1', content: '帮我搜索一下人工智能的最新发展动态' }],
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
@@ -341,7 +437,7 @@ class MockChatTest extends ChatTestFixture {
       )
       this.assertGreaterThan(searchingWebEvents.length, 0, '没有收到 searchingWeb 状态消息')
 
-      // 验证2: searchingWeb 事件中包含 url 字段（搜索来源链接）
+      // 验证2: searchingWeb 事件中包含 url 字段（真实搜索 URL）
       const webEventsWithUrl = searchingWebEvents.filter(
         (e) => !!(e as Record<string, unknown>).url,
       )
@@ -350,168 +446,32 @@ class MockChatTest extends ChatTestFixture {
       // 验证3: web_pages 表有数据写入
       const countAfter = await this.getWebpageCount()
       this.assertGreaterThan(countAfter, 0, 'web_pages count after first search')
-    }, { memorySearch: true, webSearch: true, timeoutMs: 90_000 })
+    }, { memorySearch: true, webSearch: true, timeoutMs: 120_000 })
 
-    test('互联网搜索: 第二次搜索 — 相同消息命中缓存，web_pages 表数据不增加', async () => {
+    test('互联网搜索: 相同消息命中缓存，web_pages 表数据不增加', async () => {
       const countBefore = await this.getWebpageCount()
 
       const result = await this.chat({
-        messages: [{ id: 'search-web-2', content: '搜索吊牌耻辱' }],
+        messages: [{ id: 'search-web-2', content: '帮我搜索一下人工智能的最新发展动态' }],
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
       })
 
-      // 验证1: searchingWeb 状态事件出现（缓存命中也会发射 searchingWeb）
+      // 验证1: searchingWeb 状态事件出现
       const searchingWebEvents = result.events.filter(
         (e) => (e as Record<string, unknown>).status === 'searchingWeb',
       )
       this.assertGreaterThan(searchingWebEvents.length, 0, '没有收到 searchingWeb 状态消息')
 
-      // 验证2: web_pages 表数据不增加（相同消息产生相同 keywords，upsert 不新增行）
+      // 验证2: web_pages 表数据不增加
       const countAfter = await this.getWebpageCount()
       this.assertEqual(countAfter, countBefore, 'web_pages count unchanged after cached search')
     }, { memorySearch: false, webSearch: true, timeoutMs: 30_000 })
-
-    // ════════════════════════════════════════════
-    // 链接测试
-    // ════════════════════════════════════════════
-
-    test('链接: 发送链接 — 触发 fetchingUrl 状态事件', async () => {
-      const result = await this.chat({
-        messages: [{ id: 'link-1', content: '请查看这个链接内容', urls: ['https://example.com'] }],
-        modelId: this.modelId,
-        kbId: this.kbId,
-        conversationId: this.convId1,
-      })
-
-      // 验证1: fetchingUrl 状态事件出现
-      const fetchingUrlEvents = result.events.filter(
-        (e) => (e as Record<string, unknown>).status === 'fetchingUrl',
-      )
-      this.assertGreaterThan(fetchingUrlEvents.length, 0, '没有收到 fetchingUrl 状态消息')
-
-      // 验证2: 回答提及了链接内容（证明 fetchedUrlContent 已传递到 LLM 上下文）
-      this.assertContains(result.fullContent, '链接', 'response references link content')
-      this.assertContains(result.fullContent, 'https://example.com', 'response contains the URL')
-
-      // 验证3: 保存的消息包含 urls 字段
-      const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
-      const lastUserMsg = msgResult.messages
-        .filter((m) => m.role === 'user')
-        .slice(-1)[0]
-      this.assertTruthy(lastUserMsg.urls, 'message has urls field')
-      this.assertEqual(lastUserMsg.urls!.length, 1, 'urls count')
-      this.assertEqual(lastUserMsg.urls![0], 'https://example.com', 'url value')
-    }, 30_000)
-
-    // ════════════════════════════════════════════
-    // 图片测试
-    // ════════════════════════════════════════════
-
-    // 最小有效 PNG（1×1 像素红色点）, data URI 方便测试中直接使用
-    const TEST_IMAGE_DATA_URI = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mNk+M9QDwADhgGAWjR9awAAAABJRU5ErkJggg=='
-
-    test('图片: 模型无 vision — recognizing 事件 + 识图描述注入到用户消息', async () => {
-      // 强制报告模型不支持 vision，走 recognizeImage 节点调用 vision agent
-      this.setModelHasVision(false)
-
-      const result = await this.chat({
-        messages: [{
-          id: 'img-no-vision',
-          content: '描述这张图片的内容',
-          images: [{ url: TEST_IMAGE_DATA_URI, mimeType: 'image/png' }],
-        }],
-        modelId: this.modelId,
-        kbId: this.kbId,
-        conversationId: this.convId1,
-      })
-
-      try {
-        // 验证1: recognizing 状态事件出现（vision agent 被调用）
-        const recognizingEvents = result.events.filter(
-          (e) => (e as Record<string, unknown>).status === 'recognizing',
-        )
-        this.assertGreaterThan(recognizingEvents.length, 0, '没有收到 recognizing 状态消息')
-
-        // 验证2: 识图描述被注入到用户消息（updateMessageContent）
-        const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
-        const lastUserMsg = msgResult.messages
-          .filter((m) => m.role === 'user')
-          .slice(-1)[0]
-        this.assertContains(lastUserMsg.content, '图片描述如下', 'recognized text injected into user message')
-
-        // 验证3: 消息中 images 字段保存正确
-        this.assertTruthy(lastUserMsg.images, 'message has images field')
-        this.assertGreaterThan(lastUserMsg.images!.length, 0, 'images count > 0')
-      } finally {
-        // 恢复默认设置，避免影响后续测试
-        this.setModelHasVision(true)
-      }
-    }, 30_000)
-
-    test('图片: 模型有 vision — recognizing 跳过，无注入文本', async () => {
-      // 强制报告模型支持 vision
-      this.setModelHasVision(true)
-
-      await this.chat({
-        messages: [{
-          id: 'img-with-vision',
-          content: '用 vision 能力处理这张图片',
-          images: [{ url: TEST_IMAGE_DATA_URI, mimeType: 'image/png' }],
-        }],
-        modelId: this.modelId,
-        kbId: this.kbId,
-        conversationId: this.convId1,
-      })
-
-      // 验证: 用户消息中没有注入标记（vision 路径不调用 recognizeImage 节点，不发生 injection）
-      const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
-      const lastUserMsg = msgResult.messages
-        .filter((m) => m.role === 'user')
-        .slice(-1)[0]
-      this.assertEqual(lastUserMsg.content.includes('图片描述如下'), false, 'vision 模型不应有识图注入文本')
-    }, 30_000)
-
-    test('图片: 单条消息最多 5 张图片 — 超过返回 400', async () => {
-      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{
-            id: 'img-over-5',
-            content: '测试多张图片',
-            images: Array.from({ length: 6 }, () => ({ url: TEST_IMAGE_DATA_URI, mimeType: 'image/png' })),
-          }],
-          modelId: this.modelId,
-          kbId: this.kbId,
-        }),
-      })
-
-      this.assertEqual(res.status, 400, 'status')
-    }, 15_000)
-
-    test('链接: URLs 超过 5 个 — 返回 400', async () => {
-      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{
-            id: 'link-over-5',
-            content: '测试多个链接',
-            urls: Array.from({ length: 6 }, (_, i) => `https://example.com/${i + 1}`),
-          }],
-          modelId: this.modelId,
-          kbId: this.kbId,
-        }),
-      })
-
-      this.assertEqual(res.status, 400, 'status')
-    }, 15_000)
   }
 }
 
-const fixture = new MockChatTest()
+const fixture = new RealLLMChatTest()
 fixture.runTests()
 
 run()

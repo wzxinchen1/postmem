@@ -134,21 +134,20 @@ const mockModelServiceObj = {
  * 创建测试 DI 覆盖。
  *
  * 默认 (realLLM=false) 全部使用 mock，避免外部依赖。
- * 传 realLLM=true 时仅 mock 搜索和设置（不调真实 Tavily），
- * LLM 相关服务走真实实现（需配置好 API key 和默认模型）。
+ * 传 realLLM=true 时仅 mock 设置和模型能力，
+ * LLM 和搜索服务走真实实现（需配置好 API key、TAVILY_API_KEY 和默认模型）。
  */
 export function createTestOverrides(realLLM = false) {
   const overrides: Record<string, ReturnType<typeof asValue> | ReturnType<typeof asClass>> = {
     // chatSettingService: 允许测试中动态修改阈值/设置，两种模式都需要
     chatSettingService: asValue(mockChatSettingProvider),
-    // searchService: 避免真实 Tavily API 调用，两种模式都需要
-    searchService: asClass(MockSearchService as any).scoped(),
     // modelService: mock，支持动态切换 hasVisionCapability
     modelService: asValue(mockModelServiceObj),
   }
 
   if (!realLLM) {
-    // Mock 模式：替换 LLM 相关服务为固定响应
+    // Mock 模式：替换搜索和 LLM 相关服务为 mock，避免外部 API 调用
+    overrides.searchService = asClass(MockSearchService as any).scoped()
     overrides.chatModelFactory = asValue(mockChatModelFactoryObj)
     overrides.llmResilienceService = asValue(mockLLMResilienceService)
     overrides.agentService = asValue(mockAgentServiceObj)

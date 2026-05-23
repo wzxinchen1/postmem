@@ -346,7 +346,7 @@ export async function run(): Promise<void> {
     ;(globalThis as any).__POSTMEM_TEST_DI_OVERRIDES = createTestOverrides(realLLMMode)
 
     if (realLLMMode) {
-      logInfo('--real-llm 模式：LLM 走真实调用，搜索仍为 mock')
+      logInfo('--real-llm 模式：LLM 和搜索走真实调用（需 TAVILY_API_KEY）')
     }
 
     await startServer()

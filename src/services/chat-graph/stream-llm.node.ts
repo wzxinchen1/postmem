@@ -13,17 +13,13 @@ const STREAM_TIMEOUT_MS = 10_000
  * - 有 vision 能力时：将图片 URL 附加到消息 content（多模态格式）
  * - 无 vision 能力时：将识图文本拼接到消息 content（纯文本格式）
  */
-async function injectImagesIntoMessages(
-  state: ChatState,
-  deps: GraphDependencies,
-  messages: typeof state.finalMessages,
-): Promise<typeof state.finalMessages> {
-  let result = messages
+async function injectImagesIntoMessages(state: ChatState, deps: GraphDependencies, messages: typeof state.finalMessages): Promise<typeof state.finalMessages> {
+  let finalLangchainMessages = messages
 
   if (state.images && state.images.length > 0 && state.hasVisionCapability) {
-    const lastUserMsgIndex = result.findLastIndex(m => m instanceof HumanMessage)
+    const lastUserMsgIndex = finalLangchainMessages.findLastIndex(m => m instanceof HumanMessage)
     if (lastUserMsgIndex !== -1) {
-      const originalMsg = result[lastUserMsgIndex]
+      const originalMsg = finalLangchainMessages[lastUserMsgIndex]
       const originalContent = typeof originalMsg.content === 'string' ? originalMsg.content : ''
       const imageContents = [
         { type: 'text' as const, text: originalContent },
@@ -32,22 +28,22 @@ async function injectImagesIntoMessages(
           image_url: { url: img.url },
         })),
       ]
-      result = [
-        ...result.slice(0, lastUserMsgIndex),
+      finalLangchainMessages = [
+        ...finalLangchainMessages.slice(0, lastUserMsgIndex),
         new HumanMessage({ content: imageContents as any }),
-        ...result.slice(lastUserMsgIndex + 1),
+        ...finalLangchainMessages.slice(lastUserMsgIndex + 1),
       ]
     }
   } else if (state.recognizedText) {
-    const lastUserMsgIndex = result.findLastIndex(m => m instanceof HumanMessage)
+    const lastUserMsgIndex = finalLangchainMessages.findLastIndex(m => m instanceof HumanMessage)
     if (lastUserMsgIndex !== -1) {
-      const originalMsg = result[lastUserMsgIndex]
+      const originalMsg = finalLangchainMessages[lastUserMsgIndex]
       const originalContent = typeof originalMsg.content === 'string' ? originalMsg.content : ''
       const injectedContent = `${originalContent}\n\n[用户上传了图片，图片描述如下]\n${state.recognizedText}`
-      result = [
-        ...result.slice(0, lastUserMsgIndex),
+      finalLangchainMessages = [
+        ...finalLangchainMessages.slice(0, lastUserMsgIndex),
         new HumanMessage({ content: injectedContent }),
-        ...result.slice(lastUserMsgIndex + 1),
+        ...finalLangchainMessages.slice(lastUserMsgIndex + 1),
       ]
       if (state.lastUserMessageId) {
         await deps.conversationService.updateMessageContent(state.lastUserMessageId, injectedContent)
@@ -55,7 +51,7 @@ async function injectImagesIntoMessages(
     }
   }
 
-  return result
+  return finalLangchainMessages
 }
 
 export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalanceError: (err: unknown) => boolean) {
