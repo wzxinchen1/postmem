@@ -173,29 +173,37 @@ class MockChatTest extends ChatTestFixture {
     // 「status 事件合法性」由 StreamStatus 枚举编译时保证，无需运行时检查
     // 「消息持久化正确性」已由 chatAndWait 框架层自动检查，无需单独测试
 
-    test('重发消息 — 删除后续消息并重新生成', async () => {
+    test('重发中间消息 — 该消息之后的所有消息被删除并重新生成', async () => {
       const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
       const userMsgs = msgResult.messages.filter((m) => m.role === 'user')
-      const lastUserMsg = userMsgs[userMsgs.length - 1]
-      const assistantMsgs = msgResult.messages.filter((m) => m.role === 'assistant')
-      const lastAssistantBefore = assistantMsgs[assistantMsgs.length - 1]
-      const previousTotal = msgResult.total
+      // 重发第2条用户消息（非最后一条），验证后续消息被删除
+      const midUserMsg = userMsgs[1]
+      const midUserMsgIndex = msgResult.messages.indexOf(midUserMsg)
+      // 该消息之后的消息数量
+      const messagesAfterMid = msgResult.messages.length - midUserMsgIndex - 1
 
       await this.chat({
         messages: [],
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
-        regenerateMessageId: lastUserMsg.id,
+        regenerateMessageId: midUserMsg.id,
       })
 
       const msgResultAfter = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
+      // 重发后：该消息保留 + 新 assistant 回复，之前的消息保留，之后的消息全删
+      // 期望数量 = midUserMsgIndex + 1（midUserMsg本身） + 1（新assistant回复）
+      const expectedCount = midUserMsgIndex + 2
+      this.assertEqual(msgResultAfter.total, expectedCount, 'messages after regen mid: only mid msg + earlier + new assistant remain')
+
+      // 验证新 assistant 回复存在
       const newAssistantMsgs = msgResultAfter.messages.filter((m) => m.role === 'assistant')
       const newLastAssistant = newAssistantMsgs[newAssistantMsgs.length - 1]
-
       this.assertTruthy(newLastAssistant.content, 'newLastAssistant.content')
-      this.assertNotEqual(newLastAssistant.id, lastAssistantBefore.id, 'assistant message id changed after regenerate')
-      this.assertLessThanOrEqual(msgResultAfter.total, previousTotal, 'messages deleted after regenerate')
+
+      // 验证重发的用户消息仍然存在
+      const userMsgsAfter = msgResultAfter.messages.filter((m) => m.role === 'user')
+      this.assertContains(userMsgsAfter.map(m => m.id), midUserMsg.id, 'regenerated user msg still exists')
     }, CHAT_TIMEOUT)
 
     test('重发后继续聊天 — 新消息追加在重发内容之后', async () => {
