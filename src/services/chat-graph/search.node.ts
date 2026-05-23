@@ -7,10 +7,12 @@ import { Prompts } from '@/src/lib/prompts'
 import { logger } from '@/src/lib/logger'
 
 export function createSearchNode(deps: GraphDependencies) {
-  async function buildSystemContext(searchResult: string, memoryText: string, agent: unknown) {
+  async function buildSystemContext(searchResult: string, memoryText: string, agent: unknown, userProfile?: string) {
     const systemPrompt = Prompts.chatSystemRole(
       searchResult,
       memoryText,
+      undefined,
+      userProfile,
     )
     const systemTokens = await deps.systemTokensService.getSystemTokens(systemPrompt, agent)
     return { systemPrompt, systemTokens }
@@ -22,7 +24,8 @@ export function createSearchNode(deps: GraphDependencies) {
     }
 
     if (state.langchainMessages.length < 1) {
-      const { systemPrompt, systemTokens } = await buildSystemContext('', '', state.agent)
+      const chatSetting = await deps.chatSettingService.get()
+      const { systemPrompt, systemTokens } = await buildSystemContext('', '', state.agent, chatSetting.userProfile ?? undefined)
       return {
         searchResult: '',
         memoryText: '',
@@ -39,11 +42,12 @@ export function createSearchNode(deps: GraphDependencies) {
     const chatSetting = await deps.chatSettingService.get()
     const memorySearchEnabled = !chatSetting.memorySearchDisabled
     const webSearchEnabled = !chatSetting.webSearchDisabled
+    const userProfile = chatSetting.userProfile ?? undefined
 
     // 如果两类搜索都被禁用，直接跳过分析
     if (!memorySearchEnabled && !webSearchEnabled) {
       logger.info('[ChatGraph] 两类搜索均已禁用，跳过分析')
-      const { systemPrompt, systemTokens } = await buildSystemContext('', '', state.agent)
+      const { systemPrompt, systemTokens } = await buildSystemContext('', '', state.agent, userProfile)
       return {
         searchResult: '',
         memoryText: '',
@@ -147,6 +151,7 @@ export function createSearchNode(deps: GraphDependencies) {
       searchResult,
       memoryText,
       state.agent,
+      userProfile,
     )
 
     logger.info('[ChatGraph] search 完成', {

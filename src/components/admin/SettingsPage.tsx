@@ -19,6 +19,7 @@ interface ChatSettings {
   searchLinkCount: number
   searchSummaryConcurrency: number
   chunkCharRange: string
+  userProfile?: string | null
 }
 
 export default function SettingsPage() {
@@ -34,6 +35,7 @@ export default function SettingsPage() {
     searchLinkCount: 10,
     searchSummaryConcurrency: 2,
     chunkCharRange: '200-500',
+    userProfile: null,
   })
   const [loading, setLoading] = useState(false)
   const [msg, contextHolder] = message.useMessage()
@@ -87,6 +89,7 @@ export default function SettingsPage() {
           searchLinkCount: data.data.setting.searchLinkCount ?? 10,
           searchSummaryConcurrency: data.data.setting.searchSummaryConcurrency ?? 2,
           chunkCharRange: data.data.setting.chunkCharRange ?? '200-500',
+          userProfile: data.data.setting.userProfile ?? null,
         })
       }
     } catch (err) {
@@ -231,6 +234,22 @@ export default function SettingsPage() {
             />
             <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
               记忆入库时每个切片的建议字符数范围，格式为「最小-最大」，如「200-500」。最小 {'>='} 50，最大 {'<='} 5000
+            </Text>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>用户画像</Text>
+            <Input.TextArea
+              value={chatSettings.userProfile ?? ''}
+              onChange={(e) => setChatSettings({ ...chatSettings, userProfile: e.target.value || null })}
+              placeholder="我叫XX，性别X，年龄X，职业XXXX"
+              rows={4}
+              maxLength={2000}
+              showCount
+              style={{ width: '100%' }}
+            />
+            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+              填写你的基本信息和偏好，助手会据此更好地理解你的需求。留空表示不启用（最多 2000 字）
             </Text>
           </div>
 

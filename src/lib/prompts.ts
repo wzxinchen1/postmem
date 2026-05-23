@@ -281,7 +281,7 @@ ${topicsText}
 
   static readonly CURRENT_TIME_PLACEHOLDER = '{{CURRENT_TIME}}'
 
-  static chatSystemRole(searchResult?: string, memoryResult?: string, visionResult?: string): string {
+  static chatSystemRole(searchResult?: string, memoryResult?: string, visionResult?: string, userProfile?: string): string {
     const searchSection = searchResult
       ? `\n\n## 互联网搜索结果\n${searchResult}\n`
       : ''
@@ -291,16 +291,17 @@ ${topicsText}
     const visionSection = visionResult
       ? `\n\n## 图片描述\n${visionResult}\n`
       : ''
+    const userProfileSection = userProfile
+      ? `\n\n## 用户信息\n${userProfile}\n`
+      : ''
 
     return `你是一个智能助手，拥有联网搜索和记忆搜索能力。
 
 ## 当前时间
 ${Prompts.CURRENT_TIME_PLACEHOLDER}
-
+${userProfileSection}
 ${searchSection}
-
 ${memorySection}
-
 ${visionSection}
 
 ## 指南

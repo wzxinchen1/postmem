@@ -171,6 +171,7 @@ model ChatSetting {
   searchLinkCount           Int       @default(10) @map("search_link_count")
   searchSummaryConcurrency  Int       @default(2) @map("search_summary_concurrency")
   chunkCharRange            String    @default("200-500") @map("chunk_char_range")
+  userProfile               String?   @map("user_profile") @db.Text
   createdAt                 DateTime  @default(now()) @map("created_at") @db.Timestamptz(6)
   updatedAt                 DateTime  @updatedAt @map("updated_at") @db.Timestamptz(6)
 

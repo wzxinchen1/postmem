@@ -70,6 +70,15 @@ export default createApiHandler<Deps>({
           }
         }
 
+        if (data.userProfile !== undefined && data.userProfile !== null) {
+          if (typeof data.userProfile !== 'string') {
+            return errorResponse(res, 'VALIDATION_ERROR', 'userProfile 必须是字符串或 null', 400)
+          }
+          if (data.userProfile.length > 2000) {
+            return errorResponse(res, 'VALIDATION_ERROR', 'userProfile 不能超过 2000 字符', 400)
+          }
+        }
+
         const setting = await deps.chatSettingService.update(data)
         return successResponse(res, { setting })
       },
