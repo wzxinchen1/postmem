@@ -589,6 +589,7 @@ export interface ChatSettingInfo {
   memoryContextThreshold: number
   maxOutputTokens?: number | null
   searchLinkCount: number
+  searchSummaryConcurrency: number
   chunkCharRange: string
   /** @internal 测试专用：禁用搜索（不存数据库，仅 DI mock 生效） */
   memorySearchDisabled?: boolean

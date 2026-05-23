@@ -12,6 +12,7 @@ function getStore(): ChatSettingInfo {
       memoryContextThreshold: 9999,
       maxOutputTokens: null,
       searchLinkCount: 10,
+      searchSummaryConcurrency: 2,
       chunkCharRange: '200-500',
       memorySearchDisabled: false,
       webSearchDisabled: false,
@@ -25,6 +26,37 @@ function getStore(): ChatSettingInfo {
 const mockChatSettingProvider: IChatSettingProvider = {
   async get() {
     return { ...getStore() }
+  },
+}
+
+/**
+ * Real-LLM 模式下的 chatSettingProvider：
+ * 从数据库读取真实设置，再叠加 mock store 中的测试控制字段。
+ * 这样 searchSummaryConcurrency、searchLinkCount 等走真实数据库值，
+ * 而 memorySearchDisabled、webSearchDisabled、memoryContextThreshold 等仍可由测试控制。
+ */
+const realLLMChatSettingProvider: IChatSettingProvider = {
+  async get() {
+    const prisma = createMockPrisma()
+    try {
+      const dbSetting = await prisma.chatSetting.findFirst()
+      const store = getStore()
+      if (!dbSetting) {
+        // 数据库无记录时 fallback 到 mock store
+        return { ...store }
+      }
+      // 以数据库值为基础，叠加 mock store 中的测试控制字段
+      return {
+        ...dbSetting,
+        // 以下字段由测试 mock 控制，不使用数据库值
+        memoryContextThreshold: store.memoryContextThreshold,
+        chunkCharRange: store.chunkCharRange,
+        memorySearchDisabled: store.memorySearchDisabled,
+        webSearchDisabled: store.webSearchDisabled,
+      } as ChatSettingInfo
+    } finally {
+      await prisma.$disconnect()
+    }
   },
 }
 
@@ -139,8 +171,10 @@ const mockModelServiceObj = {
  */
 export function createTestOverrides(realLLM = false) {
   const overrides: Record<string, ReturnType<typeof asValue> | ReturnType<typeof asClass>> = {
-    // chatSettingService: 允许测试中动态修改阈值/设置，两种模式都需要
-    chatSettingService: asValue(mockChatSettingProvider),
+    // chatSettingService:
+    //   mock 模式 — 全部走 mock store，避免数据库依赖
+    //   real-LLM 模式 — 从数据库读取真实设置，仅测试控制字段（阈值、搜索开关）走 mock
+    chatSettingService: asValue(realLLM ? realLLMChatSettingProvider : mockChatSettingProvider),
     // modelService: mock，支持动态切换 hasVisionCapability
     modelService: asValue(mockModelServiceObj),
   }

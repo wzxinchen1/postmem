@@ -42,7 +42,8 @@ pnpm-debug.log*
 
 # Testing
 coverage/
-
+*.tsbuildinfo
+api-reference.yaml
 # Misc
 .cache/
 .temp/

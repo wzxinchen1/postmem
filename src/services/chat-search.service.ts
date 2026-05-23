@@ -177,14 +177,15 @@ export class SearchService {
 
     const summaryAgent = await this.agentService.getDefaultChatAgent() as ChatOpenAI
 
+    const concurrency = chatSetting.searchSummaryConcurrency
     const summaries: SummaryItem[] = []
-    for (let i = 0; i < fetchedWebpages.length; i += 2) {
-      const pair = fetchedWebpages.slice(i, i + 2)
-      for (const wp of pair) {
+    for (let i = 0; i < fetchedWebpages.length; i += concurrency) {
+      const batch = fetchedWebpages.slice(i, i + concurrency)
+      for (const wp of batch) {
         await this.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, url: wp.url })
       }
       const results = await Promise.all(
-        pair.map(wp => this.summarizeOne(summaryAgent, wp))
+        batch.map(wp => this.summarizeOne(summaryAgent, wp))
       )
       summaries.push(...results)
     }

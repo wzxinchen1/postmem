@@ -3,22 +3,6 @@
 
 ---
 
-## Other
-
-### GET /api/__warmup
-
-Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
-
-### GET /api/init/providers
-
-Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
-
----
-
 ## Chat
 
 ### GET /api/chat-settings/index
@@ -147,6 +131,16 @@ Response Body:
     事件格式: data: { type: string, message?: string, data?: object }
     事件类型:
       - message: 流式消息事件
+
+---
+
+## Other
+
+### GET /api/init/providers
+
+Response Body:
+  200: 成功响应 (object)
+    { success: boolean, data: object }
 
 ---
 

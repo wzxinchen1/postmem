@@ -17,6 +17,7 @@ interface ChatSettings {
   memoryContextThreshold: number
   maxOutputTokens?: number | null
   searchLinkCount: number
+  searchSummaryConcurrency: number
   chunkCharRange: string
 }
 
@@ -31,6 +32,7 @@ export default function SettingsPage() {
     memoryContextThreshold: 50,
     maxOutputTokens: null,
     searchLinkCount: 10,
+    searchSummaryConcurrency: 2,
     chunkCharRange: '200-500',
   })
   const [loading, setLoading] = useState(false)
@@ -83,6 +85,7 @@ export default function SettingsPage() {
           memoryContextThreshold: data.data.setting.memoryContextThreshold,
           maxOutputTokens: data.data.setting.maxOutputTokens ?? null,
           searchLinkCount: data.data.setting.searchLinkCount ?? 10,
+          searchSummaryConcurrency: data.data.setting.searchSummaryConcurrency ?? 2,
           chunkCharRange: data.data.setting.chunkCharRange ?? '200-500',
         })
       }
@@ -201,6 +204,20 @@ export default function SettingsPage() {
             />
             <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
               网络搜索时每次抓取多少个链接进行摘要（范围 1-50）。数量越多，搜索结果越全面，但消耗更多 token 和时间
+            </Text>
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>搜索摘要并发数</Text>
+            <InputNumber
+              value={chatSettings.searchSummaryConcurrency}
+              onChange={(value) => setChatSettings({ ...chatSettings, searchSummaryConcurrency: value || 2 })}
+              min={1}
+              max={10}
+              style={{ width: '100%' }}
+            />
+            <Text type="secondary" style={{ fontSize: 12, marginTop: 4, display: 'block' }}>
+              网络搜索时同时对多少个网页进行 LLM 摘要（范围 1-10）。并发数越高摘要越快，但会占用更多 API 并发额度
             </Text>
           </div>
 

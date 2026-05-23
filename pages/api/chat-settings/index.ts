@@ -48,6 +48,15 @@ export default createApiHandler<Deps>({
           }
         }
 
+        if (data.searchSummaryConcurrency !== undefined) {
+          if (typeof data.searchSummaryConcurrency !== 'number') {
+            return errorResponse(res, 'VALIDATION_ERROR', 'searchSummaryConcurrency 必须是数字', 400)
+          }
+          if (data.searchSummaryConcurrency < 1 || data.searchSummaryConcurrency > 10) {
+            return errorResponse(res, 'VALIDATION_ERROR', 'searchSummaryConcurrency 必须在 1-10 之间', 400)
+          }
+        }
+
         if (data.chunkCharRange !== undefined) {
           if (typeof data.chunkCharRange !== 'string') {
             return errorResponse(res, 'VALIDATION_ERROR', 'chunkCharRange 必须是字符串', 400)

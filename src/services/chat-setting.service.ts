@@ -22,7 +22,7 @@ export class ChatSettingService implements IChatSettingProvider {
     return setting as ChatSettingInfo
   }
 
-  async update(data: { memoryContextThreshold?: number; maxOutputTokens?: number | null; searchLinkCount?: number; chunkCharRange?: string }): Promise<ChatSettingInfo> {
+  async update(data: { memoryContextThreshold?: number; maxOutputTokens?: number | null; searchLinkCount?: number; searchSummaryConcurrency?: number; chunkCharRange?: string }): Promise<ChatSettingInfo> {
     const setting = await this.get()
     return this.prisma.chatSetting.update({
       where: { id: setting.id },

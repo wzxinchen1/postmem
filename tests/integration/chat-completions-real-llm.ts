@@ -23,7 +23,7 @@ import { test, run } from './runner'
 import { ChatTestFixture } from './test-base'
 import { getBaseUrl, setModelHasVision } from './helpers'
 
-const CHAT_TIMEOUT = 30_000
+const CHAT_TIMEOUT = 15_000
 
 class RealLLMChatTest extends ChatTestFixture {
   protected async doSetup(): Promise<void> {
@@ -247,7 +247,7 @@ class RealLLMChatTest extends ChatTestFixture {
       } finally {
         setModelHasVision(true)
       }
-    }, CHAT_TIMEOUT)
+    }, 60_000)
 
     test('图片: 单条消息最多 5 张图片 — 超过返回 400', async () => {
       const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {

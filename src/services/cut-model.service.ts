@@ -5,6 +5,7 @@ import { Prompts } from '@/src/lib/prompts'
 import { logger } from '@/src/lib/logger'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelCapability, TopicMatchResult, TopicCreateInfo, BatchTopicPlan, TitledChunk } from '@/src/types'
+import { ThinkingEffort } from '@/src/types'
 import { SessionService } from '@/src/services/session.service'
 import { VendorService } from './vendor.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
@@ -113,7 +114,7 @@ export class CutModelService {
       config: {
         ...model.config,
         reasoning: true,
-        reasoningEffort: 'max',
+        reasoningEffort: ThinkingEffort.XHigh,
       },
     }) as BaseChatModel
   }
