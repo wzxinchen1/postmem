@@ -12,7 +12,7 @@ export default createApiHandler<Deps>({
     const id = req.query.id as string
 
     if (!id) {
-      return errorResponse(res, 'VALIDATION_ERROR', '无效的会话 ID', 400)
+      return errorResponse('INVALID_SESSION_ID')
     }
 
     await apiHandler(req, res, deps, {
@@ -20,7 +20,7 @@ export default createApiHandler<Deps>({
         const session = await deps.sessionService.get(id)
 
         if (!session) {
-          return errorResponse(res, 'NOT_FOUND', '会话不存在', 404)
+          return errorResponse('SESSION_NOT_FOUND')
         }
 
         return successResponse(res, { session })
@@ -30,7 +30,7 @@ export default createApiHandler<Deps>({
         const session = await deps.sessionService.get(id)
 
         if (!session) {
-          return errorResponse(res, 'NOT_FOUND', '会话不存在', 404)
+          return errorResponse('SESSION_NOT_FOUND')
         }
 
         await deps.sessionService.delete(id)

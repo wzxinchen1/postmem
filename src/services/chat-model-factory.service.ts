@@ -1,5 +1,6 @@
 import { createModel } from './vendor-protocol.service'
 import type { Vendor } from '@/src/types'
+import { AppError } from '@/src/lib/errors'
 
 interface CreateAgentParams {
   model: string
@@ -19,13 +20,13 @@ export class ChatModelFactory {
     const { model, apiKey, baseUrl, maxTokens, temperature = 0.7, reasoning, reasoningEffort, config } = params
 
     if (!model) {
-      throw new Error('modelName is required')
+      throw new AppError('CHAT_MODEL_FACTORY_MODEL_NAME_REQUIRED')
     }
     if (!apiKey) {
-      throw new Error('apiKey is required')
+      throw new AppError('CHAT_MODEL_FACTORY_API_KEY_REQUIRED')
     }
     if (!baseUrl) {
-      throw new Error('baseUrl is required')
+      throw new AppError('CHAT_MODEL_FACTORY_BASE_URL_REQUIRED')
     }
 
     const instanceKey = `${baseUrl}_${model}`
@@ -60,7 +61,7 @@ export class ChatModelFactory {
   getAgent(key: string): unknown {
     const agent = this.agents.get(key)
     if (!agent) {
-      throw new Error(`Agent ${key} not found`)
+      throw new AppError('CHAT_MODEL_FACTORY_AGENT_NOT_FOUND', { key })
     }
     return agent
   }

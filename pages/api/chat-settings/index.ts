@@ -23,59 +23,59 @@ export default createApiHandler<Deps>({
 
         if (data.memoryContextThreshold !== undefined) {
           if (typeof data.memoryContextThreshold !== 'number') {
-            return errorResponse(res, 'VALIDATION_ERROR', 'memoryContextThreshold 必须是数字', 400)
+            return errorResponse('CHAT_SETTING_MEMORY_CONTEXT_THRESHOLD_TYPE')
           }
           if (data.memoryContextThreshold < 1 || data.memoryContextThreshold > 1000) {
-            return errorResponse(res, 'VALIDATION_ERROR', 'memoryContextThreshold 必须在 1-1000 之间', 400)
+            return errorResponse('CHAT_SETTING_MEMORY_CONTEXT_THRESHOLD_RANGE', { min: 1, max: 1000, actual: data.memoryContextThreshold })
           }
         }
 
         if (data.maxOutputTokens !== undefined && data.maxOutputTokens !== null) {
           if (typeof data.maxOutputTokens !== 'number') {
-            return errorResponse(res, 'VALIDATION_ERROR', 'maxOutputTokens 必须是数字或 null', 400)
+            return errorResponse('CHAT_SETTING_MAX_OUTPUT_TOKENS_TYPE')
           }
           if (data.maxOutputTokens < 1 || data.maxOutputTokens > 100000) {
-            return errorResponse(res, 'VALIDATION_ERROR', 'maxOutputTokens 必须在 1-100000 之间，设为 null 表示不限制', 400)
+            return errorResponse('CHAT_SETTING_MAX_OUTPUT_TOKENS_RANGE', { min: 1, max: 100000, actual: data.maxOutputTokens })
           }
         }
 
         if (data.searchLinkCount !== undefined) {
           if (typeof data.searchLinkCount !== 'number') {
-            return errorResponse(res, 'VALIDATION_ERROR', 'searchLinkCount 必须是数字', 400)
+            return errorResponse('CHAT_SETTING_SEARCH_LINK_COUNT_TYPE')
           }
           if (data.searchLinkCount < 1 || data.searchLinkCount > 50) {
-            return errorResponse(res, 'VALIDATION_ERROR', 'searchLinkCount 必须在 1-50 之间', 400)
+            return errorResponse('CHAT_SETTING_SEARCH_LINK_COUNT_RANGE', { min: 1, max: 50, actual: data.searchLinkCount })
           }
         }
 
         if (data.searchSummaryConcurrency !== undefined) {
           if (typeof data.searchSummaryConcurrency !== 'number') {
-            return errorResponse(res, 'VALIDATION_ERROR', 'searchSummaryConcurrency 必须是数字', 400)
+            return errorResponse('CHAT_SETTING_SEARCH_SUMMARY_CONCURRENCY_TYPE')
           }
           if (data.searchSummaryConcurrency < 1 || data.searchSummaryConcurrency > 10) {
-            return errorResponse(res, 'VALIDATION_ERROR', 'searchSummaryConcurrency 必须在 1-10 之间', 400)
+            return errorResponse('CHAT_SETTING_SEARCH_SUMMARY_CONCURRENCY_RANGE', { min: 1, max: 10, actual: data.searchSummaryConcurrency })
           }
         }
 
         if (data.chunkCharRange !== undefined) {
           if (typeof data.chunkCharRange !== 'string') {
-            return errorResponse(res, 'VALIDATION_ERROR', 'chunkCharRange 必须是字符串', 400)
+            return errorResponse('CHAT_SETTING_CHUNK_CHAR_RANGE_TYPE')
           }
           if (!/^\d+-\d+$/.test(data.chunkCharRange)) {
-            return errorResponse(res, 'VALIDATION_ERROR', 'chunkCharRange 格式必须为 "最小-最大"，如 "200-500"', 400)
+            return errorResponse('CHAT_SETTING_CHUNK_CHAR_RANGE_FORMAT')
           }
           const [min, max] = data.chunkCharRange.split('-').map(Number)
           if (min < 50 || max > 5000 || min >= max) {
-            return errorResponse(res, 'VALIDATION_ERROR', 'chunkCharRange 范围无效: 最小值 >= 50，最大值 <= 5000，最小值必须小于最大值', 400)
+            return errorResponse('CHAT_SETTING_CHUNK_CHAR_RANGE_INVALID', { minLimit: 50, maxLimit: 5000, actual: data.chunkCharRange })
           }
         }
 
         if (data.userProfile !== undefined && data.userProfile !== null) {
           if (typeof data.userProfile !== 'string') {
-            return errorResponse(res, 'VALIDATION_ERROR', 'userProfile 必须是字符串或 null', 400)
+            return errorResponse('CHAT_SETTING_USER_PROFILE_TYPE')
           }
           if (data.userProfile.length > 2000) {
-            return errorResponse(res, 'VALIDATION_ERROR', 'userProfile 不能超过 2000 字符', 400)
+            return errorResponse('CHAT_SETTING_USER_PROFILE_TOO_LONG', { max: 2000, actual: data.userProfile.length })
           }
         }
 

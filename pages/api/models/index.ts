@@ -31,12 +31,12 @@ export default createApiHandler<Deps>({
         const data = req.body as CreateModelRequest
 
         if (!data.providerId || !data.name || !data.capabilities || !Array.isArray(data.capabilities) || data.capabilities.length === 0) {
-          return errorResponse(res, 'VALIDATION_ERROR', '提供商 ID、名称和能力标签为必填项', 400)
+          return errorResponse('MODEL_NAME_AND_CAPABILITIES_REQUIRED')
         }
 
         const exists = await deps.modelService.exists(data.providerId, data.name)
         if (exists) {
-          return errorResponse(res, 'DUPLICATE_ERROR', '该提供商下模型名称已存在', 409)
+          return errorResponse('MODEL_NAME_DUPLICATE')
         }
 
         const model = await deps.modelService.create(data)

@@ -1,6 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
 import { ConversationService } from '@/src/services/conversation.service'
-import { createApiHandler, apiHandler, successResponse } from '@/src/lib/api-utils'
+import { createApiHandler, apiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 
 interface Deps {
   conversationService: ConversationService
@@ -32,8 +32,7 @@ export default createApiHandler<Deps>({
       DELETE: async (deps) => {
         const id = req.query.id as string
         if (!id) {
-          res.status(400).send('id 不能为空')
-          return
+          return errorResponse('MISSING_ID')
         }
 
         await deps.conversationService.delete(id)

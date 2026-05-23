@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Vendor } from '@/src/types'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 
 export class ProviderValidateService {
   private prisma: PrismaClient
@@ -28,11 +28,11 @@ export class ProviderValidateService {
     }) as Vendor | null
 
     if (!vendor) {
-      throw Errors.badRequest('厂商不存在')
+      throw new AppError('PROVIDER_VALIDATE_VENDOR_NOT_FOUND')
     }
 
     if (!baseUrl) {
-      throw Errors.badRequest(`请填写 Base URL（默认：${vendor.url}）`)
+      throw new AppError('PROVIDER_VALIDATE_BASE_URL_REQUIRED', { defaultUrl: vendor.url })
     }
 
     if (vendor.chatModelClass === 'ChatOllama') {
@@ -52,13 +52,13 @@ export class ProviderValidateService {
     })
 
     if (!response.ok) {
-      throw Errors.internalError(`Ollama 请求失败: HTTP ${response.status}`)
+      throw new AppError('PROVIDER_VALIDATE_OLLAMA_REQUEST_FAILED', { status: response.status })
     }
 
     const data = await response.json()
 
     if (!data.models || !Array.isArray(data.models)) {
-      throw Errors.internalError('Ollama 响应格式无效: 缺少 models 数组')
+      throw new AppError('PROVIDER_VALIDATE_OLLAMA_INVALID_FORMAT')
     }
 
     const models = data.models.map((model: any) => model.name)
@@ -72,7 +72,7 @@ export class ProviderValidateService {
     vendor: Vendor
   ): Promise<{ models: string[]; vendor: Vendor }> {
     if (!apiKey) {
-      throw Errors.badRequest(`${vendor.name} 需要 API Key`)
+      throw new AppError('PROVIDER_VALIDATE_API_KEY_REQUIRED', { vendorName: vendor.name })
     }
 
     const response = await fetch(`${baseUrl}/models`, {
@@ -81,13 +81,13 @@ export class ProviderValidateService {
     })
 
     if (!response.ok) {
-      throw Errors.internalError(`OpenAI 兼容 API 请求失败: HTTP ${response.status}`)
+      throw new AppError('PROVIDER_VALIDATE_OPENAI_REQUEST_FAILED', { status: response.status })
     }
 
     const data = await response.json()
 
     if (!data.data || !Array.isArray(data.data)) {
-      throw Errors.internalError('OpenAI 兼容响应格式无效: 缺少 data 数组')
+      throw new AppError('PROVIDER_VALIDATE_OPENAI_INVALID_FORMAT')
     }
 
     const models = data.data.map((model: any) => model.id)

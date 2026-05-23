@@ -14,7 +14,7 @@ export default createApiHandler<Deps>({
         const { vendorId, apiKey, baseUrl } = req.body
 
         if (!vendorId) {
-          return errorResponse(res, 'VALIDATION_ERROR', '厂商ID为必填项', 400)
+          return errorResponse('PROVIDER_VENDOR_ID_REQUIRED')
         }
 
         const result = await deps.providerValidateService.validateProvider(
@@ -24,7 +24,7 @@ export default createApiHandler<Deps>({
         )
 
         if (!result.valid) {
-          return errorResponse(res, 'VALIDATION_ERROR', '验证失败：未找到可用的模型', 400)
+          return errorResponse('PROVIDER_VALIDATE_FAILED')
         }
 
         return successResponse(res, { valid: true, models: result.models })

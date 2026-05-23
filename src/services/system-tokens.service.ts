@@ -1,6 +1,7 @@
 import { redis } from '@/src/lib/redis'
 import { logger } from '@/src/lib/logger'
 import { HumanMessage, SystemMessage } from '@langchain/core/messages'
+import { AppError } from '@/src/lib/errors'
 
 const REDIS_KEY_TOKENS = 'system_tokens:default'
 const REDIS_KEY_PROMPT = 'system_tokens:default_prompt'
@@ -42,7 +43,7 @@ export class SystemTokensService {
     const usage = (response as any).usage_metadata
     if (!usage || typeof usage.input_tokens !== 'number') {
       logger.error('[SystemTokens] 校准失败：API 未返回 input_tokens', { usage: JSON.stringify(usage) })
-      throw new Error('系统提示词 token 校准失败：API 未返回 input_tokens')
+      throw new AppError('SYSTEM_TOKENS_CALIBRATION_FAILED')
     }
     const inputTokens = usage.input_tokens
 
@@ -62,7 +63,7 @@ export class SystemTokensService {
     const usage = (response as any).usage_metadata
     if (!usage || typeof usage.input_tokens !== 'number') {
       logger.error('[SystemTokens] 内容校准失败：API 未返回 input_tokens', { usage: JSON.stringify(usage) })
-      throw new Error('内容 token 校准失败：API 未返回 input_tokens')
+      throw new AppError('SYSTEM_TOKENS_CONTENT_CALIBRATION_FAILED')
     }
     const inputTokens = usage.input_tokens
 

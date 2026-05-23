@@ -1,5 +1,5 @@
 import { PrismaClient, Prisma } from '@/src/generated/prisma/client/client'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 import { logger } from '@/src/lib/logger'
 import { createId } from '@paralleldrive/cuid2'
 import type {
@@ -58,11 +58,11 @@ export class KBService {
    */
   async createKnowledgeBase(name: string, description?: string): Promise<KnowledgeBaseInfo> {
     if (!name || name.trim().length === 0) {
-      throw Errors.badRequest('知识库名不能为空')
+      throw new AppError('KB_CREATE_NAME_REQUIRED')
     }
 
     if (!/^[a-zA-Z0-9_-]+$/.test(name)) {
-      throw Errors.badRequest('名称只能包含字母、数字、中划线和下划线')
+      throw new AppError('KB_CREATE_NAME_INVALID_FORMAT')
     }
 
     const existing = await this.prisma.knowledgeBase.findUnique({
@@ -70,7 +70,7 @@ export class KBService {
     })
 
     if (existing) {
-      throw Errors.badRequest(`知识库 "${name}" 已存在`)
+      throw new AppError('KB_CREATE_NAME_DUPLICATE', { name })
     }
 
     const kb = await this.prisma.knowledgeBase.create({
@@ -98,7 +98,7 @@ export class KBService {
     })
 
     if (!kb) {
-      throw Errors.internalError(`知识库 '${name}' 不存在`)
+      throw new AppError('KB_NOT_FOUND', { name })
     }
 
     return {
@@ -119,7 +119,7 @@ export class KBService {
     })
 
     if (!kb) {
-      throw Errors.internalError(`知识库 ID ${id} 不存在`)
+      throw new AppError('KB_NOT_FOUND')
     }
 
     return {
@@ -143,11 +143,11 @@ export class KBService {
     const maxLength = settings.maxContentLength
 
     if (!content || content.trim().length === 0) {
-      throw Errors.badRequest('内容不能为空')
+      throw new AppError('KB_INGEST_TEXT_STREAM_CONTENT_REQUIRED')
     }
 
     if (content.length > maxLength) {
-      throw Errors.badRequest(`内容长度超过限制 (${maxLength} 字符)`)
+      throw new AppError('KB_INGEST_TEXT_STREAM_CONTENT_TOO_LONG', { maxLength })
     }
 
     await this.getKnowledgeBaseById(kbId)
@@ -184,7 +184,7 @@ export class KBService {
 
       const proposedTopics = createPlans.map((p) => {
         const chunk = chunks[p.index]
-        if (!chunk?.content) throw Errors.internalError(`片段 ${p.index} 缺少 content 字段`)
+        if (!chunk?.content) throw new AppError('KB_CHUNK_MISSING_CONTENT', { index: p.index })
         return {
           name: p.newTopicName!,
           sampleContent: chunk.content,
@@ -229,20 +229,20 @@ export class KBService {
       const planItem = plan.plans.find((p) => p.index === chunk.index)
 
       if (!planItem) {
-        throw Errors.internalError(`片段 ${chunk.index} 缺少主题规划`)
+        throw new AppError('KB_CHUNK_MISSING_TOPIC_PLAN', { index: chunk.index })
       }
 
       let topicId: string
       if (planItem.action === 'select' && planItem.topicName) {
         const tid = topicNameMap.get(planItem.topicName)
         if (!tid) {
-          throw Errors.internalError(`主题 "${planItem.topicName}" 未找到`)
+          throw new AppError('KB_TOPIC_NOT_FOUND', { topicName: planItem.topicName })
         }
         topicId = tid
       } else {
         const tid = planItem.newTopicName ? topicNameMap.get(planItem.newTopicName) : undefined
         if (!tid) {
-          throw Errors.internalError(`片段 ${chunk.index} 的主题创建失败`)
+          throw new AppError('KB_TOPIC_CREATE_FAILED', { index: chunk.index })
         }
         topicId = tid
       }
@@ -335,11 +335,11 @@ export class KBService {
     const maxLength = settings.maxContentLength
 
     if (!content || content.trim().length === 0) {
-      throw Errors.badRequest('内容不能为空')
+      throw new AppError('KB_INGEST_TEXT_CONTENT_REQUIRED')
     }
 
     if (content.length > maxLength) {
-      throw Errors.badRequest(`内容长度超过限制 (${maxLength} 字符)`)
+      throw new AppError('KB_INGEST_TEXT_CONTENT_TOO_LONG', { maxLength })
     }
 
     await this.getKnowledgeBaseById(kbId)
@@ -363,7 +363,7 @@ export class KBService {
     for (const p of plan.plans) {
       if (p.action === 'create' && p.newTopicName && !topicNameMap.has(p.newTopicName)) {
         const sampleChunk = chunks[p.index]
-        if (!sampleChunk?.content) throw Errors.internalError(`片段 ${p.index} 缺少 content 字段`)
+        if (!sampleChunk?.content) throw new AppError('KB_CHUNK_MISSING_CONTENT', { index: p.index })
         const createInfo = await this.cutModelService.createTopicInfo(sampleChunk.content, kbId)
         const newTopic = await this.prisma.topic.create({
           data: {
@@ -380,20 +380,20 @@ export class KBService {
       const planItem = plan.plans.find((p) => p.index === chunk.index)
 
       if (!planItem) {
-        throw Errors.internalError(`片段 ${chunk.index} 缺少主题规划`)
+        throw new AppError('KB_CHUNK_MISSING_TOPIC_PLAN', { index: chunk.index })
       }
 
       let topicId: string
       if (planItem.action === 'select' && planItem.topicName) {
         const tid = topicNameMap.get(planItem.topicName)
         if (!tid) {
-          throw Errors.internalError(`主题 "${planItem.topicName}" 未找到`)
+          throw new AppError('KB_TOPIC_NOT_FOUND', { topicName: planItem.topicName })
         }
         topicId = tid
       } else {
         const tid = planItem.newTopicName ? topicNameMap.get(planItem.newTopicName) : undefined
         if (!tid) {
-          throw Errors.internalError(`片段 ${chunk.index} 的主题创建失败`)
+          throw new AppError('KB_TOPIC_CREATE_FAILED', { index: chunk.index })
         }
         topicId = tid
       }
@@ -477,12 +477,12 @@ export class KBService {
     const maxLength = settings.maxContentLength
 
     if (!messages || messages.length === 0) {
-      throw Errors.badRequest('消息列表不能为空')
+      throw new AppError('KB_INGEST_MESSAGES_EMPTY')
     }
 
     for (const msg of messages) {
       if (msg.content.length > maxLength) {
-        throw Errors.badRequest(`消息 ${msg.id} 内容长度超过限制 (${maxLength} 字符)`)
+        throw new AppError('KB_INGEST_MESSAGE_CONTENT_TOO_LONG', { msgId: msg.id, maxLength })
       }
     }
 
@@ -517,7 +517,7 @@ export class KBService {
         await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `创建主题：${p.newTopicName}` })
 
         const sampleChunk = chunks[p.index]
-        if (!sampleChunk?.content) throw Errors.internalError(`片段 ${p.index} 缺少 content 字段`)
+        if (!sampleChunk?.content) throw new AppError('KB_CHUNK_MISSING_CONTENT', { index: p.index })
         const createInfo = await this.cutModelService.createTopicInfo(sampleChunk.content, kbId)
         const newTopic = await this.prisma.topic.create({
           data: {
@@ -541,20 +541,20 @@ export class KBService {
 
       const planItem = plan.plans.find((p) => p.index === chunk.index)
       if (!planItem) {
-        throw Errors.internalError(`片段 ${chunk.index} 缺少主题规划`)
+        throw new AppError('KB_CHUNK_MISSING_TOPIC_PLAN', { index: chunk.index })
       }
 
       let topicId: string
       if (planItem.action === 'select' && planItem.topicName) {
         const tid = topicNameMap.get(planItem.topicName)
         if (!tid) {
-          throw Errors.internalError(`主题 "${planItem.topicName}" 未找到`)
+          throw new AppError('KB_TOPIC_NOT_FOUND', { topicName: planItem.topicName })
         }
         topicId = tid
       } else {
         const tid = planItem.newTopicName ? topicNameMap.get(planItem.newTopicName) : undefined
         if (!tid) {
-          throw Errors.internalError(`片段 ${chunk.index} 的主题创建失败`)
+          throw new AppError('KB_TOPIC_CREATE_FAILED', { index: chunk.index })
         }
         topicId = tid
       }
@@ -639,7 +639,7 @@ export class KBService {
     contextWindow: number = 1
   ): Promise<SearchResult[]> {
     if (!query || query.trim().length === 0) {
-      throw Errors.badRequest('查询语句不能为空')
+      throw new AppError('KB_SEARCH_QUERY_REQUIRED')
     }
 
     await this.getKnowledgeBaseById(kbId)
@@ -817,7 +817,7 @@ export class KBService {
     topicId?: string
   ): Promise<SearchResult[]> {
     if (!query || query.trim().length === 0) {
-      throw Errors.badRequest('查询语句不能为空')
+      throw new AppError('KB_SEARCH_IN_TOPIC_QUERY_REQUIRED')
     }
 
     const queryEmbedding = await this.embeddingService.generateEmbedding(query)
@@ -916,7 +916,7 @@ export class KBService {
       } else if (item.tsRank !== undefined) {
         score = Math.min(1, item.tsRank)
       } else {
-        throw Errors.internalError('搜索结果缺少 cosineSim 和 tsRank')
+        throw new AppError('KB_SEARCH_RESULT_MISSING_FIELDS')
       }
       return {
         id: item.data.id,
@@ -1018,7 +1018,7 @@ export class KBService {
     })
 
     if (!memory) {
-      throw Errors.internalError(`片段 ID ${id} 不存在`)
+      throw new AppError('KB_CHUNK_NOT_FOUND', { id })
     }
 
     await this.prisma.memory.delete({
@@ -1070,10 +1070,10 @@ export class KBService {
           }
         }
         if (memStat._count.id === null || memStat._count.id === undefined) {
-          throw Errors.internalError(`知识库 "${kb.name}" 的记录计数字段为空`)
+          throw new AppError('KB_STATS_COUNT_EMPTY', { name: kb.name })
         }
         if (!memStat._max.createdAt) {
-          throw Errors.internalError(`知识库 "${kb.name}" 的 lastUpdated 聚合字段为空`)
+          throw new AppError('KB_STATS_LAST_UPDATED_EMPTY', { name: kb.name })
         }
         return {
           kbId: kb.id,

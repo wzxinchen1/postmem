@@ -24,12 +24,12 @@ export default createApiHandler<Deps>({
         const data = req.body as CreateProviderRequest
 
         if (!data.name || !data.baseUrl) {
-          return errorResponse(res, 'VALIDATION_ERROR', '名称和Base URL为必填项', 400)
+          return errorResponse('PROVIDER_NAME_AND_BASE_URL_REQUIRED')
         }
 
         const exists = await deps.providerService.exists(data.name)
         if (exists) {
-          return errorResponse(res, 'DUPLICATE_ERROR', '提供商名称已存在', 409)
+          return errorResponse('PROVIDER_NAME_DUPLICATE')
         }
 
         const provider = await deps.providerService.create(data)

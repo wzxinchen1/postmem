@@ -5,7 +5,7 @@ import type {
   UpdateModelRequest,
   ModelCapability,
 } from '@/src/types'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 
 /**
  * 模型服务
@@ -90,8 +90,8 @@ export class ModelService {
       })
     }
 
-    if (data.isActive === undefined) throw Errors.badRequest('创建模型时缺少 isActive 字段')
-    if (data.isDefault === undefined) throw Errors.badRequest('创建模型时缺少 isDefault 字段')
+    if (data.isActive === undefined) throw new AppError('MODEL_CREATE_IS_ACTIVE_REQUIRED')
+    if (data.isDefault === undefined) throw new AppError('MODEL_CREATE_IS_DEFAULT_REQUIRED')
 
     return this.prisma.model.create({
       data: {
@@ -169,6 +169,6 @@ export class ModelService {
     if (capabilities.includes('reasoning')) return 'reasoning'
     if (capabilities.includes('vision')) return 'vision'
     if (capabilities.includes('embedding')) return 'embedding'
-    throw Errors.badRequest('模型必须至少具备一种能力（chat/reasoning/vision/embedding）才能设为默认')
+    throw new AppError('MODEL_SET_DEFAULT_CAPABILITY_REQUIRED')
   }
 }

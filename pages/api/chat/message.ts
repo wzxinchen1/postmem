@@ -15,13 +15,13 @@ export default createApiHandler<Deps>({
         const id = req.query.id as string | undefined
 
         if (!id) {
-          return errorResponse(res, 'VALIDATION_ERROR', '缺少 id 参数', 400)
+          return errorResponse('MISSING_ID')
         }
 
         const message = await deps.conversationService.getMessage(id)
 
         if (!message) {
-          return errorResponse(res, 'NOT_FOUND', '消息不存在', 404)
+          return errorResponse('MESSAGE_NOT_FOUND')
         }
 
         logger.info('[ChatMessage] GET /api/chat/message', { messageId: id })

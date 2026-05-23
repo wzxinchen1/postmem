@@ -1,6 +1,6 @@
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Vendor, CreateVendorRequest, UpdateVendorRequest } from '@/src/types'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 import { createModel } from './vendor-protocol.service'
 
 export class VendorService {
@@ -27,10 +27,10 @@ export class VendorService {
     if (data.factoryCode) {
       this.validateCode(data.factoryCode)
     }
-    if (data.isActive === undefined) throw Errors.badRequest('厂商缺少 isActive 字段')
+    if (data.isActive === undefined) throw new AppError('VENDOR_CREATE_IS_ACTIVE_REQUIRED')
 
     if (!(data as any).url) {
-      throw Errors.badRequest('厂商缺少 url 字段')
+      throw new AppError('VENDOR_CREATE_URL_REQUIRED')
     }
     const vendor = await this.prisma.vendor.create({
       data: {
@@ -90,10 +90,10 @@ export class VendorService {
 
   private validateCode(code: string): void {
     if (!code.includes('module.exports')) {
-      throw Errors.internalError('Factory code must export using module.exports')
+      throw new AppError('VENDOR_FACTORY_CODE_INVALID_EXPORT')
     }
     if (!code.includes('createModel')) {
-      throw Errors.internalError('Factory code must have createModel method')
+      throw new AppError('VENDOR_FACTORY_CODE_INVALID_METHOD')
     }
   }
 }

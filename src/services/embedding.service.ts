@@ -1,5 +1,5 @@
 import type { Embeddings } from '@langchain/core/embeddings'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Model, Provider } from '@/src/types'
 import { VendorService } from './vendor.service'
@@ -41,7 +41,7 @@ export class EmbeddingService {
     })
 
     if (!model || !model.provider || !model.provider.vendor) {
-      throw Errors.internalError('未配置默认嵌入模型，请在 /admin/models 页面配置')
+      throw new AppError('EMBEDDING_DEFAULT_MODEL_NOT_CONFIGURED')
     }
 
     const result = { model: model as unknown as Model, provider: model.provider as unknown as Provider }
@@ -53,7 +53,7 @@ export class EmbeddingService {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
-      throw Errors.internalError('提供商缺少厂商信息')
+      throw new AppError('EMBEDDING_PROVIDER_MISSING_VENDOR')
     }
 
     const vendor = provider.vendor

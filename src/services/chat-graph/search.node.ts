@@ -2,7 +2,7 @@ import type { ChatState } from './types'
 import type { GraphDependencies } from './index'
 import { SystemMessage } from '@langchain/core/messages'
 import { StreamStatus } from '@/src/types'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
 import { logger } from '@/src/lib/logger'
 
@@ -69,17 +69,12 @@ export function createSearchNode(deps: GraphDependencies) {
     })
 
     let searchNeeds: { needSearchWeb: boolean; webKeywords: string[]; needSearchMemory: boolean; memoryQuery: string | null }
-    try {
-      logger.info("判断是否需要搜索："+recentMessages[1].content);
-      searchNeeds = await deps.searchService.analyzeSearchNeeds(
-        state.agent as any,
-        recentMessages,
-        { includeWebSearch: webSearchEnabled, includeMemorySearch: memorySearchEnabled }
-      )
-    } catch (error) {
-      deps.onError(error)
-      throw error
-    }
+    logger.info("判断是否需要搜索："+recentMessages[1].content);
+    searchNeeds = await deps.searchService.analyzeSearchNeeds(
+      state.agent as any,
+      recentMessages,
+      { includeWebSearch: webSearchEnabled, includeMemorySearch: memorySearchEnabled }
+    )
 
     logger.info("判断结果", { searchNeeds });
     let searchResult = ''
@@ -92,16 +87,11 @@ export function createSearchNode(deps: GraphDependencies) {
       const cachedWebpages = await deps.searchService.getCachedWebpages(searchNeeds.webKeywords)
 
       let confirm = true
-      try {
-        confirm = await deps.searchService.confirmNeedSearchWeb(
-          recentMessages,
-          state.agent as any,
-          cachedWebpages
-        )
-      } catch (error) {
-        deps.onError(error)
-        throw error
-      }
+      confirm = await deps.searchService.confirmNeedSearchWeb(
+        recentMessages,
+        state.agent as any,
+        cachedWebpages
+      )
 
       if (confirm) {
         const webpages = await deps.searchService.searchWeb(searchNeeds.webKeywords)
@@ -111,8 +101,8 @@ export function createSearchNode(deps: GraphDependencies) {
         ).join('\n\n')
       } else {
         const cachedItems = cachedWebpages.map(w => {
-          if (!w.title) throw Errors.internalError(`网页 ${w.url} 缺少标题`)
-          if (!w.summary) throw Errors.internalError(`网页 ${w.url} 缺少摘要`)
+          if (!w.title) throw new AppError('CHAT_SEARCH_WEBPAGE_MISSING_TITLE', { url: w.url })
+          if (!w.summary) throw new AppError('CHAT_SEARCH_WEBPAGE_MISSING_SUMMARY', { url: w.url })
           return { url: w.url, title: w.title, content: w.content, summary: w.summary, keywords: w.keywords as string[] }
         })
         for (const item of cachedItems) {

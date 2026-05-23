@@ -37,6 +37,8 @@ interface LLMStore {
   summaryResponse: string
   /** stream() 每个 chunk 的延迟（ms），0 = 无延迟 */
   streamChunkDelayMs: number
+  /** MockChatAgent.invoke() 被调用的次数（校准走 invoke，聊天走 stream） */
+  chatAgentInvokeCount: number
 }
 
 function getStore(): LLMStore {
@@ -98,6 +100,16 @@ export function getMockChatResponse(): string {
 /** 重置所有 mock 配置为默认值（每个测试前调用） */
 export function resetMockLLMStore(): void {
   ;(globalThis as any)[STORE_KEY] = undefined
+}
+
+/** 获取 MockChatAgent.invoke() 被调用的次数（即校准次数） */
+export function getCalibrateCallCount(): number {
+  return getStore().chatAgentInvokeCount
+}
+
+/** 重置校准调用计数 */
+export function resetCalibrateCallCount(): void {
+  getStore().chatAgentInvokeCount = 0
 }
 
 // ─── 工具函数 ───────────────────────────────────────────────
@@ -194,6 +206,7 @@ class MockChatAgent {
   }
 
   async invoke(messages: unknown[], options?: { signal?: AbortSignal }): Promise<Record<string, unknown>> {
+    getStore().chatAgentInvokeCount++
     const content = this.getResponseContent(messages)
     const inputTokens = joinMessagesText(messages).length || 100
     return {

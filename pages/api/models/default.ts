@@ -16,7 +16,7 @@ export default createApiHandler<Deps>({
       GET: async (deps) => {
         const capability = req.query.capability as string | undefined
         if (!capability) {
-          return errorResponse(res, 'VALIDATION_ERROR', `capability 参数为必填项，可选值: chat, embedding, vision, reasoning`, 400)
+          return errorResponse('MODEL_CAPABILITY_REQUIRED')
         }
         const model = await deps.modelService.getDefaultByCapability(capability as any)
         return successResponse(res, { model })

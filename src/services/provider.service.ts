@@ -6,7 +6,7 @@ import type {
   UpdateProviderRequest,
   ModelCapability,
 } from '@/src/types'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 import { VendorService } from './vendor.service'
 
 /**
@@ -64,11 +64,11 @@ export class ProviderService {
   async createModel(providerId: string, model: string, modelType: 'chat' | 'embedding', config?: Record<string, unknown>): Promise<unknown> {
     const provider = await this.get(providerId)
     if (!provider) {
-      throw Errors.internalError(`提供商不存在: ${providerId}`)
+      throw new AppError('PROVIDER_NOT_FOUND', { providerId })
     }
 
     if (!provider.vendor) {
-      throw Errors.internalError(`提供商未关联厂商: ${providerId}`)
+      throw new AppError('PROVIDER_VENDOR_NOT_LINKED', { providerId })
     }
 
     return this.vendorService.createModel(provider.vendor, {
@@ -84,7 +84,7 @@ export class ProviderService {
    * 创建提供商
    */
   async create(data: CreateProviderRequest): Promise<Provider> {
-    if (data.isActive === undefined) throw Errors.badRequest('提供商缺少 isActive 字段')
+    if (data.isActive === undefined) throw new AppError('PROVIDER_CREATE_IS_ACTIVE_REQUIRED')
 
     const provider = await this.prisma.provider.create({
       data: {

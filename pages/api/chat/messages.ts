@@ -21,7 +21,7 @@ export default createApiHandler<Deps>({
 
         if (role && !['user', 'assistant', 'system'].includes(role)) {
           logger.warn('[ChatMessages] 无效的 role 参数', { role })
-          return errorResponse(res, 'VALIDATION_ERROR', 'role 必须为 user、assistant 或 system', 400)
+          return errorResponse('INVALID_ROLE')
         }
 
         const result = await deps.conversationService.listMessages({

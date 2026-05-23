@@ -7,7 +7,7 @@ import { AgentService } from '@/src/services/agent.service'
 import type { IChatSettingProvider } from '@/src/interfaces/chat-setting-provider'
 import { SSEService } from '@/src/services/sse.service'
 import { Prompts } from '@/src/lib/prompts'
-import { Errors, AppError } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 import { logger } from '@/src/lib/logger'
 import { StreamStatus } from '@/src/types'
 import type { SearchNeedsResult } from '@/src/types'
@@ -47,7 +47,7 @@ export class SearchService {
     this.agentService = agentService
     this.chatSettingService = chatSettingService
     this.sseService = sseService
-    if (!process.env.TAVILY_API_KEY) throw Errors.internalError('缺少环境变量 TAVILY_API_KEY')
+    if (!process.env.TAVILY_API_KEY) throw new AppError('CHAT_SEARCH_TAVILY_API_KEY_MISSING')
     this.tavilyApiKey = process.env.TAVILY_API_KEY
   }
 
@@ -103,11 +103,11 @@ export class SearchService {
       : ''
 
     const lastMessage = recentMessages[recentMessages.length - 1]
-    if (!lastMessage?.content) throw Errors.badRequest('缺少最新消息内容')
+    if (!lastMessage?.content) throw new AppError('CHAT_SEARCH_CONFIRM_MISSING_LAST_MESSAGE')
     const currentQuery = lastMessage.content
     const webpagesText = cachedWebpages.map(w => {
-      if (!w.title) throw Errors.internalError(`网页 ${w.url} 缺少标题`)
-      if (!w.summary) throw Errors.internalError(`网页 ${w.url} 缺少摘要`)
+      if (!w.title) throw new AppError('CHAT_SEARCH_WEBPAGE_MISSING_TITLE', { url: w.url })
+      if (!w.summary) throw new AppError('CHAT_SEARCH_WEBPAGE_MISSING_SUMMARY', { url: w.url })
       return `链接：${w.url}\n标题：${w.title}\n摘要：${w.summary}`
     }).join('\n\n')
 
@@ -126,7 +126,7 @@ export class SearchService {
 
   async searchWeb(keywords: string[]): Promise<WebpageResult[]> {
     if (!keywords || keywords.length === 0) {
-      throw Errors.badRequest('搜索关键词不能为空')
+      throw new AppError('CHAT_SEARCH_KEYWORD_REQUIRED')
     }
 
     const chatSetting = await this.chatSettingService.get()
@@ -142,11 +142,11 @@ export class SearchService {
       } as any)
       tavilyResults = response.results
       if (!tavilyResults || tavilyResults.length === 0) {
-        throw Errors.internalError(`Tavily 未找到与关键词 "${keywords.join(', ')}" 相关的结果`)
+        throw new AppError('CHAT_SEARCH_TAVILY_NO_RESULTS', { keywords: keywords.join(', ') })
       }
     } catch (e) {
       const originalError = e instanceof Error ? e : new Error(String(e))
-      throw Errors.internalError('Tavily 搜索失败', originalError)
+      throw new AppError('CHAT_SEARCH_TAVILY_FAILED', undefined, originalError)
     }
 
     const searchItems = tavilyResults.slice(0, linkCount)
@@ -172,7 +172,7 @@ export class SearchService {
 
     if (fetchedWebpages.length === 0) {
       const details = skippedReasons.length > 0 ? `: ${skippedReasons.join('; ')}` : ''
-      throw Errors.internalError(`所有搜索结果均无法获取正文内容${details}`)
+      throw new AppError('CHAT_SEARCH_ALL_RESULTS_UNAVAILABLE', { details })
     }
 
     const summaryAgent = await this.agentService.getDefaultChatAgent() as ChatOpenAI
@@ -198,7 +198,7 @@ export class SearchService {
     const webpages: WebpageResult[] = fetchedWebpages.map(wp => {
       const summary = summaryMap.get(wp.url)
       if (!summary) {
-        throw Errors.internalError(`网页摘要生成失败: ${wp.url}`)
+        throw new AppError('CHAT_SEARCH_SUMMARY_FAILED', { url: wp.url })
       }
       return {
         url: wp.url,
@@ -216,7 +216,7 @@ export class SearchService {
 
   async saveWebpages(webpages: WebpageResult[]): Promise<void> {
     for (const wp of webpages) {
-      if (!wp.title) throw Errors.internalError(`网页 ${wp.url} 缺少标题`)
+      if (!wp.title) throw new AppError('CHAT_SEARCH_WEBPAGE_MISSING_TITLE', { url: wp.url })
       const cleanContent = wp.content.replace(/\x00/g, '')
       const cleanTitle = wp.title.replace(/\x00/g, '')
       const cleanSummary = wp.summary.replace(/\x00/g, '')
@@ -247,7 +247,7 @@ export class SearchService {
       })
 
       if (!response.ok) {
-        throw Errors.internalError(`链接 ${url} 请求失败: HTTP ${response.status} ${response.statusText}`)
+        throw new AppError('CHAT_SEARCH_URL_REQUEST_FAILED', { url, status: response.status, statusText: response.statusText })
       }
 
       const contentType = response.headers.get('content-type')
@@ -261,13 +261,13 @@ export class SearchService {
           const pdfData = await (pdfParse as any).default(buffer)
           const content = pdfData.text.replace(/\s+/g, ' ').trim().slice(0, 5000)
           if (content.length <= 100) {
-            throw Errors.internalError(`链接 ${url} 的 PDF 内容过短，可能为扫描件或空文档`)
+            throw new AppError('CHAT_SEARCH_PDF_CONTENT_TOO_SHORT', { url })
           }
           return content
         } catch (err) {
           if (err instanceof AppError) throw err
           const pdfErr = err instanceof Error ? err : new Error(String(err))
-          throw Errors.internalError(`链接 ${url} PDF 解析失败`, pdfErr)
+          throw new AppError('CHAT_SEARCH_PDF_PARSE_FAILED', { url }, pdfErr)
         }
       }
 
@@ -281,13 +281,13 @@ export class SearchService {
         .slice(0, 5000)
 
       if (content.length <= 100) {
-        throw Errors.internalError(`链接 ${url} 正文内容过短，可能为空页面或需登录`)
+        throw new AppError('CHAT_SEARCH_URL_CONTENT_TOO_SHORT', { url })
       }
       return content
     } catch (err) {
       if (err instanceof AppError) throw err
       const fetchErr = err instanceof Error ? err : new Error(String(err))
-      throw Errors.internalError(`链接 ${url} 获取失败`, fetchErr)
+      throw new AppError('CHAT_SEARCH_URL_FETCH_FAILED', { url }, fetchErr)
     }
   }
 
@@ -302,7 +302,7 @@ export class SearchService {
     })
 
     if (!result.content || result.content.trim().length === 0) {
-      throw Errors.internalError(`网页摘要返回空内容: ${webpage.url}`)
+      throw new AppError('CHAT_SEARCH_SUMMARY_EMPTY', { url: webpage.url })
     }
 
     return { url: webpage.url, summary: result.content.trim() }
@@ -313,7 +313,7 @@ export class SearchService {
     options?: { includeWebSearch?: boolean; includeMemorySearch?: boolean }
   ): SearchNeedsResult {
     if (typeof parsed !== 'object' || parsed === null) {
-      throw new Error('解析结果不是有效对象')
+      throw new AppError('CHAT_SEARCH_PARSE_RESULT_INVALID')
     }
 
     const obj = parsed as Record<string, unknown>
@@ -323,25 +323,25 @@ export class SearchService {
 
     if (includeWeb) {
       if (typeof obj.searchWebReason !== 'string') {
-        throw new Error('searchWebReason 字段缺失或类型错误')
+        throw new AppError('CHAT_SEARCH_WEB_REASON_MISSING')
       }
       if (typeof obj.needSearchWeb !== 'boolean') {
-        throw new Error('needSearchWeb 字段缺失或类型错误')
+        throw new AppError('CHAT_SEARCH_NEED_SEARCH_WEB_MISSING')
       }
       if (!Array.isArray(obj.webKeywords) || !obj.webKeywords.every((k: unknown) => typeof k === 'string')) {
-        throw new Error('webKeywords 字段缺失或类型错误')
+        throw new AppError('CHAT_SEARCH_WEB_KEYWORDS_MISSING')
       }
     }
 
     if (includeMemory) {
       if (typeof obj.searchMemoryReason !== 'string') {
-        throw new Error('searchMemoryReason 字段缺失或类型错误')
+        throw new AppError('CHAT_SEARCH_MEMORY_REASON_MISSING')
       }
       if (typeof obj.needSearchMemory !== 'boolean') {
-        throw new Error('needSearchMemory 字段缺失或类型错误')
+        throw new AppError('CHAT_SEARCH_NEED_SEARCH_MEMORY_MISSING')
       }
       if (typeof obj.memoryQuery !== 'string' && obj.memoryQuery !== null) {
-        throw new Error('memoryQuery 字段类型错误（必须为 string 或 null）')
+        throw new AppError('CHAT_SEARCH_MEMORY_QUERY_TYPE_INVALID')
       }
     }
 
@@ -366,10 +366,10 @@ export class SearchService {
 
   private getCurrentQuery(recentMessages: { role: string; content: string }[]): string {
     const lastMessage = recentMessages[recentMessages.length - 1]
-    if (!lastMessage?.content) throw Errors.badRequest('缺少最新消息内容')
+    if (!lastMessage?.content) throw new AppError('CHAT_SEARCH_GET_CURRENT_QUERY_MISSING')
     const currentQuery = lastMessage.content
     if (!currentQuery) {
-      throw Errors.internalError('未找到最新消息内容')
+      throw new AppError('CHAT_SEARCH_CURRENT_QUERY_EMPTY')
     }
     return currentQuery
   }

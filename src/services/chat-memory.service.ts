@@ -2,7 +2,7 @@ import { ChatOpenAI } from '@langchain/openai'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import { SSEService } from '@/src/services/sse.service'
 import { KBService } from '@/src/services/kb.service'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 import type { ChatMessage } from '@/src/types'
 
 interface IngestMessage {
@@ -50,7 +50,7 @@ export class ChatMemoryService {
     query: string
   ): Promise<Array<{ id: string; content: string; score: number }>> {
     if (query.trim().length === 0) {
-      throw Errors.internalError('记忆搜索的 query 参数不能为空')
+      throw new AppError('CHAT_MEMORY_QUERY_REQUIRED')
     }
 
     const results = await this.kbService.search(kbId, query, 5)

@@ -1,5 +1,7 @@
 import { redis } from '@/src/lib/redis'
 import { logger } from '@/src/lib/logger'
+import { withMiddleware } from '@/src/lib/api-utils'
+import { AppError } from '@/src/lib/errors'
 
 /**
  * ⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️
@@ -33,10 +35,10 @@ const GLOBAL_STREAM_KEY = 'chat:global'
 const POLL_INTERVAL_MS = 200
 const KEEP_ALIVE_MS = 30000
 
-export default async function handler(req: any, res: any) {
+export default withMiddleware(async (req: any, res: any) => {
   if (req.method !== 'GET') {
     res.setHeader('Allow', 'GET')
-    return res.status(405).send('方法不被允许')
+    throw new AppError('METHOD_NOT_ALLOWED')
   }
 
   let lastId = '0-0'
@@ -96,4 +98,4 @@ export default async function handler(req: any, res: any) {
     clearInterval(keepAliveInterval)
     res.end()
   }
-}
+})

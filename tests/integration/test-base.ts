@@ -20,7 +20,9 @@ import {
   assertContains,
   assertNotEqual,
   diagnoseMemories,
+  assertApiError,
 } from './helpers'
+import type { ApiErrorCode } from './helpers'
 import type { PostMemClient, ChatRequest } from '../../packages/postmem-sdk/dist/index.mjs'
 import type { ChatAndWaitResult } from './helpers'
 
@@ -93,6 +95,14 @@ export abstract class ChatTestFixture {
 
   protected assertNotEqual<T>(actual: T, expected: T, label: string): void {
     assertNotEqual(actual, expected, label)
+  }
+
+  protected async assertApiError(
+    res: Response,
+    code: ApiErrorCode,
+    params?: Record<string, string | number>,
+  ): Promise<void> {
+    await assertApiError(res, code, params)
   }
 
   // ─── 工具方法 ────────────────────────────────────────────

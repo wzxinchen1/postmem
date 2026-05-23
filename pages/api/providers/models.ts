@@ -14,11 +14,11 @@ export default createApiHandler<Deps>({
         const { vendorId, apiKey, baseUrl } = req.body
 
         if (!baseUrl) {
-          return errorResponse(res, 'VALIDATION_ERROR', 'Base URL为必填项', 400)
+          return errorResponse('PROVIDER_BASE_URL_REQUIRED')
         }
 
         if (!vendorId) {
-          return errorResponse(res, 'VALIDATION_ERROR', '厂商ID为必填项', 400)
+          return errorResponse('PROVIDER_VENDOR_ID_REQUIRED')
         }
 
         const result = await deps.providerValidateService.fetchModels(

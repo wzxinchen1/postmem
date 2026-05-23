@@ -1,39 +1,38 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { container } from '@/src/lib/container'
 import { KBService } from '@/src/services/kb.service'
-import { Errors, AppError } from '@/src/lib/errors'
-import type { IngestTextRequest, IngestMessagesRequest, IngestMessage } from '@/src/types'
+import { AppError } from '@/src/lib/errors'
+import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
+import type { IngestTextRequest, IngestMessagesRequest } from '@/src/types'
 
-export default async function handler(req: NextApiRequest, res: NextApiResponse) {
-  if (req.method !== 'POST') {
-    res.setHeader('Allow', ['POST'])
-    res.status(405).json({ success: false, error: { code: 'METHOD_NOT_ALLOWED', message: '仅支持 POST 请求' } })
-    return
-  }
-
-  const body = req.body
-
-  if (!body.kbId || typeof body.kbId !== 'string') {
-    res.status(400).json({ success: false, error: Errors.badRequest('缺少必需字段: kbId') })
-    return
-  }
-
-  if (body.messages && Array.isArray(body.messages)) {
-    return await handleMessagesIngest(req, res)
-  } else if (body.content && typeof body.content === 'string') {
-    return await handleTextIngestStream(req, res)
-  } else {
-    res.status(400).json({ success: false, error: Errors.badRequest('需要提供 content（纯文本）或 messages（消息列表）') })
-    return
-  }
+interface Deps {
+  kbService: KBService
 }
 
-async function handleTextIngestStream(req: NextApiRequest, res: NextApiResponse) {
+export default createApiHandler<Deps>({
+  methods: ['POST'],
+  dependencies: ['kbService'],
+  handler: async (req, res, deps) => {
+    const body = req.body
+
+    if (!body.kbId || typeof body.kbId !== 'string') {
+      return errorResponse('KB_ID_REQUIRED')
+    }
+
+    if (body.messages && Array.isArray(body.messages)) {
+      return await handleMessagesIngest(req, res, deps)
+    } else if (body.content && typeof body.content === 'string') {
+      return await handleTextIngestStream(req, res, deps)
+    } else {
+      return errorResponse('KB_CONTENT_OR_MESSAGES_REQUIRED')
+    }
+  }
+})
+
+async function handleTextIngestStream(req: NextApiRequest, res: NextApiResponse, deps: Deps) {
   const body = req.body as IngestTextRequest
 
   if (!body.content || typeof body.content !== 'string') {
-    res.status(400).json({ success: false, error: Errors.badRequest('缺少必需字段: content') })
-    return
+    return errorResponse('KB_CONTENT_REQUIRED')
   }
 
   res.setHeader('Content-Type', 'text/event-stream')
@@ -52,21 +51,11 @@ async function handleTextIngestStream(req: NextApiRequest, res: NextApiResponse)
   }
 
   try {
-    const kbService = container.resolve<KBService>('kbService')
-
-    const result = await kbService.ingestTextStream(body.kbId, body.content, sendEvent)
-
+    const result = await deps.kbService.ingestTextStream(body.kbId, body.content, sendEvent)
     sendEvent({ type: 'complete', data: result })
   } catch (error: unknown) {
-    let errorMessage = '入库失败'
-    let errorCode = 'INTERNAL_ERROR'
-
-    if (error instanceof AppError) {
-      errorMessage = error.message
-      errorCode = error.code
-    } else if (error instanceof Error) {
-      errorMessage = error.message
-    }
+    const errorCode = error instanceof AppError ? error.code : 'INTERNAL_ERROR'
+    const errorMessage = error instanceof Error ? error.message : '入库失败'
 
     sendEvent({
       type: 'error',
@@ -80,43 +69,28 @@ async function handleTextIngestStream(req: NextApiRequest, res: NextApiResponse)
   }
 }
 
-async function handleMessagesIngest(req: NextApiRequest, res: NextApiResponse) {
-  const kbService = container.resolve<KBService>('kbService')
-
+async function handleMessagesIngest(req: NextApiRequest, res: NextApiResponse, deps: Deps) {
   const body = req.body as IngestMessagesRequest
 
   if (!body.messages || !Array.isArray(body.messages) || body.messages.length === 0) {
-    res.status(400).json({ success: false, error: Errors.badRequest('缺少必需字段: messages（非空数组）') })
-    return
+    return errorResponse('KB_MESSAGES_REQUIRED')
   }
 
   for (const msg of body.messages) {
     if (!msg.id || typeof msg.id !== 'string') {
-      res.status(400).json({ success: false, error: Errors.badRequest('每条消息必须包含 id 字段') })
-      return
+      return errorResponse('KB_MESSAGE_ID_REQUIRED')
     }
     if (!msg.role || typeof msg.role !== 'string') {
-      res.status(400).json({ success: false, error: Errors.badRequest('每条消息必须包含 role 字段') })
-      return
+      return errorResponse('KB_MESSAGE_ROLE_REQUIRED')
     }
     if (!msg.content || typeof msg.content !== 'string') {
-      res.status(400).json({ success: false, error: Errors.badRequest('每条消息必须包含 content 字段') })
-      return
+      return errorResponse('KB_MESSAGE_CONTENT_REQUIRED')
     }
     if (!['system', 'user', 'assistant'].includes(msg.role)) {
-      res.status(400).json({ success: false, error: Errors.badRequest(`消息角色必须是 system、user 或 assistant，当前为: ${msg.role}`) })
-      return
+      return errorResponse('KB_MESSAGE_INVALID_ROLE')
     }
   }
 
-  try {
-    const result = await kbService.ingestMessages(body.kbId, body.messages)
-    res.status(200).json({ success: true, data: result })
-  } catch (error: unknown) {
-    const err = error as { message?: string; code?: string }
-    res.status(500).json({
-      success: false,
-      error: { code: err.code || 'INTERNAL_ERROR', message: err.message || '入库失败' },
-    })
-  }
+  const result = await deps.kbService.ingestMessages(body.kbId, body.messages)
+  return successResponse(res, result)
 }

@@ -1,9 +1,8 @@
 import type { ChatState } from './types'
 import type { GraphDependencies } from './index'
 import { HumanMessage } from '@langchain/core/messages'
-import { DoneReason } from '@/src/types'
 import { logger } from '@/src/lib/logger'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 
 const STREAM_TIMEOUT_MS = 10_000
 
@@ -54,7 +53,7 @@ async function injectImagesIntoMessages(state: ChatState, deps: GraphDependencie
   return finalLangchainMessages
 }
 
-export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalanceError: (err: unknown) => boolean) {
+export function createStreamLLMNode(deps: GraphDependencies) {
   return async function streamLLMNode(state: ChatState): Promise<Partial<ChatState>> {
     if (state.cancelled) {
       return {}
@@ -88,10 +87,10 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
           const meta = chunk.usage_metadata as any
           logger.info('[ChatGraph] 原始 usage_metadata', { raw: JSON.stringify(meta) })
           if (typeof meta.input_tokens !== 'number') {
-            throw Errors.internalError('LLM 响应 usage_metadata 缺少 input_tokens')
+            throw new AppError('LLM_USAGE_MISSING_INPUT_TOKENS')
           }
           if (typeof meta.output_tokens !== 'number') {
-            throw Errors.internalError('LLM 响应 usage_metadata 缺少 output_tokens')
+            throw new AppError('LLM_USAGE_MISSING_OUTPUT_TOKENS')
           }
           apiTotalPromptTokens = meta.input_tokens
           const rawOutputTokens = meta.output_tokens
@@ -137,14 +136,7 @@ export function createStreamLLMNode(deps: GraphDependencies, isInsufficientBalan
     } catch (err) {
       clearTimeout(timeoutId)
       if ((err as Error)?.name === 'AbortError') {
-        const timeoutErr = Errors.badRequest('等AI响应的时间太长，稍后重试')
-        deps.onError(timeoutErr)
-        throw timeoutErr
-      }
-      deps.onError(err)
-      if (isInsufficientBalanceError(err)) {
-        logger.error('[ChatGraph] 提供商 API 欠费', { conversationId: state.conversationId, errorMessage: (err as Error).message })
-        await deps.sseService.emit({ type: 'done', reason: DoneReason.InsufficientBalance })
+        throw new AppError('LLM_STREAM_TIMEOUT')
       }
       throw err
     }

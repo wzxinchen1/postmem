@@ -6,7 +6,7 @@ import type {
   AddChatMessageRequest,
 } from '@/src/types'
 import { logger } from '@/src/lib/logger'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 import { SystemTokensService } from '@/src/services/system-tokens.service'
 import { AgentService } from '@/src/services/agent.service'
 
@@ -59,20 +59,20 @@ export class ConversationService {
   }
 
   async addMessage(data: AddChatMessageRequest): Promise<ChatMessage> {
-    if (data.tokens === undefined) throw Errors.internalError('addMessage 缺少 tokens 字段')
-    if (data.totalTokens === undefined) throw Errors.internalError('addMessage 缺少 totalTokens 字段')
-    if (data.memoried === undefined) throw Errors.internalError('addMessage 缺少 memoried 字段')
+    if (data.tokens === undefined) throw new AppError('CONVERSATION_ADD_MSG_TOKENS_REQUIRED')
+    if (data.totalTokens === undefined) throw new AppError('CONVERSATION_ADD_MSG_TOTAL_TOKENS_REQUIRED')
+    if (data.memoried === undefined) throw new AppError('CONVERSATION_ADD_MSG_MEMORIED_REQUIRED')
 
     const isWelcome = data.metadata?.isWelcome === true
 
     if (data.role === 'assistant' && !isWelcome && !data.name) {
-      throw Errors.badRequest('assistant 消息必须指定模型名称 (name)')
+      throw new AppError('CONVERSATION_ADD_MSG_ASSISTANT_NAME_REQUIRED')
     }
 
     const isSystemMessage = data.role === 'system'
     const isUserMessage = data.role === 'user'
     if (!isWelcome && !isSystemMessage && !isUserMessage && data.tokens <= 0) {
-      throw Errors.internalError(`非系统/欢迎/user消息的 tokens 必须 > 0，当前值=${data.tokens}，role=${data.role}，content长度=${data.content.length}`)
+      throw new AppError('CONVERSATION_ADD_MSG_INVALID_TOKENS', { tokens: data.tokens, role: data.role, contentLength: data.content.length })
     }
 
     const resolvedName = isWelcome && data.name === undefined ? ConversationService.DEFAULT_ASSISTANT_NAME : data.name
@@ -99,8 +99,8 @@ export class ConversationService {
   }): Promise<{ conversations: Conversation[]; total: number; page: number; limit: number }> {
     logger.info('[Conversation] list', { page: options.page, limit: options.limit })
 
-    if (options.page === undefined) throw Errors.badRequest('缺少 page 参数')
-    if (options.limit === undefined) throw Errors.badRequest('缺少 limit 参数')
+    if (options.page === undefined) throw new AppError('CONVERSATION_LIST_PAGE_REQUIRED')
+    if (options.limit === undefined) throw new AppError('CONVERSATION_LIST_LIMIT_REQUIRED')
 
     const page = options.page
     const limit = options.limit
@@ -164,11 +164,11 @@ export class ConversationService {
       select: { createdAt: true, memoried: true },
     })
     if (!targetMessage) {
-      throw Errors.internalError(`消息 ${messageId} 不存在`)
+      throw new AppError('MESSAGE_NOT_FOUND', { messageId })
     }
 
     if (targetMessage.memoried) {
-      throw Errors.badRequest('已记忆的消息不可重发')
+      throw new AppError('CONVERSATION_REGENERATE_MEMORIED')
     }
 
     await this.prisma.chatMessage.deleteMany({
@@ -180,20 +180,20 @@ export class ConversationService {
   }
 
   async addMessageWithId(data: AddChatMessageRequest & { id: string }): Promise<ChatMessage> {
-    if (data.tokens === undefined) throw Errors.internalError('addMessageWithId 缺少 tokens 字段')
-    if (data.totalTokens === undefined) throw Errors.internalError('addMessageWithId 缺少 totalTokens 字段')
-    if (data.memoried === undefined) throw Errors.internalError('addMessageWithId 缺少 memoried 字段')
+    if (data.tokens === undefined) throw new AppError('CONVERSATION_ADD_MSG_TOKENS_REQUIRED')
+    if (data.totalTokens === undefined) throw new AppError('CONVERSATION_ADD_MSG_TOTAL_TOKENS_REQUIRED')
+    if (data.memoried === undefined) throw new AppError('CONVERSATION_ADD_MSG_MEMORIED_REQUIRED')
 
     const isWelcome = data.metadata?.isWelcome === true
 
     if (data.role === 'assistant' && !isWelcome && !data.name) {
-      throw Errors.badRequest('assistant 消息必须指定模型名称 (name)')
+      throw new AppError('CONVERSATION_ADD_MSG_WITH_ID_ASSISTANT_NAME_REQUIRED')
     }
 
     const isSystemMessage = data.role === 'system'
     const isUserMessage = data.role === 'user'
     if (!isWelcome && !isSystemMessage && !isUserMessage && data.tokens <= 0) {
-      throw Errors.internalError(`非系统/欢迎/user消息的 tokens 必须 > 0，当前值=${data.tokens}，role=${data.role}，content长度=${data.content.length}`)
+      throw new AppError('CONVERSATION_ADD_MSG_INVALID_TOKENS', { tokens: data.tokens, role: data.role, contentLength: data.content.length })
     }
 
     const resolvedName = isWelcome && data.name === undefined ? ConversationService.DEFAULT_ASSISTANT_NAME : data.name
@@ -242,8 +242,8 @@ export class ConversationService {
     page?: number
     limit?: number
   }): Promise<{ messages: ChatMessage[]; total: number; page: number; limit: number; conversationId: string }> {
-    if (options.page === undefined) throw Errors.badRequest('缺少 page 参数')
-    if (options.limit === undefined) throw Errors.badRequest('缺少 limit 参数')
+    if (options.page === undefined) throw new AppError('CONVERSATION_LIST_MESSAGES_PAGE_REQUIRED')
+    if (options.limit === undefined) throw new AppError('CONVERSATION_LIST_MESSAGES_LIMIT_REQUIRED')
 
     const page = options.page
     const limit = options.limit

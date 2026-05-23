@@ -5,13 +5,28 @@
  * 验证完整的聊天流程：创建对话、消息持久化、重发、记忆、搜索、链接、图片等。
  *
  * 运行方式：pnpm tsx tests/integration/chat-completions.ts
+ *
+ * ─── 不测试的场景（设计决策）───────────────────────────
+ * - newConversation：强制创建新对话的路径，非核心流程，暂不测试
+ * - 取消聊天（/api/chat/cancel）：涉及 SSE 流中断和并发控制，mock 环境难以模拟
+ * - regenerate 路径的 SSE 消费：chatAndWait 中 regenerate 路径走 fetch 而非 SDK SSE，
+ *   此路径暂不深入测试
+ *
+ * ─── 测试设计决策 ──────────────────────────────────────
+ * - 所有测试严格顺序执行：共享同一个 convId1，前面的测试为后续积累数据（消息、记忆），
+ *   前面失败则后续全部跳过（hasFailure 机制），这是故意设计，不是缺陷
+ * - totalImages/totalUrls 校验是单次请求维度（messages 是本次请求的消息数组），
+ *   不存在"跨对话历史累积"的场景，无需测试跨消息累计
  */
 import { test, run } from './runner'
 import { ChatTestFixture } from './test-base'
+import { ThinkingEffort } from '../../src/types'
 import {
   getBaseUrl,
   setMockChatResponseRules,
   setMockStreamChunkDelay,
+  getCalibrateCallCount,
+  resetCalibrateCallCount,
 } from './helpers'
 
 const CHAT_TIMEOUT = 15_000
@@ -34,6 +49,8 @@ class MockChatTest extends ChatTestFixture {
     this.registerHooks()
 
     test('空库时聊天 — 自动创建新对话并返回有效 ChatResult', async () => {
+      resetCalibrateCallCount()
+
       const result = await this.chat({
         messages: [{ id: '1', content: '你好' }],
         modelId: this.modelId,
@@ -46,10 +63,15 @@ class MockChatTest extends ChatTestFixture {
       this.assertEqual(conversations.total, 1, 'conversations.total')
       this.assertEqual(conversations.conversations[0].id, result.conversationId, 'conversationId match')
 
+      // 首次聊天，Redis 无缓存，应触发校准（calibrate 走 MockChatAgent.invoke）
+      this.assertGreaterThan(getCalibrateCallCount(), 0, 'calibrate invoked on first chat (no Redis cache)')
+
       this.convId1 = result.conversationId
     }, CHAT_TIMEOUT)
 
     test('有对话时复用最新对话', async () => {
+      resetCalibrateCallCount()
+
       const result = await this.chat({
         messages: [{ id: '2', content: '我叫什么？' }],
         modelId: this.modelId,
@@ -57,9 +79,12 @@ class MockChatTest extends ChatTestFixture {
       })
 
       this.assertEqual(result.conversationId, this.convId1, 'conversationId')
+
+      // 第二次聊天，Redis 有缓存且 prompt 未变，不应触发校准
+      this.assertEqual(getCalibrateCallCount(), 0, 'calibrate not invoked (Redis cache hit, prompt unchanged)')
     }, CHAT_TIMEOUT)
 
-    test('缺少 modelId — 返回 400', async () => {
+    test('缺少 modelId — 返回 MISSING_MODEL_ID', async () => {
       const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -70,10 +95,10 @@ class MockChatTest extends ChatTestFixture {
         }),
       })
 
-      this.assertEqual(res.status, 400, 'status')
+      await this.assertApiError(res, 'MISSING_MODEL_ID')
     }, CHAT_TIMEOUT)
 
-    test('缺少 kbId — 返回 400', async () => {
+    test('缺少 kbId — 返回 MISSING_KB_ID', async () => {
       const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -84,17 +109,27 @@ class MockChatTest extends ChatTestFixture {
         }),
       })
 
-      this.assertEqual(res.status, 400, 'status')
+      await this.assertApiError(res, 'MISSING_KB_ID')
     }, CHAT_TIMEOUT)
 
-    test('缺少 messages — 返回 400', async () => {
+    test('缺少 messages — 返回 MISSING_MESSAGES', async () => {
       const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ modelId: this.modelId, kbId: this.kbId }),
       })
 
-      this.assertEqual(res.status, 400, 'status')
+      await this.assertApiError(res, 'MISSING_MESSAGES')
+    }, CHAT_TIMEOUT)
+
+    test('空 messages 数组且无 regenerateMessageId — 返回 MISSING_MESSAGES', async () => {
+      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ messages: [], modelId: this.modelId, kbId: this.kbId }),
+      })
+
+      await this.assertApiError(res, 'MISSING_MESSAGES')
     }, CHAT_TIMEOUT)
 
     test('同一对话正在处理时再次请求 → 400', async () => {
@@ -123,9 +158,7 @@ class MockChatTest extends ChatTestFixture {
         }),
       })
 
-      this.assertEqual(secondRes.status, 400, 'secondRes.status')
-      const text = await secondRes.text()
-      this.assertContains(text, '尚未处理完成', 'response body')
+      await this.assertApiError(secondRes, 'CHAT_PROCESSING')
 
       // 等待第一个请求完成，然后恢复默认延迟
       try {
@@ -144,6 +177,8 @@ class MockChatTest extends ChatTestFixture {
       const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
       const userMsgs = msgResult.messages.filter((m) => m.role === 'user')
       const lastUserMsg = userMsgs[userMsgs.length - 1]
+      const assistantMsgs = msgResult.messages.filter((m) => m.role === 'assistant')
+      const lastAssistantBefore = assistantMsgs[assistantMsgs.length - 1]
       const previousTotal = msgResult.total
 
       await this.chat({
@@ -159,7 +194,7 @@ class MockChatTest extends ChatTestFixture {
       const newLastAssistant = newAssistantMsgs[newAssistantMsgs.length - 1]
 
       this.assertTruthy(newLastAssistant.content, 'newLastAssistant.content')
-      this.assertNotEqual(newLastAssistant.id, lastUserMsg.id, 'assistant message id changed')
+      this.assertNotEqual(newLastAssistant.id, lastAssistantBefore.id, 'assistant message id changed after regenerate')
       this.assertLessThanOrEqual(msgResultAfter.total, previousTotal, 'messages deleted after regenerate')
     }, CHAT_TIMEOUT)
 
@@ -271,10 +306,10 @@ class MockChatTest extends ChatTestFixture {
 
     test('记忆: memoried 消息不可重发 — 返回 400', async () => {
       const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 100 })
-      const memoriedMsg = msgResult.messages.find((m) => m.memoried)
+      const memoriedUserMsg = msgResult.messages.find((m) => m.memoried && m.role === 'user')
 
-      if (!memoriedMsg) {
-        throw new Error('没有找到已记忆的消息，前置用例可能未触发记忆')
+      if (!memoriedUserMsg) {
+        throw new Error('没有找到已记忆的用户消息，前置用例可能未触发记忆')
       }
 
       const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
@@ -285,13 +320,11 @@ class MockChatTest extends ChatTestFixture {
           modelId: this.modelId,
           kbId: this.kbId,
           conversationId: this.convId1,
-          regenerateMessageId: memoriedMsg.id,
+          regenerateMessageId: memoriedUserMsg.id,
         }),
       })
 
-      this.assertEqual(res.status, 400, 'status for memoried regenerate')
-      const text = await res.text()
-      this.assertContains(text, '已记忆', 'error message contains 已记忆')
+      await this.assertApiError(res, 'MEMORIED_MESSAGE_CANNOT_REGENERATE')
 
       // 恢复阈值设置，避免后续测试意外触发记忆
       this.setMockChatSetting({
@@ -300,11 +333,34 @@ class MockChatTest extends ChatTestFixture {
       })
     })
 
+    test('记忆: memoryContextThreshold 为 0 — 返回 INVALID_MEMORY_CONTEXT_THRESHOLD', async () => {
+      // 设置阈值为 0，触发 API 入口校验
+      this.setMockChatSetting({ memoryContextThreshold: 0 })
+
+      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ id: 'threshold-zero', content: '测试阈值为0' }],
+          modelId: this.modelId,
+          kbId: this.kbId,
+          conversationId: this.convId1,
+        }),
+      })
+
+      await this.assertApiError(res, 'INVALID_MEMORY_CONTEXT_THRESHOLD', { actual: 0 })
+
+      // 恢复阈值设置
+      this.setMockChatSetting({ memoryContextThreshold: 9999 })
+    }, CHAT_TIMEOUT)
+
     // ════════════════════════════════════════════
     // 搜索测试（完整聊天集成流程）
     // ════════════════════════════════════════════
 
     test('搜索: 聊天流程触发记忆搜索 — 发"之前"类消息穿透到 searchingMemory + 回答引用记忆', async () => {
+      resetCalibrateCallCount()
+
       const result = await this.chat({
         messages: [{ id: 'search-mem-1', content: '我之前让你解释过动态规划，简要回顾一下，我在测试你的记忆搜索能力，你必须一定要回顾。' }],
         modelId: this.modelId,
@@ -324,10 +380,15 @@ class MockChatTest extends ChatTestFixture {
       if (!dynamicRelated) {
         await this.diagnoseMemories(this.kbId, expectedKeywords, result.fullContent)
       }
+
+      // 记忆搜索结果注入 system prompt，prompt 变化触发校准
+      this.assertGreaterThan(getCalibrateCallCount(), 0, 'calibrate invoked (memory injected into system prompt)')
     }, { memorySearch: true, timeoutMs: 30_000 })
 
     test('互联网搜索: 第一次搜索 — 触发 searchingWeb + web_pages 表写入数据', async () => {
       await this.cleanupWebpages()
+      resetCalibrateCallCount()
+
       const result = await this.chat({
         messages: [{ id: 'search-web-1', content: '搜索吊牌耻辱' }],
         modelId: this.modelId,
@@ -350,6 +411,9 @@ class MockChatTest extends ChatTestFixture {
       // 验证3: web_pages 表有数据写入
       const countAfter = await this.getWebpageCount()
       this.assertGreaterThan(countAfter, 0, 'web_pages count after first search')
+
+      // 搜索结果注入 system prompt，prompt 变化触发校准
+      this.assertGreaterThan(getCalibrateCallCount(), 0, 'calibrate invoked (web search results injected into system prompt)')
     }, { memorySearch: true, webSearch: true, timeoutMs: 90_000 })
 
     test('互联网搜索: 第二次搜索 — 相同消息命中缓存，web_pages 表数据不增加', async () => {
@@ -473,7 +537,7 @@ class MockChatTest extends ChatTestFixture {
       this.assertEqual(lastUserMsg.content.includes('图片描述如下'), false, 'vision 模型不应有识图注入文本')
     }, 30_000)
 
-    test('图片: 单条消息最多 5 张图片 — 超过返回 400', async () => {
+    test('图片: 单条消息最多 5 张图片 — 超过返回 TOO_MANY_IMAGES', async () => {
       const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -488,10 +552,78 @@ class MockChatTest extends ChatTestFixture {
         }),
       })
 
-      this.assertEqual(res.status, 400, 'status')
+      await this.assertApiError(res, 'TOO_MANY_IMAGES', { max: 5, actual: 6 })
     }, 15_000)
 
-    test('链接: URLs 超过 5 个 — 返回 400', async () => {
+    // ════════════════════════════════════════════
+    // thinkingEffort 参数测试
+    // ════════════════════════════════════════════
+
+    test('thinkingEffort: 传入 low — 聊天正常完成，参数传递到 agent', async () => {
+      const result = await this.chat({
+        messages: [{ id: 'thinking-low', content: '测试 thinkingEffort 参数' }],
+        modelId: this.modelId,
+        kbId: this.kbId,
+        conversationId: this.convId1,
+        thinkingEffort: ThinkingEffort.Low,
+      })
+
+      this.assertTruthy(result.fullContent, 'fullContent with thinkingEffort=low')
+    }, CHAT_TIMEOUT)
+
+    test('thinkingEffort: 传入 none — 聊天正常完成，无 reasoning', async () => {
+      const result = await this.chat({
+        messages: [{ id: 'thinking-none', content: '测试 thinkingEffort=none' }],
+        modelId: this.modelId,
+        kbId: this.kbId,
+        conversationId: this.convId1,
+        thinkingEffort: ThinkingEffort.None,
+      })
+
+      this.assertTruthy(result.fullContent, 'fullContent with thinkingEffort=none')
+    }, CHAT_TIMEOUT)
+
+    test('thinkingEffort: 非法值 — 返回 INVALID_THINKING_EFFORT', async () => {
+      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ id: 'thinking-invalid', content: '测试非法 thinkingEffort' }],
+          modelId: this.modelId,
+          kbId: this.kbId,
+          conversationId: this.convId1,
+          thinkingEffort: 'invalid',
+        }),
+      })
+
+      await this.assertApiError(res, 'INVALID_THINKING_EFFORT', {
+        allowedValues: Object.values(ThinkingEffort).join('/'),
+        actual: 'invalid',
+      })
+    }, CHAT_TIMEOUT)
+
+    // ════════════════════════════════════════════
+    // userProfile 注入测试
+    // ════════════════════════════════════════════
+
+    test('userProfile: 设置用户画像 — 系统提示词包含用户信息段', async () => {
+      this.setMockChatSetting({ userProfile: '我叫小明，男性，30岁，软件工程师' })
+
+      const result = await this.chat({
+        messages: [{ id: 'profile-test', content: '你好' }],
+        modelId: this.modelId,
+        kbId: this.kbId,
+        conversationId: this.convId1,
+      })
+
+      // mock LLM 收到的 messages 中应包含 userProfile 信息（在系统提示词中）
+      this.assertTruthy(result.fullContent, 'fullContent with userProfile')
+
+      // 恢复 userProfile 为 null，避免影响后续测试
+      this.setMockChatSetting({ userProfile: null })
+    }, CHAT_TIMEOUT)
+
+    test('链接: URLs 超过 5 个 — 返回 TOO_MANY_URLS', async () => {
       const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -506,8 +638,78 @@ class MockChatTest extends ChatTestFixture {
         }),
       })
 
-      this.assertEqual(res.status, 400, 'status')
+      await this.assertApiError(res, 'TOO_MANY_URLS', { max: 5, actual: 6 })
     }, 15_000)
+
+    test('不存在的 regenerateMessageId — 返回 REGENERATE_MESSAGE_NOT_FOUND', async () => {
+      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [],
+          modelId: this.modelId,
+          kbId: this.kbId,
+          conversationId: this.convId1,
+          regenerateMessageId: 'non-existent-message-id',
+        }),
+      })
+
+      await this.assertApiError(res, 'REGENERATE_MESSAGE_NOT_FOUND')
+    }, CHAT_TIMEOUT)
+
+    test('regenerateMessageId 指向 assistant 消息 — 返回 REGENERATE_NOT_USER_MESSAGE', async () => {
+      const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 50 })
+      const assistantMsgs = msgResult.messages.filter((m) => m.role === 'assistant')
+      const lastAssistantMsg = assistantMsgs[assistantMsgs.length - 1]
+
+      this.assertTruthy(lastAssistantMsg, 'has assistant message')
+
+      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [],
+          modelId: this.modelId,
+          kbId: this.kbId,
+          conversationId: this.convId1,
+          regenerateMessageId: lastAssistantMsg.id,
+        }),
+      })
+
+      await this.assertApiError(res, 'REGENERATE_NOT_USER_MESSAGE')
+    }, CHAT_TIMEOUT)
+
+    test('不存在的 modelId — 返回 MODEL_NOT_FOUND', async () => {
+      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ id: 'bad-model', content: '测试' }],
+          modelId: 'non-existent-model-id',
+          kbId: this.kbId,
+          conversationId: this.convId1,
+        }),
+      })
+
+      await this.assertApiError(res, 'MODEL_NOT_FOUND')
+    }, CHAT_TIMEOUT)
+
+    test('不存在的 kbId — 返回 400', async () => {
+      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ id: 'bad-kb', content: '测试' }],
+          modelId: this.modelId,
+          kbId: 'non-existent-kb-id',
+          conversationId: this.convId1,
+        }),
+      })
+
+      this.assertEqual(res.status, 400, 'status')
+      const text = await res.text()
+      this.assertContains(text, '知识库不存在', 'error message mentions kb not found')
+    }, CHAT_TIMEOUT)
   }
 }
 

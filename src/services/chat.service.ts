@@ -12,7 +12,7 @@ import { AgentService } from '@/src/services/agent.service'
 import { SystemTokensService } from '@/src/services/system-tokens.service'
 import { createChatGraph } from '@/src/services/chat-graph'
 import { logger } from '@/src/lib/logger'
-import { Errors, AppError } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 import { createId } from '@paralleldrive/cuid2'
 import type { ChatCompletionRequest, ChatMessageImage } from '@/src/types'
 
@@ -91,7 +91,7 @@ export class ChatService {
     logger.info('[ChatService] chat 参数', { conversationId, newConversation, kbId, modelId })
 
     if (!conversationId) {
-      throw Errors.badRequest('缺少 conversationId 参数')
+      throw new AppError('CHAT_CONVERSATION_ID_REQUIRED')
     }
 
     let convId = conversationId
@@ -111,8 +111,6 @@ export class ChatService {
       }
     }
 
-    await this.sseService.setProcessing(convId)
-
     let images: ChatMessageImage[] = []
     let urls: string[] = []
     let userMessageId = ''
@@ -120,7 +118,7 @@ export class ChatService {
     if (regenerateMessageId) {
       const originalMessage = await this.conversationService.getMessage(regenerateMessageId)
       if (!originalMessage) {
-        throw Errors.internalError(`消息 ${regenerateMessageId} 不存在`)
+        throw new AppError('MESSAGE_NOT_FOUND', { messageId: regenerateMessageId })
       }
       if (originalMessage.images) {
         images = originalMessage.images as ChatMessageImage[]
@@ -178,13 +176,6 @@ export class ChatService {
       kbService: this.kbService,
       agentService: this.agentService,
       systemTokensService: this.systemTokensService,
-      onError: (error) => {
-        const appError = error instanceof AppError
-          ? error
-          : Errors.internalError(error instanceof Error ? error.message : String(error))
-        logger.error('[ChatGraph] 流式响应异常', { conversationId: convId, errorMessage: appError.message, stack: error instanceof Error ? error.stack : undefined })
-        this.sseService.emit({ type: 'error', message: appError.message })
-      },
     })
 
     try {
@@ -220,6 +211,12 @@ export class ChatService {
       }
 
       return { conversationId: result.conversationId }
+    } catch (error) {
+      const appError = error instanceof AppError
+        ? error
+        : new AppError('INTERNAL_ERROR', undefined, error instanceof Error ? error : undefined)
+      logger.error('[ChatGraph] 流式响应异常', { conversationId: convId, errorMessage: appError.message, stack: error instanceof Error ? error.stack : undefined })
+      throw error
     } finally {
       logger.info('[ChatService] 清理 processing 状态', { conversationId: convId })
       await this.sseService.clearProcessing(convId)

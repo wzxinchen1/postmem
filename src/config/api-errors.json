@@ -1,0 +1,818 @@
+{
+  "METHOD_NOT_ALLOWED": {
+    "statusCode": 405,
+    "message": "方法不被允许"
+  },
+  "MISSING_MESSAGES": {
+    "statusCode": 400,
+    "message": "messages 不能为空"
+  },
+  "MISSING_MODEL_ID": {
+    "statusCode": 400,
+    "message": "modelId 不能为空"
+  },
+  "MISSING_KB_ID": {
+    "statusCode": 400,
+    "message": "kbId 不能为空"
+  },
+  "MODEL_NOT_FOUND": {
+    "statusCode": 400,
+    "message": "模型不存在"
+  },
+  "INVALID_THINKING_EFFORT": {
+    "statusCode": 400,
+    "message": "thinkingEffort 值非法，允许值: {allowedValues}，实际传入: {actual}"
+  },
+  "INVALID_MEMORY_CONTEXT_THRESHOLD": {
+    "statusCode": 500,
+    "message": "memoryContextThreshold 值非法，必须大于 0，实际值: {actual}"
+  },
+  "TOO_MANY_IMAGES": {
+    "statusCode": 400,
+    "message": "单条消息最多支持 {max} 张图片，实际: {actual}"
+  },
+  "TOO_MANY_URLS": {
+    "statusCode": 400,
+    "message": "单条消息最多支持 {max} 个链接，实际: {actual}"
+  },
+  "CHAT_PROCESSING": {
+    "statusCode": 400,
+    "message": "上一次消息尚未处理完成，请等待后再试"
+  },
+  "REGENERATE_MESSAGE_NOT_FOUND": {
+    "statusCode": 400,
+    "message": "重发消息不存在"
+  },
+  "REGENERATE_NOT_USER_MESSAGE": {
+    "statusCode": 400,
+    "message": "regenerateMessageId 必须指向用户消息"
+  },
+  "MEMORIED_MESSAGE_CANNOT_REGENERATE": {
+    "statusCode": 400,
+    "message": "已记忆的消息不可重发"
+  },
+  "MISSING_CONVERSATION_ID": {
+    "statusCode": 400,
+    "message": "conversationId 不能为空"
+  },
+  "CONVERSATION_NOT_FOUND": {
+    "statusCode": 400,
+    "message": "对话不存在"
+  },
+  "MISSING_ID": {
+    "statusCode": 400,
+    "message": "缺少 id 参数"
+  },
+  "INVALID_ID": {
+    "statusCode": 400,
+    "message": "无效的 ID"
+  },
+  "INVALID_ROLE": {
+    "statusCode": 400,
+    "message": "role 必须为 user、assistant 或 system"
+  },
+  "MESSAGE_NOT_FOUND": {
+    "statusCode": 400,
+    "message": "消息不存在"
+  },
+  "SESSION_NOT_FOUND": {
+    "statusCode": 400,
+    "message": "会话不存在"
+  },
+  "INVALID_SESSION_ID": {
+    "statusCode": 400,
+    "message": "无效的会话 ID"
+  },
+  "VENDOR_NOT_FOUND": {
+    "statusCode": 400,
+    "message": "厂商不存在"
+  },
+  "VENDOR_NAME_REQUIRED": {
+    "statusCode": 400,
+    "message": "名称为必填项"
+  },
+  "VENDOR_NAME_DUPLICATE": {
+    "statusCode": 400,
+    "message": "厂商名称已存在"
+  },
+  "PROVIDER_NOT_FOUND": {
+    "statusCode": 400,
+    "message": "提供商不存在"
+  },
+  "PROVIDER_NAME_AND_BASE_URL_REQUIRED": {
+    "statusCode": 400,
+    "message": "名称和Base URL为必填项"
+  },
+  "PROVIDER_NAME_DUPLICATE": {
+    "statusCode": 400,
+    "message": "提供商名称已存在"
+  },
+  "PROVIDER_VENDOR_ID_REQUIRED": {
+    "statusCode": 400,
+    "message": "厂商ID为必填项"
+  },
+  "PROVIDER_BASE_URL_REQUIRED": {
+    "statusCode": 400,
+    "message": "Base URL为必填项"
+  },
+  "PROVIDER_VALIDATE_FAILED": {
+    "statusCode": 400,
+    "message": "验证失败：未找到可用的模型"
+  },
+  "MODEL_NAME_AND_CAPABILITIES_REQUIRED": {
+    "statusCode": 400,
+    "message": "提供商 ID、名称和能力标签为必填项"
+  },
+  "MODEL_NAME_DUPLICATE": {
+    "statusCode": 400,
+    "message": "该提供商下模型名称已存在"
+  },
+  "MODEL_CAPABILITY_REQUIRED": {
+    "statusCode": 400,
+    "message": "capability 参数为必填项，可选值: chat, embedding, vision, reasoning"
+  },
+  "KB_ID_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: kbId"
+  },
+  "KB_CONTENT_OR_MESSAGES_REQUIRED": {
+    "statusCode": 400,
+    "message": "需要提供 content（纯文本）或 messages（消息列表）"
+  },
+  "KB_CONTENT_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: content"
+  },
+  "KB_MESSAGES_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: messages（非空数组）"
+  },
+  "KB_MESSAGE_ID_REQUIRED": {
+    "statusCode": 400,
+    "message": "每条消息必须包含 id 字段"
+  },
+  "KB_MESSAGE_ROLE_REQUIRED": {
+    "statusCode": 400,
+    "message": "每条消息必须包含 role 字段"
+  },
+  "KB_MESSAGE_CONTENT_REQUIRED": {
+    "statusCode": 400,
+    "message": "每条消息必须包含 content 字段"
+  },
+  "KB_MESSAGE_INVALID_ROLE": {
+    "statusCode": 400,
+    "message": "消息角色必须是 system、user 或 assistant"
+  },
+  "CHAT_SETTING_MEMORY_CONTEXT_THRESHOLD_TYPE": {
+    "statusCode": 400,
+    "message": "memoryContextThreshold 必须是数字"
+  },
+  "CHAT_SETTING_MEMORY_CONTEXT_THRESHOLD_RANGE": {
+    "statusCode": 400,
+    "message": "memoryContextThreshold 必须在 {min}-{max} 之间，实际: {actual}"
+  },
+  "CHAT_SETTING_MAX_OUTPUT_TOKENS_TYPE": {
+    "statusCode": 400,
+    "message": "maxOutputTokens 必须是数字或 null"
+  },
+  "CHAT_SETTING_MAX_OUTPUT_TOKENS_RANGE": {
+    "statusCode": 400,
+    "message": "maxOutputTokens 必须在 {min}-{max} 之间，设为 null 表示不限制，实际: {actual}"
+  },
+  "CHAT_SETTING_SEARCH_LINK_COUNT_TYPE": {
+    "statusCode": 400,
+    "message": "searchLinkCount 必须是数字"
+  },
+  "CHAT_SETTING_SEARCH_LINK_COUNT_RANGE": {
+    "statusCode": 400,
+    "message": "searchLinkCount 必须在 {min}-{max} 之间，实际: {actual}"
+  },
+  "CHAT_SETTING_SEARCH_SUMMARY_CONCURRENCY_TYPE": {
+    "statusCode": 400,
+    "message": "searchSummaryConcurrency 必须是数字"
+  },
+  "CHAT_SETTING_SEARCH_SUMMARY_CONCURRENCY_RANGE": {
+    "statusCode": 400,
+    "message": "searchSummaryConcurrency 必须在 {min}-{max} 之间，实际: {actual}"
+  },
+  "CHAT_SETTING_CHUNK_CHAR_RANGE_TYPE": {
+    "statusCode": 400,
+    "message": "chunkCharRange 必须是字符串"
+  },
+  "CHAT_SETTING_CHUNK_CHAR_RANGE_FORMAT": {
+    "statusCode": 400,
+    "message": "chunkCharRange 格式必须为 \"最小-最大\"，如 \"200-500\""
+  },
+  "CHAT_SETTING_CHUNK_CHAR_RANGE_INVALID": {
+    "statusCode": 400,
+    "message": "chunkCharRange 范围无效: 最小值 >= {minLimit}，最大值 <= {maxLimit}，最小值必须小于最大值，实际: {actual}"
+  },
+  "CHAT_SETTING_USER_PROFILE_TYPE": {
+    "statusCode": 400,
+    "message": "userProfile 必须是字符串或 null"
+  },
+  "CHAT_SETTING_USER_PROFILE_TOO_LONG": {
+    "statusCode": 400,
+    "message": "userProfile 不能超过 {max} 字符，实际: {actual}"
+  },
+  "SETTING_MAX_CONTENT_LENGTH_INVALID": {
+    "statusCode": 400,
+    "message": "maxContentLength 必须 >= {min}，实际: {actual}"
+  },
+  "SETTING_DEFAULT_TOP_K_INVALID": {
+    "statusCode": 400,
+    "message": "defaultTopK 必须 >= {min}，实际: {actual}"
+  },
+  "SETTING_DEFAULT_CONTEXT_WINDOW_INVALID": {
+    "statusCode": 400,
+    "message": "defaultContextWindow 必须 >= {min}，实际: {actual}"
+  },
+  "SETTING_DEFAULT_PAGE_SIZE_INVALID": {
+    "statusCode": 400,
+    "message": "defaultPageSize 必须 >= {min}，实际: {actual}"
+  },
+  "KB_PAGE_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: page"
+  },
+  "KB_LIMIT_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: limit"
+  },
+  "KB_PAGE_INVALID": {
+    "statusCode": 400,
+    "message": "page 必须是大于 0 的数字"
+  },
+  "KB_LIMIT_INVALID": {
+    "statusCode": 400,
+    "message": "limit 必须在 {min}-{max} 之间的数字，实际: {actual}"
+  },
+  "KB_QUERY_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: query"
+  },
+  "KB_TOP_K_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: top_k"
+  },
+  "KB_CONTEXT_WINDOW_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: context_window"
+  },
+  "KB_TOP_K_INVALID": {
+    "statusCode": 400,
+    "message": "top_k 必须在 {min}-{max} 之间的数字，实际: {actual}"
+  },
+  "KB_CONTEXT_WINDOW_INVALID": {
+    "statusCode": 400,
+    "message": "context_window 必须在 {min}-{max} 之间的数字，实际: {actual}"
+  },
+  "INTERNAL_ERROR": {
+    "statusCode": 500,
+    "message": "内部错误"
+  },
+  "KB_CREATE_NAME_REQUIRED": {
+    "statusCode": 400,
+    "message": "知识库名不能为空"
+  },
+  "KB_CREATE_NAME_INVALID_FORMAT": {
+    "statusCode": 400,
+    "message": "名称只能包含字母、数字、中划线和下划线"
+  },
+  "KB_CREATE_NAME_DUPLICATE": {
+    "statusCode": 400,
+    "message": "知识库 \"{name}\" 已存在"
+  },
+  "KB_INGEST_TEXT_STREAM_CONTENT_REQUIRED": {
+    "statusCode": 400,
+    "message": "内容不能为空"
+  },
+  "KB_INGEST_TEXT_STREAM_CONTENT_TOO_LONG": {
+    "statusCode": 400,
+    "message": "内容长度超过限制 ({maxLength} 字符)"
+  },
+  "KB_INGEST_TEXT_CONTENT_REQUIRED": {
+    "statusCode": 400,
+    "message": "内容不能为空"
+  },
+  "KB_INGEST_TEXT_CONTENT_TOO_LONG": {
+    "statusCode": 400,
+    "message": "内容长度超过限制 ({maxLength} 字符)"
+  },
+  "KB_INGEST_MESSAGES_EMPTY": {
+    "statusCode": 400,
+    "message": "消息列表不能为空"
+  },
+  "KB_INGEST_MESSAGE_CONTENT_TOO_LONG": {
+    "statusCode": 400,
+    "message": "消息 {msgId} 内容长度超过限制 ({maxLength} 字符)"
+  },
+  "KB_SEARCH_QUERY_REQUIRED": {
+    "statusCode": 400,
+    "message": "查询语句不能为空"
+  },
+  "KB_SEARCH_IN_TOPIC_QUERY_REQUIRED": {
+    "statusCode": 400,
+    "message": "查询语句不能为空"
+  },
+  "PROVIDER_CREATE_IS_ACTIVE_REQUIRED": {
+    "statusCode": 400,
+    "message": "提供商缺少 isActive 字段"
+  },
+  "VENDOR_CREATE_IS_ACTIVE_REQUIRED": {
+    "statusCode": 400,
+    "message": "厂商缺少 isActive 字段"
+  },
+  "VENDOR_CREATE_URL_REQUIRED": {
+    "statusCode": 400,
+    "message": "厂商缺少 url 字段"
+  },
+  "CONVERSATION_ADD_MSG_ASSISTANT_NAME_REQUIRED": {
+    "statusCode": 400,
+    "message": "assistant 消息必须指定模型名称 (name)"
+  },
+  "CONVERSATION_LIST_PAGE_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少 page 参数"
+  },
+  "CONVERSATION_LIST_LIMIT_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少 limit 参数"
+  },
+  "CONVERSATION_REGENERATE_MEMORIED": {
+    "statusCode": 400,
+    "message": "已记忆的消息不可重发"
+  },
+  "CONVERSATION_ADD_MSG_WITH_ID_ASSISTANT_NAME_REQUIRED": {
+    "statusCode": 400,
+    "message": "assistant 消息必须指定模型名称 (name)"
+  },
+  "CONVERSATION_LIST_MESSAGES_PAGE_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少 page 参数"
+  },
+  "CONVERSATION_LIST_MESSAGES_LIMIT_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少 limit 参数"
+  },
+  "CHAT_SEARCH_CONFIRM_MISSING_LAST_MESSAGE": {
+    "statusCode": 400,
+    "message": "缺少最新消息内容"
+  },
+  "CHAT_SEARCH_KEYWORD_REQUIRED": {
+    "statusCode": 400,
+    "message": "搜索关键词不能为空"
+  },
+  "CHAT_SEARCH_GET_CURRENT_QUERY_MISSING": {
+    "statusCode": 400,
+    "message": "缺少最新消息内容"
+  },
+  "PROVIDER_VALIDATE_VENDOR_NOT_FOUND": {
+    "statusCode": 400,
+    "message": "厂商不存在"
+  },
+  "PROVIDER_VALIDATE_BASE_URL_REQUIRED": {
+    "statusCode": 400,
+    "message": "请填写 Base URL（默认：{defaultUrl}）"
+  },
+  "PROVIDER_VALIDATE_API_KEY_REQUIRED": {
+    "statusCode": 400,
+    "message": "{vendorName} 需要 API Key"
+  },
+  "MODEL_CREATE_IS_ACTIVE_REQUIRED": {
+    "statusCode": 400,
+    "message": "创建模型时缺少 isActive 字段"
+  },
+  "MODEL_CREATE_IS_DEFAULT_REQUIRED": {
+    "statusCode": 400,
+    "message": "创建模型时缺少 isDefault 字段"
+  },
+  "MODEL_SET_DEFAULT_CAPABILITY_REQUIRED": {
+    "statusCode": 400,
+    "message": "模型必须至少具备一种能力（chat/reasoning/vision/embedding）才能设为默认"
+  },
+  "CHAT_CONVERSATION_ID_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少 conversationId 参数"
+  },
+  "SESSION_LIST_PAGE_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少 page 参数"
+  },
+  "SESSION_LIST_LIMIT_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少 limit 参数"
+  },
+  "KB_NOT_FOUND": {
+    "statusCode": 400,
+    "message": "知识库不存在"
+  },
+  "PROVIDER_VENDOR_NOT_LINKED": {
+    "statusCode": 500,
+    "message": "提供商未关联厂商: {providerId}"
+  },
+  "PROVIDER_VALIDATE_OLLAMA_REQUEST_FAILED": {
+    "statusCode": 500,
+    "message": "Ollama 请求失败: HTTP {status}"
+  },
+  "PROVIDER_VALIDATE_OLLAMA_INVALID_FORMAT": {
+    "statusCode": 500,
+    "message": "Ollama 响应格式无效: 缺少 models 数组"
+  },
+  "PROVIDER_VALIDATE_OPENAI_REQUEST_FAILED": {
+    "statusCode": 500,
+    "message": "OpenAI 兼容 API 请求失败: HTTP {status}"
+  },
+  "PROVIDER_VALIDATE_OPENAI_INVALID_FORMAT": {
+    "statusCode": 500,
+    "message": "OpenAI 兼容响应格式无效: 缺少 data 数组"
+  },
+  "VENDOR_FACTORY_CODE_INVALID_EXPORT": {
+    "statusCode": 500,
+    "message": "Factory code must export using module.exports"
+  },
+  "VENDOR_FACTORY_CODE_INVALID_METHOD": {
+    "statusCode": 500,
+    "message": "Factory code must have createModel method"
+  },
+  "CONVERSATION_ADD_MSG_TOKENS_REQUIRED": {
+    "statusCode": 500,
+    "message": "addMessage 缺少 tokens 字段"
+  },
+  "CONVERSATION_ADD_MSG_TOTAL_TOKENS_REQUIRED": {
+    "statusCode": 500,
+    "message": "addMessage 缺少 totalTokens 字段"
+  },
+  "CONVERSATION_ADD_MSG_MEMORIED_REQUIRED": {
+    "statusCode": 500,
+    "message": "addMessage 缺少 memoried 字段"
+  },
+  "CONVERSATION_ADD_MSG_INVALID_TOKENS": {
+    "statusCode": 500,
+    "message": "非系统/欢迎/user消息的 tokens 必须 > 0，当前值={tokens}，role={role}，content长度={contentLength}"
+  },
+  "CHAT_SEARCH_TAVILY_API_KEY_MISSING": {
+    "statusCode": 500,
+    "message": "缺少环境变量 TAVILY_API_KEY"
+  },
+  "CHAT_SEARCH_WEBPAGE_MISSING_TITLE": {
+    "statusCode": 500,
+    "message": "网页 {url} 缺少标题"
+  },
+  "CHAT_SEARCH_WEBPAGE_MISSING_SUMMARY": {
+    "statusCode": 500,
+    "message": "网页 {url} 缺少摘要"
+  },
+  "CHAT_SEARCH_TAVILY_NO_RESULTS": {
+    "statusCode": 500,
+    "message": "Tavily 未找到与关键词 \"{keywords}\" 相关的结果"
+  },
+  "CHAT_SEARCH_TAVILY_FAILED": {
+    "statusCode": 500,
+    "message": "Tavily 搜索失败"
+  },
+  "CHAT_SEARCH_ALL_RESULTS_UNAVAILABLE": {
+    "statusCode": 500,
+    "message": "所有搜索结果均无法获取正文内容{details}"
+  },
+  "CHAT_SEARCH_SUMMARY_FAILED": {
+    "statusCode": 500,
+    "message": "网页摘要生成失败: {url}"
+  },
+  "CHAT_SEARCH_URL_REQUEST_FAILED": {
+    "statusCode": 500,
+    "message": "链接 {url} 请求失败: HTTP {status} {statusText}"
+  },
+  "CHAT_SEARCH_PDF_CONTENT_TOO_SHORT": {
+    "statusCode": 500,
+    "message": "链接 {url} 的 PDF 内容过短，可能为扫描件或空文档"
+  },
+  "CHAT_SEARCH_PDF_PARSE_FAILED": {
+    "statusCode": 500,
+    "message": "链接 {url} PDF 解析失败"
+  },
+  "CHAT_SEARCH_URL_CONTENT_TOO_SHORT": {
+    "statusCode": 500,
+    "message": "链接 {url} 正文内容过短，可能为空页面或需登录"
+  },
+  "CHAT_SEARCH_URL_FETCH_FAILED": {
+    "statusCode": 500,
+    "message": "链接 {url} 获取失败"
+  },
+  "CHAT_SEARCH_SUMMARY_EMPTY": {
+    "statusCode": 500,
+    "message": "网页摘要返回空内容: {url}"
+  },
+  "CHAT_SEARCH_CURRENT_QUERY_EMPTY": {
+    "statusCode": 500,
+    "message": "未找到最新消息内容"
+  },
+  "EMBEDDING_DEFAULT_MODEL_NOT_CONFIGURED": {
+    "statusCode": 500,
+    "message": "未配置默认嵌入模型，请在 /admin/models 页面配置"
+  },
+  "EMBEDDING_PROVIDER_MISSING_VENDOR": {
+    "statusCode": 500,
+    "message": "提供商缺少厂商信息"
+  },
+  "CHAT_MEMORY_QUERY_REQUIRED": {
+    "statusCode": 500,
+    "message": "记忆搜索的 query 参数不能为空"
+  },
+  "LLM_INVOKE_MISSING_MAX_RETRIES": {
+    "statusCode": 500,
+    "message": "invokeWithRetry 缺少 maxRetries 参数"
+  },
+  "LLM_INVOKE_MISSING_TIMEOUT": {
+    "statusCode": 500,
+    "message": "invokeWithRetry 缺少 timeoutMs 参数"
+  },
+  "LLM_EMPTY_RESPONSE": {
+    "statusCode": 500,
+    "message": "LLM 返回空内容"
+  },
+  "LLM_INVOKE_FAILED": {
+    "statusCode": 500,
+    "message": "LLM invoke 失败，已重试 {maxRetries} 次: {lastError}"
+  },
+  "LLM_VALIDATION_FAILED": {
+    "statusCode": 500,
+    "message": "LLM 响应校验失败，已重试 {maxRetries} 次: {lastError}"
+  },
+  "LLM_STREAM_MISSING_MAX_RETRIES": {
+    "statusCode": 500,
+    "message": "streamWithRetry 缺少 maxRetries 参数"
+  },
+  "LLM_STREAM_MISSING_TIMEOUT": {
+    "statusCode": 500,
+    "message": "streamWithRetry 缺少 timeoutMs 参数"
+  },
+  "LLM_USAGE_MISSING_INPUT_TOKENS": {
+    "statusCode": 500,
+    "message": "LLM 响应 usage_metadata 缺少 input_tokens"
+  },
+  "LLM_USAGE_MISSING_OUTPUT_TOKENS": {
+    "statusCode": 500,
+    "message": "LLM 响应 usage_metadata 缺少 output_tokens"
+  },
+  "LLM_RESPONSE_MISSING_PROMPT_EVAL_COUNT": {
+    "statusCode": 500,
+    "message": "LLM 响应 response_metadata 缺少 prompt_eval_count"
+  },
+  "LLM_RESPONSE_MISSING_EVAL_COUNT": {
+    "statusCode": 500,
+    "message": "LLM 响应 response_metadata 缺少 eval_count"
+  },
+  "LLM_STREAM_EMPTY_RESPONSE": {
+    "statusCode": 500,
+    "message": "LLM 流式响应返回空内容"
+  },
+  "LLM_STREAM_FAILED": {
+    "statusCode": 500,
+    "message": "LLM stream 失败，已重试 {maxRetries} 次: {lastError}"
+  },
+  "LLM_JSON_PARSE_FAILED": {
+    "statusCode": 500,
+    "message": "JSON 解析失败: {snippet}"
+  },
+  "AGENT_VISION_MODEL_NOT_CONFIGURED": {
+    "statusCode": 500,
+    "message": "系统中没有配置识图模型（vision capability）"
+  },
+  "AGENT_CHAT_MODEL_NOT_CONFIGURED": {
+    "statusCode": 500,
+    "message": "系统中没有配置默认聊天模型"
+  },
+  "AGENT_MODEL_PROVIDER_NOT_FOUND": {
+    "statusCode": 500,
+    "message": "模型 {modelName} 对应的提供商不存在"
+  },
+  "AGENT_PROVIDER_VENDOR_NOT_LINKED": {
+    "statusCode": 500,
+    "message": "提供商 {providerId} 未关联厂商"
+  },
+  "AGENT_PROVIDER_MISSING_API_KEY": {
+    "statusCode": 500,
+    "message": "提供商 {providerId} 缺少 apiKey"
+  },
+  "AGENT_PROVIDER_MISSING_BASE_URL": {
+    "statusCode": 500,
+    "message": "提供商 {providerId} 缺少 baseUrl"
+  },
+  "AGENT_VISION_EMPTY_RESPONSE": {
+    "statusCode": 500,
+    "message": "识图模型返回了空内容，无法处理图片"
+  },
+  "KB_CHUNK_MISSING_CONTENT": {
+    "statusCode": 500,
+    "message": "片段 {index} 缺少 content 字段"
+  },
+  "KB_CHUNK_MISSING_TOPIC_PLAN": {
+    "statusCode": 500,
+    "message": "片段 {index} 缺少主题规划"
+  },
+  "KB_TOPIC_NOT_FOUND": {
+    "statusCode": 500,
+    "message": "主题 \"{topicName}\" 未找到"
+  },
+  "KB_TOPIC_CREATE_FAILED": {
+    "statusCode": 500,
+    "message": "片段 {index} 的主题创建失败"
+  },
+  "KB_SEARCH_RESULT_MISSING_FIELDS": {
+    "statusCode": 500,
+    "message": "搜索结果缺少 cosineSim 和 tsRank"
+  },
+  "KB_CHUNK_NOT_FOUND": {
+    "statusCode": 400,
+    "message": "片段不存在"
+  },
+  "KB_STATS_COUNT_EMPTY": {
+    "statusCode": 500,
+    "message": "知识库 \"{name}\" 的记录计数字段为空"
+  },
+  "KB_STATS_LAST_UPDATED_EMPTY": {
+    "statusCode": 500,
+    "message": "知识库 \"{name}\" 的 lastUpdated 聚合字段为空"
+  },
+  "CUT_MODEL_DEFAULT_NOT_CONFIGURED": {
+    "statusCode": 500,
+    "message": "未配置默认对话模型，请在 /admin/models 页面配置"
+  },
+  "CUT_MODEL_PROVIDER_MISSING_VENDOR": {
+    "statusCode": 500,
+    "message": "提供商缺少厂商信息"
+  },
+  "CUT_MODEL_LLM_SDK_NULL_ADDITIONAL_KWARGS": {
+    "statusCode": 500,
+    "message": "LLM SDK 返回的 additional_kwargs 为 null，可能是 SDK 版本不兼容"
+  },
+  "CUT_MODEL_LLM_FAILED": {
+    "statusCode": 500,
+    "message": "LLM 调用失败，已重试 {maxRetries} 次"
+  },
+  "CUT_MODEL_INVALID_FORMAT_MISSING_CUTPOINTS": {
+    "statusCode": 500,
+    "message": "响应格式无效: 缺少 cutPoints 数组"
+  },
+  "CUT_MODEL_INVALID_FORMAT_MISSING_GROUPS": {
+    "statusCode": 500,
+    "message": "响应格式无效: 缺少 groups 数组"
+  },
+  "CUT_MODEL_GROUP_MISSING_MESSAGE_IDS": {
+    "statusCode": 500,
+    "message": "LLM 返回的 group 缺少 messageIds 字段"
+  },
+  "CUT_MODEL_GROUP_INVALID_MESSAGE_IDS": {
+    "statusCode": 500,
+    "message": "LLM 返回的 messageIds 不是数组，实际类型: {actualType}"
+  },
+  "CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS": {
+    "statusCode": 500,
+    "message": "响应格式无效: 缺少 chunks 数组或数组为空"
+  },
+  "CUT_MODEL_CHUNK_MISSING_TITLE": {
+    "statusCode": 500,
+    "message": "LLM 返回的 chunk #{index} 缺少 title"
+  },
+  "CUT_MODEL_CHUNK_MISSING_CONTENT": {
+    "statusCode": 500,
+    "message": "LLM 返回的 chunk #{index} 缺少 content"
+  },
+  "CUT_MODEL_INVALID_FORMAT_MISSING_ACTION": {
+    "statusCode": 500,
+    "message": "响应格式无效: 缺少 action 或 action 值不合法"
+  },
+  "CUT_MODEL_INVALID_FORMAT_MERGE_MISSING_TARGET_ID": {
+    "statusCode": 500,
+    "message": "响应格式无效: merge 操作必须指定有效的 targetId"
+  },
+  "CUT_MODEL_INVALID_FORMAT_MERGE_MISSING_CONTENT": {
+    "statusCode": 500,
+    "message": "响应格式无效: merge 操作必须提供 mergedContent"
+  },
+  "CUT_MODEL_LLM_MISSING_REASON": {
+    "statusCode": 500,
+    "message": "LLM 响应缺少 reason 字段"
+  },
+  "CUT_MODEL_INVALID_FORMAT_SELECT_MISSING_TOPIC_NAME": {
+    "statusCode": 500,
+    "message": "响应格式无效: select 操作必须指定 topicName"
+  },
+  "CUT_MODEL_INVALID_FORMAT_MISSING_NAME": {
+    "statusCode": 500,
+    "message": "响应格式无效: 缺少 name"
+  },
+  "CUT_MODEL_INVALID_FORMAT_MISSING_DESCRIPTION": {
+    "statusCode": 500,
+    "message": "响应格式无效: 缺少 description"
+  },
+  "CUT_MODEL_INVALID_FORMAT_MISSING_TOPICS": {
+    "statusCode": 500,
+    "message": "响应格式无效: 缺少 topics 数组"
+  },
+  "CUT_MODEL_INVALID_FORMAT_MISSING_PLANS": {
+    "statusCode": 500,
+    "message": "响应格式无效: 缺少 plans 数组或数组为空"
+  },
+  "CUT_MODEL_PLAN_INVALID_OBJECT": {
+    "statusCode": 500,
+    "message": "响应格式无效: plans[{index}] 不是有效对象"
+  },
+  "CUT_MODEL_PLAN_MISSING_INDEX": {
+    "statusCode": 500,
+    "message": "响应格式无效: plans[{index}] 缺少有效的 index"
+  },
+  "CUT_MODEL_PLAN_INVALID_ACTION": {
+    "statusCode": 500,
+    "message": "响应格式无效: plans[{index}] 的 action 值不合法"
+  },
+  "CUT_MODEL_PLAN_SELECT_MISSING_TOPIC_NAME": {
+    "statusCode": 500,
+    "message": "响应格式无效: plans[{index}] select 操作必须指定 topicName"
+  },
+  "CUT_MODEL_PLAN_CREATE_MISSING_NEW_TOPIC_NAME": {
+    "statusCode": 500,
+    "message": "响应格式无效: plans[{index}] create 操作必须指定 newTopicName"
+  },
+  "CUT_MODEL_PLAN_INVALID_TOPIC_NAME": {
+    "statusCode": 500,
+    "message": "plans[{index}] 的 topicName \"{topicName}\" 不在已有主题列表中，必须是已有主题的短名称（如 {validTopics} 等）"
+  },
+  "CUT_MODEL_LLM_PLAN_MISSING_REASON": {
+    "statusCode": 500,
+    "message": "LLM 响应中某个 topic 计划缺少 reason 字段"
+  },
+  "LLM_STREAM_TIMEOUT": {
+    "statusCode": 400,
+    "message": "等AI响应的时间太长，稍后重试"
+  },
+  "VENDOR_PROTOCOL_UNKNOWN_MODEL_CLASS": {
+    "statusCode": 500,
+    "message": "未知的 {modelType} 模型类: {classKey}"
+  },
+  "VENDOR_PROTOCOL_NO_MODEL_CONFIG": {
+    "statusCode": 500,
+    "message": "厂商 \"{vendorName}\" ({modelType}) 必须配置 modelClass 或 factoryCode"
+  },
+  "CHAT_MODEL_FACTORY_MODEL_NAME_REQUIRED": {
+    "statusCode": 500,
+    "message": "创建 Agent 缺少 modelName 参数"
+  },
+  "CHAT_MODEL_FACTORY_API_KEY_REQUIRED": {
+    "statusCode": 500,
+    "message": "创建 Agent 缺少 apiKey 参数"
+  },
+  "CHAT_MODEL_FACTORY_BASE_URL_REQUIRED": {
+    "statusCode": 500,
+    "message": "创建 Agent 缺少 baseUrl 参数"
+  },
+  "CHAT_MODEL_FACTORY_AGENT_NOT_FOUND": {
+    "statusCode": 500,
+    "message": "Agent {key} 不存在"
+  },
+  "SYSTEM_TOKENS_CALIBRATION_FAILED": {
+    "statusCode": 500,
+    "message": "系统提示词 token 校准失败：API 未返回 input_tokens"
+  },
+  "SYSTEM_TOKENS_CONTENT_CALIBRATION_FAILED": {
+    "statusCode": 500,
+    "message": "内容 token 校准失败：API 未返回 input_tokens"
+  },
+  "CHAT_SEARCH_PARSE_RESULT_INVALID": {
+    "statusCode": 500,
+    "message": "解析结果不是有效对象"
+  },
+  "CHAT_SEARCH_WEB_REASON_MISSING": {
+    "statusCode": 500,
+    "message": "searchWebReason 字段缺失或类型错误"
+  },
+  "CHAT_SEARCH_NEED_SEARCH_WEB_MISSING": {
+    "statusCode": 500,
+    "message": "needSearchWeb 字段缺失或类型错误"
+  },
+  "CHAT_SEARCH_WEB_KEYWORDS_MISSING": {
+    "statusCode": 500,
+    "message": "webKeywords 字段缺失或类型错误"
+  },
+  "CHAT_SEARCH_MEMORY_REASON_MISSING": {
+    "statusCode": 500,
+    "message": "searchMemoryReason 字段缺失或类型错误"
+  },
+  "CHAT_SEARCH_NEED_SEARCH_MEMORY_MISSING": {
+    "statusCode": 500,
+    "message": "needSearchMemory 字段缺失或类型错误"
+  },
+  "CHAT_SEARCH_MEMORY_QUERY_TYPE_INVALID": {
+    "statusCode": 500,
+    "message": "memoryQuery 字段类型错误（必须为 string 或 null）"
+  },
+  "VENDOR_FACTORY_CODE_SYNTAX_ERROR": {
+    "statusCode": 500,
+    "message": "工厂代码语法错误: {detail}"
+  },
+  "VENDOR_FACTORY_CODE_EXECUTION_ERROR": {
+    "statusCode": 500,
+    "message": "工厂代码执行错误: {detail}"
+  }
+}

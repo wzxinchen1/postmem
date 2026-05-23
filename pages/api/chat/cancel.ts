@@ -13,7 +13,7 @@ export default createApiHandler<Deps>({
     const { conversationId } = req.body
 
     if (!conversationId) {
-      return errorResponse(res, 'BAD_REQUEST', 'conversationId 不能为空')
+      return errorResponse('MISSING_CONVERSATION_ID')
     }
 
     await deps.chatService.cancelChat(conversationId)

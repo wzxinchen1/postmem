@@ -1,7 +1,7 @@
 import { ChatOpenAI } from '@langchain/openai'
 import { HumanMessage, SystemMessage, AIMessage } from '@langchain/core/messages'
 import { logger } from '@/src/lib/logger'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 
 export interface LLMInvokeOptions {
   agent: ChatOpenAI
@@ -46,10 +46,10 @@ export class LLMResilienceService {
 
   async invokeWithRetry(options: LLMInvokeOptions): Promise<LLMInvokeResult> {
     if (options.maxRetries === undefined || options.maxRetries === null) {
-      throw Errors.internalError('invokeWithRetry 缺少 maxRetries 参数')
+      throw new AppError('LLM_INVOKE_MISSING_MAX_RETRIES')
     }
     if (options.timeoutMs === undefined || options.timeoutMs === null) {
-      throw Errors.internalError('invokeWithRetry 缺少 timeoutMs 参数')
+      throw new AppError('LLM_INVOKE_MISSING_TIMEOUT')
     }
     const maxRetries = options.maxRetries
     const timeoutMs = options.timeoutMs
@@ -68,7 +68,7 @@ export class LLMResilienceService {
 
         const content = response.content.toString()
         if (!content || content.trim().length === 0) {
-          throw Errors.internalError('LLM 返回空内容')
+          throw new AppError('LLM_EMPTY_RESPONSE')
         }
 
         const usage = this.extractUsage(response)
@@ -93,9 +93,7 @@ export class LLMResilienceService {
       }
     }
 
-    throw Errors.internalError(
-      `LLM invoke 失败，已重试 ${maxRetries} 次: ${lastError?.message}`
-    )
+    throw new AppError('LLM_INVOKE_FAILED', { maxRetries, lastError: lastError?.message })
   }
 
   async invokeWithValidation<T>(
@@ -103,7 +101,7 @@ export class LLMResilienceService {
     validator: (parsed: unknown) => T
   ): Promise<ValidateResult<T>> {
     if (options.maxRetries === undefined || options.maxRetries === null) {
-      throw Errors.internalError('invokeWithValidation 缺少 maxRetries 参数')
+      throw new AppError('LLM_INVOKE_MISSING_MAX_RETRIES')
     }
     const maxRetries = options.maxRetries
     let lastError: Error | null = null
@@ -134,17 +132,15 @@ export class LLMResilienceService {
       }
     }
 
-    throw Errors.internalError(
-      `LLM 响应校验失败，已重试 ${maxRetries} 次: ${lastError?.message}`
-    )
+    throw new AppError('LLM_VALIDATION_FAILED', { maxRetries, lastError: lastError?.message })
   }
 
   async streamWithRetry(options: LLMStreamOptions): Promise<LLMStreamResult> {
     if (options.maxRetries === undefined || options.maxRetries === null) {
-      throw Errors.internalError('streamWithRetry 缺少 maxRetries 参数')
+      throw new AppError('LLM_STREAM_MISSING_MAX_RETRIES')
     }
     if (options.timeoutMs === undefined || options.timeoutMs === null) {
-      throw Errors.internalError('streamWithRetry 缺少 timeoutMs 参数')
+      throw new AppError('LLM_STREAM_MISSING_TIMEOUT')
     }
     const maxRetries = options.maxRetries
     const timeoutMs = options.timeoutMs
@@ -168,20 +164,20 @@ export class LLMResilienceService {
           if (chunk.usage_metadata) {
             const meta = chunk.usage_metadata
             if (typeof meta.input_tokens !== 'number') {
-              throw Errors.internalError('LLM 响应 usage_metadata 缺少 input_tokens')
+              throw new AppError('LLM_USAGE_MISSING_INPUT_TOKENS')
             }
             if (typeof meta.output_tokens !== 'number') {
-              throw Errors.internalError('LLM 响应 usage_metadata 缺少 output_tokens')
+              throw new AppError('LLM_USAGE_MISSING_OUTPUT_TOKENS')
             }
             promptTokens = meta.input_tokens
             completionTokens = meta.output_tokens
           } else if (chunk.response_metadata) {
             const meta = chunk.response_metadata
             if (typeof meta.prompt_eval_count !== 'number') {
-              throw Errors.internalError('LLM 响应 response_metadata 缺少 prompt_eval_count')
+              throw new AppError('LLM_RESPONSE_MISSING_PROMPT_EVAL_COUNT')
             }
             if (typeof meta.eval_count !== 'number') {
-              throw Errors.internalError('LLM 响应 response_metadata 缺少 eval_count')
+              throw new AppError('LLM_RESPONSE_MISSING_EVAL_COUNT')
             }
             promptTokens = meta.prompt_eval_count
             completionTokens = meta.eval_count
@@ -199,7 +195,7 @@ export class LLMResilienceService {
         streamCompleted = true
 
         if (!fullContent || fullContent.trim().length === 0) {
-          throw Errors.internalError('LLM 流式响应返回空内容')
+          throw new AppError('LLM_STREAM_EMPTY_RESPONSE')
         }
 
         const usage: TokenMetadata = { promptTokens, completionTokens }
@@ -240,9 +236,7 @@ export class LLMResilienceService {
       }
     }
 
-    throw Errors.internalError(
-      `LLM stream 失败，已重试 ${maxRetries} 次: ${lastError?.message}`
-    )
+    throw new AppError('LLM_STREAM_FAILED', { maxRetries, lastError: lastError?.message })
   }
 
   /**
@@ -290,9 +284,7 @@ export class LLMResilienceService {
       return repaired as T
     }
 
-    throw Errors.internalError(
-      `JSON 解析失败: ${jsonStr.slice(0, 200)}`
-    )
+    throw new AppError('LLM_JSON_PARSE_FAILED', { snippet: jsonStr.slice(0, 200) })
   }
 
   private tryRepairJSON(jsonStr: string): unknown | null {

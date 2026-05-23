@@ -24,12 +24,12 @@ export default createApiHandler<Deps>({
         const data = req.body as CreateVendorRequest
 
         if (!data.name) {
-          return errorResponse(res, 'VALIDATION_ERROR', '名称为必填项', 400)
+          return errorResponse('VENDOR_NAME_REQUIRED')
         }
 
         const exists = await deps.vendorService.exists(data.name)
         if (exists) {
-          return errorResponse(res, 'DUPLICATE_ERROR', '厂商名称已存在', 409)
+          return errorResponse('VENDOR_NAME_DUPLICATE')
         }
 
         const vendor = await deps.vendorService.create(data)

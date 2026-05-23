@@ -1,4 +1,5 @@
 import type { VendorFactory } from '@/src/types'
+import { AppError } from '@/src/lib/errors'
 
   const MODULES: Record<string, unknown> = {
     '@langchain/core/language_models/chat_models': require('@langchain/core/language_models/chat_models'),
@@ -34,7 +35,7 @@ export function createModel(vendor: {
   if (classKey) {
     const registryEntry = CLASS_REGISTRY[classKey]
     if (!registryEntry) {
-      throw new Error(`Unknown ${params.modelType} model class: ${classKey}`)
+      throw new AppError('VENDOR_PROTOCOL_UNKNOWN_MODEL_CLASS', { modelType: params.modelType, classKey })
     }
     const pkgModule = MODULES[registryEntry.pkg] as Record<string, unknown>
     const ModelClass = pkgModule[registryEntry.className] as new (...args: unknown[]) => unknown
@@ -92,7 +93,7 @@ export function createModel(vendor: {
     return factory.createModel({ ...params })
   }
 
-  throw new Error(`Vendor "${vendor.name ?? 'unknown'}" (${params.modelType}) must have either modelClass or factoryCode`)
+  throw new AppError('VENDOR_PROTOCOL_NO_MODEL_CONFIG', { vendorName: vendor.name ?? 'unknown', modelType: params.modelType })
 }
 
 function executeFactoryCode(code: string): VendorFactory {
@@ -140,20 +141,22 @@ function executeFactoryCode(code: string): VendorFactory {
       'non ascii chars: ' + (nonAscii.length > 0 ? nonAscii.map((c) => c.charCodeAt(0).toString(16)).join(',') : 'none'),
     ].join(' | ')
 
-    throw new Error(
-      '工厂代码语法错误: ' + syntaxError.message + posInfo + '\n[DEBUG] ' + debugInfo
-    )
+    throw new AppError('VENDOR_FACTORY_CODE_SYNTAX_ERROR', {
+      detail: syntaxError.message + posInfo + '\n[DEBUG] ' + debugInfo,
+    })
   }
 
   let result: Record<string, unknown>
   try {
     result = fn(moduleNames, moduleValues) as Record<string, unknown>
   } catch (err) {
-    throw new Error('工厂代码执行错误: ' + (err as Error).message)
+    throw new AppError('VENDOR_FACTORY_CODE_EXECUTION_ERROR', {
+      detail: (err as Error).message,
+    })
   }
 
   if (!result || typeof result.createModel !== 'function') {
-    throw new Error('Factory code must export an object with createModel method')
+    throw new AppError('VENDOR_FACTORY_CODE_INVALID_METHOD')
   }
 
   return result as unknown as VendorFactory

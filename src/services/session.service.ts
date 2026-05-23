@@ -5,7 +5,7 @@ import type {
   CreateSessionRequest,
   AddSessionMessageRequest,
 } from '@/src/types'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 
 export class SessionService {
   private prisma: PrismaClient
@@ -63,8 +63,8 @@ export class SessionService {
     page?: number
     limit?: number
   }): Promise<{ sessions: Session[]; total: number; page: number; limit: number }> {
-    if (options.page === undefined) throw Errors.badRequest('缺少 page 参数')
-    if (options.limit === undefined) throw Errors.badRequest('缺少 limit 参数')
+    if (options.page === undefined) throw new AppError('SESSION_LIST_PAGE_REQUIRED')
+    if (options.limit === undefined) throw new AppError('SESSION_LIST_LIMIT_REQUIRED')
 
     const page = options.page
     const limit = options.limit

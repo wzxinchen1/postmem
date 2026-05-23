@@ -11,17 +11,17 @@ export default createApiHandler<Deps>({
   handler: async (req, res, deps) => {
     const id = req.query.id as string
     if (!id) {
-      return errorResponse(res, 'BAD_REQUEST', 'id 不能为空')
+      return errorResponse('MISSING_ID')
     }
 
     if (req.method === 'GET') {
       const conversation = await deps.conversationService.get(id)
       if (!conversation) {
-        return errorResponse(res, 'BAD_REQUEST', `对话 ${id} 不存在`)
+        return errorResponse('CONVERSATION_NOT_FOUND')
       }
       return successResponse(res, conversation)
     }
 
-    return res.status(405).send('方法不被允许')
+    return errorResponse('METHOD_NOT_ALLOWED')
   }
 })

@@ -1,5 +1,5 @@
 import { StateGraph, START, END } from '@langchain/langgraph'
-import { ChatNode, ChatGraphState, type OnStreamError } from './types'
+import { ChatNode, ChatGraphState } from './types'
 import { createInitNode } from './init.node'
 import { createSaveMemoryNode } from './save-memory.node'
 import { createRecognizeImageNode } from './recognize-image.node'
@@ -35,24 +35,6 @@ export interface GraphDependencies {
   kbService: KBService
   agentService: AgentService
   systemTokensService: SystemTokensService
-  onError: OnStreamError
-}
-
-const BALANCE_ERROR_PATTERNS = [
-  /insufficient.?balance/i,
-  /billing/i,
-  /quota.exceeded/i,
-  /payment.required/i,
-  /account.deactivated/i,
-  /credit.exhausted/i,
-  /no.remaining.credit/i,
-]
-
-function isInsufficientBalanceError(err: unknown): boolean {
-  if (!(err instanceof Error)) return false
-  const message = err.message
-  const status = (err as any).status ?? (err as any).statusCode
-  return status === 402 || BALANCE_ERROR_PATTERNS.some(p => p.test(message))
 }
 
 function createNodes(deps: GraphDependencies) {
@@ -62,7 +44,7 @@ function createNodes(deps: GraphDependencies) {
     recognizeImageNode: createRecognizeImageNode(deps),
     fetchUrlNode: createFetchUrlNode(deps),
     searchNode: createSearchNode(deps),
-    streamLLMNode: createStreamLLMNode(deps, isInsufficientBalanceError),
+    streamLLMNode: createStreamLLMNode(deps),
     finalizeNode: createFinalizeNode(deps),
   }
 }

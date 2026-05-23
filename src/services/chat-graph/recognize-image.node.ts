@@ -3,7 +3,7 @@ import type { GraphDependencies } from './index'
 import { HumanMessage } from '@langchain/core/messages'
 import { StreamStatus } from '@/src/types'
 import { logger } from '@/src/lib/logger'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 
 export function createRecognizeImageNode(deps: GraphDependencies) {
   return async function recognizeImageNode(state: ChatState): Promise<Partial<ChatState>> {
@@ -43,21 +43,15 @@ export function createRecognizeImageNode(deps: GraphDependencies) {
     })
 
     let recognizedText: string
-    try {
-      const visionResponse = await (visionAgent as { invoke: (messages: unknown[]) => Promise<Record<string, unknown>> }).invoke([visionMessage])
-      recognizedText = typeof visionResponse.content === 'string'
-        ? visionResponse.content
-        : Array.isArray(visionResponse.content)
-          ? visionResponse.content.map((c: any) => typeof c.text === 'string' ? c.text : '').filter(Boolean).join('')
-          : ''
+    const visionResponse = await (visionAgent as { invoke: (messages: unknown[]) => Promise<Record<string, unknown>> }).invoke([visionMessage])
+    recognizedText = typeof visionResponse.content === 'string'
+      ? visionResponse.content
+      : Array.isArray(visionResponse.content)
+        ? visionResponse.content.map((c: any) => typeof c.text === 'string' ? c.text : '').filter(Boolean).join('')
+        : ''
 
-      if (!recognizedText) {
-        deps.onError(Errors.internalError('识图模型返回了空内容，无法处理图片'))
-        return {}
-      }
-    } catch (error) {
-      deps.onError(error)
-      return {}
+    if (!recognizedText) {
+      throw new AppError('AGENT_VISION_EMPTY_RESPONSE')
     }
 
     logger.info('[ChatGraph] recognizeImage 识图完成', {

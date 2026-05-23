@@ -16,14 +16,14 @@ export default createApiHandler<Deps>({
     const id = req.query.id as string
 
     if (!id) {
-      return errorResponse(res, 'VALIDATION_ERROR', '无效的 ID', 400)
+      return errorResponse('INVALID_ID')
     }
 
     await apiHandler(req, res, deps, {
       GET: async (deps) => {
         const provider = await deps.providerService.get(id)
         if (!provider) {
-          return errorResponse(res, 'NOT_FOUND', '提供商不存在', 404)
+          return errorResponse('PROVIDER_NOT_FOUND')
         }
         return successResponse(res, { provider })
       },
@@ -33,13 +33,13 @@ export default createApiHandler<Deps>({
 
         const existing = await deps.providerService.get(id)
         if (!existing) {
-          return errorResponse(res, 'NOT_FOUND', '提供商不存在', 404)
+          return errorResponse('PROVIDER_NOT_FOUND')
         }
 
         if (data.name && data.name !== existing.name) {
           const exists = await deps.providerService.exists(data.name, id)
           if (exists) {
-            return errorResponse(res, 'DUPLICATE_ERROR', '提供商名称已存在', 409)
+            return errorResponse('PROVIDER_NAME_DUPLICATE')
           }
         }
 
@@ -50,7 +50,7 @@ export default createApiHandler<Deps>({
       DELETE: async (deps) => {
         const existing = await deps.providerService.get(id)
         if (!existing) {
-          return errorResponse(res, 'NOT_FOUND', '提供商不存在', 404)
+          return errorResponse('PROVIDER_NOT_FOUND')
         }
 
         await deps.providerService.delete(id)

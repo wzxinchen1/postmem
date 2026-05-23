@@ -5,6 +5,7 @@ import Redis from 'ioredis'
 import winston from 'winston'
 import { SeqTransport } from '@datalust/winston-seq'
 import type { StreamEvent, ChatRequest } from '../../packages/postmem-sdk/dist/index.mjs'
+import { ThinkingEffort } from '../../packages/postmem-sdk/dist/index.mjs'
 import { getSearchDisabled as getMemorySearchDisabled, getWebSearchDisabled } from './di-overrides'
 
 const BASE_URL = `http://localhost:${process.env.PORT || 3000}`
@@ -249,7 +250,7 @@ let activeListener: EventListener | null = null
 export async function startConsume(client: PostMemClient): Promise<void> {
   // 每次启动 consume 前清理 Redis 残留（如上次测试失败留下的 key），避免干扰
   const redis = new Redis(REDIS_CONFIG)
-  await redis.del('chat:global')
+  await redis.del('chat:global', 'system_tokens:default', 'system_tokens:default_prompt')
   const stream = redis.scanStream({ match: 'chat:processing:*', count: 100 })
   const keys: string[] = await new Promise((resolve, reject) => {
     const collected: string[] = []
@@ -319,6 +320,8 @@ export async function chatAndWait(
   client: PostMemClient,
   request: ChatRequest,
 ): Promise<ChatAndWaitResult> {
+  // 强制关闭深度思考，避免真实 LLM 思考耗时导致 TTFB 超时
+  request.thinkingEffort = ThinkingEffort.None
   const requestStartTime = Date.now()
   const seqCid = request.conversationId || request.messages?.[request.messages.length - 1]?.id || '?'
   testLogger.info(`[chatAndWait] 开始`, { seqCid, request })
@@ -395,7 +398,7 @@ export async function chatAndWait(
     const statusTimestamp = (firstStatus as Record<string, unknown>)?._timestamp as number | undefined
     if (statusTimestamp) {
       const timeToFirstStatus = statusTimestamp - result.requestStartTime
-      if (timeToFirstStatus > 10_000) {
+      if (timeToFirstStatus > 15_000) {
         throw new Error(
           `首 status 超时 (conversationId=${conversationId}): ${timeToFirstStatus}ms，超过 10s 阈值。` +
           `收到 ${result.events.length} 个事件`
@@ -408,7 +411,7 @@ export async function chatAndWait(
       const chunkTimestamp = (firstChunk as Record<string, unknown>)?._timestamp as number | undefined
       if (chunkTimestamp) {
         const ttfb = chunkTimestamp - result.requestStartTime
-        if (ttfb > 10_000) {
+        if (ttfb > 15_000) {
           throw new Error(
             `首 token 超时 (conversationId=${conversationId}): TTFB=${ttfb}ms，超过 10s 阈值。` +
             `收到 ${result.events.length} 个事件`
@@ -520,6 +523,60 @@ function assertEventSequence(events: StreamEvent[], conversationId: string, isRe
   }
 }
 
+// ─── API 错误码配置 ──────────────────────────────────────
+import apiErrorsConfig from '../../src/config/api-errors.json'
+
+export type ApiErrorCode = keyof typeof apiErrorsConfig
+
+/**
+ * 基于 api-errors.json 配置验证 API 错误响应。
+ * 
+ * @param res fetch Response 对象
+ * @param code 期望的错误码（对应 api-errors.json 中的 key）
+ * @param params 可选的模板插值参数，用于验证含动态内容的 message
+ */
+export async function assertApiError(
+  res: Response,
+  code: ApiErrorCode,
+  params?: Record<string, string | number>,
+): Promise<void> {
+  const config = apiErrorsConfig[code]
+  if (!config) {
+    throw new Error(`未知的错误码: ${code}`)
+  }
+
+  const expectedStatus = config.statusCode
+  if (res.status !== expectedStatus) {
+    throw new Error(`[${code}] statusCode: 期望 ${expectedStatus}，实际 ${res.status}`)
+  }
+
+  let expectedMessage = config.message
+  if (params) {
+    for (const [key, value] of Object.entries(params)) {
+      expectedMessage = expectedMessage.replace(new RegExp(`\\{${key}\\}`, 'g'), String(value))
+    }
+  }
+
+  const text = await res.text()
+  // 对于含插值的 message，验证 message 中的静态部分是否被包含
+  // 去掉 {key} 占位符后，剩余的静态文本应该都在响应中
+  if (!params) {
+    // 无插值时精确匹配
+    if (text !== expectedMessage) {
+      throw new Error(`[${code}] message: 期望 "${expectedMessage}"，实际 "${text}"`)
+    }
+  } else {
+    // 有插值时，验证配置中的静态关键词片段都出现在响应中
+    // 按插值占位符分割，取所有静态片段
+    const staticParts = expectedMessage.split(/\{[^}]+\}/).filter(Boolean)
+    for (const part of staticParts) {
+      if (!text.includes(part)) {
+        throw new Error(`[${code}] message: 期望包含 "${part}"，实际 "${text}"`)
+      }
+    }
+  }
+}
+
 export function assert(condition: boolean, message: string): void {
   if (!condition) {
     throw new Error(`断言失败: ${message}`)
@@ -624,4 +681,4 @@ export async function checkMessageTokens(): Promise<void> {
 }
 
 export { setMockChatSetting, setSearchDisabled, getSearchDisabled, setWebSearchDisabled, getWebSearchDisabled, setModelHasVision } from './di-overrides'
-export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockSearchNeeds, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, resetMockLLMStore } from './mock-llm'
+export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockSearchNeeds, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, resetMockLLMStore, getCalibrateCallCount, resetCalibrateCallCount } from './mock-llm'

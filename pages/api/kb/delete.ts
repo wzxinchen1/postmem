@@ -1,7 +1,6 @@
 import type { NextApiRequest, NextApiResponse } from 'next'
-import { createApiHandler, successResponse } from '@/src/lib/api-utils'
+import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 import { KBService } from '@/src/services/kb.service'
-import { Errors } from '@/src/lib/errors'
 import type { DeleteRequest } from '@/src/types'
 
 interface Deps {
@@ -15,7 +14,7 @@ export default createApiHandler<Deps>({
     const body = req.body as DeleteRequest
 
     if (!body.id || typeof body.id !== 'string') {
-      throw Errors.badRequest('缺少必需字段: id (string)')
+      return errorResponse('MISSING_ID')
     }
 
     await deps.kbService.delete(body.id)

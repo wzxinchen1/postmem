@@ -77,7 +77,8 @@ class RealLLMChatTest extends ChatTestFixture {
         }),
       })
 
-      this.assertEqual(res.status, 400, 'status')
+      const text = await res.text()
+      if (res.status !== 400) throw new Error(`缺少 modelId: 期望 400，实际 ${res.status}，响应体: ${text}`)
     })
 
     test('缺少 kbId — 返回 400', async () => {
@@ -91,7 +92,8 @@ class RealLLMChatTest extends ChatTestFixture {
         }),
       })
 
-      this.assertEqual(res.status, 400, 'status')
+      const text = await res.text()
+      if (res.status !== 400) throw new Error(`缺少 kbId: 期望 400，实际 ${res.status}，响应体: ${text}`)
     })
 
     test('缺少 messages — 返回 400', async () => {
@@ -101,7 +103,8 @@ class RealLLMChatTest extends ChatTestFixture {
         body: JSON.stringify({ modelId: this.modelId, kbId: this.kbId }),
       })
 
-      this.assertEqual(res.status, 400, 'status')
+      const text = await res.text()
+      if (res.status !== 400) throw new Error(`缺少 messages: 期望 400，实际 ${res.status}，响应体: ${text}`)
     })
 
     test('同一对话正在处理时再次请求 → 400', async () => {
@@ -264,7 +267,8 @@ class RealLLMChatTest extends ChatTestFixture {
         }),
       })
 
-      this.assertEqual(res.status, 400, 'status')
+      const text = await res.text()
+      if (res.status !== 400) throw new Error(`图片超过5张: 期望 400，实际 ${res.status}，响应体: ${text}`)
     }, CHAT_TIMEOUT)
 
     test('链接: URLs 超过 5 个 — 返回 400', async () => {
@@ -282,7 +286,8 @@ class RealLLMChatTest extends ChatTestFixture {
         }),
       })
 
-      this.assertEqual(res.status, 400, 'status')
+      const text2 = await res.text()
+      if (res.status !== 400) throw new Error(`URLs超过5个: 期望 400，实际 ${res.status}，响应体: ${text2}`)
     }, CHAT_TIMEOUT)
 
     // ════════════════════════════════════════════
@@ -374,7 +379,7 @@ class RealLLMChatTest extends ChatTestFixture {
 
     test('记忆: memoried 消息不可重发 — 返回 400', async () => {
       const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 100 })
-      const memoriedMsg = msgResult.messages.find((m) => m.memoried)
+      const memoriedMsg = msgResult.messages.find((m) => m.memoried && m.role === 'user')
 
       if (!memoriedMsg) {
         throw new Error('没有找到已记忆的消息，前置用例可能未触发记忆')
@@ -392,8 +397,10 @@ class RealLLMChatTest extends ChatTestFixture {
         }),
       })
 
-      this.assertEqual(res.status, 400, 'status for memoried regenerate')
       const text = await res.text()
+      if (res.status !== 400) {
+        throw new Error(`status for memoried regenerate: 期望 400，实际 ${res.status}，响应体: ${text}`)
+      }
       this.assertContains(text, '已记忆', 'error message contains 已记忆')
 
       // 恢复阈值设置，避免后续测试意外触发记忆

@@ -14,6 +14,7 @@ function getStore(): ChatSettingInfo {
       searchLinkCount: 10,
       searchSummaryConcurrency: 2,
       chunkCharRange: '200-500',
+      userProfile: null,
       memorySearchDisabled: false,
       webSearchDisabled: false,
       createdAt: new Date(),

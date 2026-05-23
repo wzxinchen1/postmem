@@ -3,7 +3,7 @@ import { ChatModelFactory } from '@/src/services/chat-model-factory.service'
 import { ModelService } from '@/src/services/model.service'
 import { ProviderService } from '@/src/services/provider.service'
 import type { IChatSettingProvider } from '@/src/interfaces/chat-setting-provider'
-import { Errors } from '@/src/lib/errors'
+import { AppError } from '@/src/lib/errors'
 import { logger } from '@/src/lib/logger'
 
 interface Dependencies {
@@ -29,7 +29,7 @@ export class AgentService {
   async getChatAgent(modelId: string, thinkingEffort?: string): Promise<unknown> {
     const model = await this.modelService.get(modelId)
     if (!model) {
-      throw Errors.internalError(`模型 ${modelId} 不存在`)
+      throw new AppError('MODEL_NOT_FOUND', { modelId })
     }
 
     const { vendor, apiKey, baseUrl } = await this.resolveProvider(model)
@@ -57,7 +57,7 @@ export class AgentService {
   async getVisionAgent(): Promise<unknown> {
     const visionModel = await this.modelService.getDefaultByCapability('vision')
     if (!visionModel) {
-      throw Errors.internalError('系统中没有配置识图模型（vision capability）')
+      throw new AppError('AGENT_VISION_MODEL_NOT_CONFIGURED')
     }
 
     const { vendor, apiKey, baseUrl } = await this.resolveProvider(visionModel)
@@ -75,7 +75,7 @@ export class AgentService {
   async getDefaultChatAgent(): Promise<unknown> {
     const defaultModel = await this.modelService.getDefaultByCapability('chat')
     if (!defaultModel) {
-      throw Errors.internalError('系统中没有配置默认聊天模型')
+      throw new AppError('AGENT_CHAT_MODEL_NOT_CONFIGURED')
     }
 
     const { vendor, apiKey, baseUrl } = await this.resolveProvider(defaultModel)
@@ -95,16 +95,16 @@ export class AgentService {
   private async resolveProvider(model: Model): Promise<{ vendor: Vendor; apiKey: string; baseUrl: string }> {
     const provider = await this.providerService.get(model.providerId)
     if (!provider) {
-      throw Errors.internalError(`模型 ${model.name} 对应的提供商不存在`)
+      throw new AppError('AGENT_MODEL_PROVIDER_NOT_FOUND', { modelName: model.name })
     }
     if (!provider.vendor) {
-      throw Errors.internalError(`提供商 ${provider.id} 未关联厂商`)
+      throw new AppError('AGENT_PROVIDER_VENDOR_NOT_LINKED', { providerId: provider.id })
     }
     if (!provider.apiKey) {
-      throw Errors.internalError(`提供商 ${provider.id} 缺少 apiKey`)
+      throw new AppError('AGENT_PROVIDER_MISSING_API_KEY', { providerId: provider.id })
     }
     if (!provider.baseUrl) {
-      throw Errors.internalError(`提供商 ${provider.id} 缺少 baseUrl`)
+      throw new AppError('AGENT_PROVIDER_MISSING_BASE_URL', { providerId: provider.id })
     }
 
     return {

@@ -26,6 +26,7 @@
     "test:real": "pnpm tsx tests/integration/chat-completions-real-llm.ts --real-llm",
     "test:integration:chat:real": "pnpm tsx tests/integration/chat-completions-real-llm.ts --real-llm",
     "test:integration:chat:link": "pnpm tsx tests/integration/chat-completions-real-llm.ts --real-llm",
+    "check-error": "pnpm tsx scripts/check-api-errors-usage.ts",
     "swagger": "pnpm tsx scripts/generate-swagger.ts",
     "types:generate": "pnpm --filter postmem-types run generate",
     "types:build": "pnpm --filter postmem-types run build"
