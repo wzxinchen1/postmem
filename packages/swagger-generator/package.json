@@ -1,0 +1,33 @@
+{
+  "name": "my-swagger-generator",
+  "version": "1.0.0",
+  "description": "OpenAPI 3.0 spec generator - parses API route files and TypeScript types",
+  "main": "dist/index.js",
+  "types": "dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.mjs",
+      "default": "./dist/index.js"
+    }
+  },
+  "bin": {
+    "swagger-generator": "./dist/cli.mjs"
+  },
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "build": "tsup",
+    "release": "pnpm version patch && pnpm publish",
+    "prepublishOnly": "pnpm run build"
+  },
+  "dependencies": {
+    "comment-parser": "^1.4.7"
+  },
+  "devDependencies": {
+    "tsup": "^8.4.0",
+    "typescript": "^5.6.0"
+  },
+  "license": "MIT"
+}

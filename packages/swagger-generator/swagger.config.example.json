@@ -1,0 +1,48 @@
+{
+  "openapi": {
+    "openapi": "3.0.0",
+    "info": {
+      "title": "My API",
+      "description": "API 描述",
+      "version": "1.0.0",
+      "contact": {
+        "name": "My Team"
+      }
+    },
+    "servers": [
+      {
+        "url": "/",
+        "description": "当前服务器"
+      }
+    ],
+    "tags": [
+      {
+        "name": "Users",
+        "description": "用户管理接口"
+      }
+    ]
+  },
+  "tagMap": {
+    "users": "Users"
+  },
+  "paths": {
+    "apiDir": "pages/api",
+    "typesFile": "src/types/index.ts",
+    "outputFile": "public/swagger.json",
+    "llmYamlFile": "public/api-reference.yaml",
+    "errorsFile": "src/config/api-errors.json"
+  },
+  "responseWrappers": {
+    "success": "ApiResponse",
+    "error": "string"
+  },
+  "responseWrapperSchemas": {
+    "ApiResponse": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "example": true },
+        "data": { "type": "object", "description": "实际响应数据" }
+      }
+    }
+  }
+}
