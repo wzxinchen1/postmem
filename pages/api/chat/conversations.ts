@@ -6,6 +6,13 @@ interface Deps {
   conversationService: ConversationService
 }
 
+/**
+ * 会话管理 API
+ * @query {string} kbId - 按知识库筛选
+ * @query {integer} [page=1] - 页码
+ * @query {integer} [limit=20] - 每页数量
+ * @response 200 - 成功响应
+ */
 export default createApiHandler<Deps>({
   dependencies: ['conversationService'],
   handler: async (req, res, deps) => {

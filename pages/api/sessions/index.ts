@@ -6,6 +6,15 @@ interface Deps {
   sessionService: SessionService
 }
 
+/**
+ * 会话列表 API
+ * @query {string} kbId - 按知识库筛选
+ * @query {string} modelType - 按模型类型筛选
+ * @query {string} status - 按状态筛选
+ * @query {integer} [page=1] - 页码
+ * @query {integer} [limit=20] - 每页数量
+ * @response.GET {Session[]} 200 - 会话列表
+ */
 export default createApiHandler<Deps>({
   dependencies: ['sessionService'],
   handler: async (req, res, deps) => {

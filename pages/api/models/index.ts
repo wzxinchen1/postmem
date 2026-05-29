@@ -8,6 +8,10 @@ interface Deps {
 
 /**
  * 模型列表和创建 API
+ * @query {boolean} [includeInactive=false] - 是否包含已禁用的项
+ * @query {string} providerId - 按提供商ID筛选
+ * @response.GET {Model[]} 200 - 模型列表
+ * @response.POST {Model} 201 - 创建成功
  */
 export default createApiHandler<Deps>({
   dependencies: ['modelService'],

@@ -7,6 +7,10 @@ interface Deps {
   kbService: KBService
 }
 
+/**
+ * 知识库统计 API
+ * @response {Stats} 200 - 统计信息
+ */
 export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['kbService'],

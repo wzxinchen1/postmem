@@ -6,7 +6,7 @@
   "private": true,
   "scripts": {
     "predev": "prisma generate && prisma migrate deploy && prisma db seed",
-    "dev": "pnpm tsx scripts/generate-swagger.ts && next dev -p 3000",
+    "dev": "swagger-generator generate && next dev -p 3000",
     "build": "node scripts/build.mjs",
     "start": "next start",
     "lint": "next lint",
@@ -27,7 +27,7 @@
     "test:integration:chat:real": "pnpm tsx tests/integration/chat-completions-real-llm.ts --real-llm",
     "test:integration:chat:link": "pnpm tsx tests/integration/chat-completions-real-llm.ts --real-llm",
     "check-error": "pnpm tsx scripts/check-api-errors-usage.ts",
-    "swagger": "pnpm tsx scripts/generate-swagger.ts",
+    "swagger": "swagger-generator generate",
     "types:generate": "pnpm --filter postmem-types run generate",
     "types:build": "pnpm --filter postmem-types run build"
   },
@@ -73,6 +73,7 @@
     "prisma": "^7.8.0",
     "sass": "^1.99.0",
     "supertest": "^7.2.2",
+    "my-swagger-generator": "workspace:*",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "vitest": "^4.1.6"

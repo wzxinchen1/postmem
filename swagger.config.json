@@ -1,0 +1,103 @@
+{
+  "openapi": {
+    "openapi": "3.0.0",
+    "info": {
+      "title": "PostMem API",
+      "description": "个人知识库系统 API - 支持本地嵌入向量和智能文本切割（自动生成）",
+      "version": "1.0.0",
+      "contact": {
+        "name": "PostMem"
+      }
+    },
+    "servers": [
+      {
+        "url": "/",
+        "description": "当前服务器"
+      }
+    ],
+    "tags": [
+      {
+        "name": "Knowledge Base",
+        "description": "知识库管理接口"
+      },
+      {
+        "name": "Models",
+        "description": "AI 模型管理接口"
+      },
+      {
+        "name": "Providers",
+        "description": "AI 提供商管理接口"
+      },
+      {
+        "name": "Sessions",
+        "description": "对话会话管理接口"
+      },
+      {
+        "name": "Chat",
+        "description": "聊天消息接口"
+      },
+      {
+        "name": "Settings",
+        "description": "应用设置接口"
+      },
+      {
+        "name": "Vendors",
+        "description": "AI 厂商管理接口"
+      },
+      {
+        "name": "Chat Settings",
+        "description": "聊天设置管理接口"
+      },
+      {
+        "name": "Init",
+        "description": "初始化接口"
+      }
+    ]
+  },
+  "tagMap": {
+    "kb": "Knowledge Base"
+  },
+  "responseWrapper": {
+    "successField": "success",
+    "dataField": "data",
+    "properties": {
+      "success": { "type": "boolean", "example": true },
+      "data": { "type": "object" }
+    }
+  },
+  "responseWrappers": {
+    "success": "ApiResponse",
+    "error": "ErrorResponse"
+  },
+  "responseWrapperSchemas": {
+    "ApiResponse": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "example": true },
+        "data": { "type": "object", "description": "实际响应数据，由具体接口定义" },
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": { "type": "string" },
+            "message": { "type": "string" },
+            "details": { "type": "string" }
+          }
+        }
+      }
+    },
+    "ErrorResponse": {
+      "type": "object",
+      "properties": {
+        "success": { "type": "boolean", "example": false },
+        "error": {
+          "type": "object",
+          "properties": {
+            "code": { "type": "string", "enum": "__ERROR_CODES__" },
+            "message": { "type": "string" },
+            "details": { "type": "string" }
+          }
+        }
+      }
+    }
+  }
+}

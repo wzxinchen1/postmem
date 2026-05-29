@@ -8,6 +8,8 @@ interface Deps {
 
 /**
  * 获取默认模型 API
+ * @query {string} capability - 模型能力
+ * @response.GET {Model} 200 - 默认模型
  */
 export default createApiHandler<Deps>({
   dependencies: ['modelService'],

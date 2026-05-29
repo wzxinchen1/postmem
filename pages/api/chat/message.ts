@@ -7,6 +7,12 @@ interface Deps {
   conversationService: ConversationService
 }
 
+/**
+ * 单条消息 API
+ * @query {string} id - 消息ID
+ * @response.GET {ChatMessage} 200 - 成功响应
+ * @response 404 - 资源不存在
+ */
 export default createApiHandler<Deps>({
   dependencies: ['conversationService'],
   handler: async (req, res, deps) => {

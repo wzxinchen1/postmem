@@ -7,6 +7,11 @@ interface Deps {
   kbService: KBService
 }
 
+/**
+ * 创建知识库 API
+ * @response {KnowledgeBaseInfo} 200 - 成功响应
+ * @response {KnowledgeBaseInfo} 201 - 创建成功
+ */
 export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['kbService'],

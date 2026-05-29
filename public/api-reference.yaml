@@ -8,44 +8,41 @@
 ### GET /api/chat-settings/index
 聊天设置 API - 管理 chat_settings 表
 
+**Types:** ChatSettingInfo (响应)
+
 Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
+  200: 成功响应 (ChatSettingInfo)
+    { success: boolean, data: ChatSettingInfo }
 
 ### PUT /api/chat-settings/index
 聊天设置 API - 管理 chat_settings 表
 
+**Types:** ChatSettingInfo (响应)
+
 Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
+  200: 成功响应 (ChatSettingInfo)
+    { success: boolean, data: ChatSettingInfo }
 
 ### POST /api/chat/cancel
+取消聊天 API
 
 Request Body:
   - `conversationId`: string (required)
 
 Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
-  201: 创建成功 (object)
-    { success: boolean, data: object }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
+  200: 成功响应
 
 ### POST /api/chat/cleanup
+清理聊天流 API
 
 Request Body:
   - `conversationId`: string (required)
 
 Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
-  201: 创建成功 (object)
-    { success: boolean, data: object }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
+  200: 成功响应
 
 ### POST /api/chat/completions
+聊天补全 API
 
 Request Body:
   - `messages`: string (required)
@@ -57,14 +54,10 @@ Request Body:
   - `thinkingEffort`: string (required)
 
 Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
-  201: 创建成功 (object)
-    { success: boolean, data: object }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
+  200: 成功响应
 
 ### GET /api/chat/conversations
+会话管理 API
 
 Query Parameters:
   - `kbId`: string (required) - 按知识库筛选
@@ -72,10 +65,10 @@ Query Parameters:
   - `limit`: integer (默认: 20) - 每页数量
 
 Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
+  200: 成功响应
 
 ### POST /api/chat/conversations
+会话管理 API
 
 Query Parameters:
   - `kbId`: string (required) - 按知识库筛选
@@ -86,14 +79,10 @@ Request Body:
   - `kbId`: string (required)
 
 Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
-  201: 创建成功 (object)
-    { success: boolean, data: object }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
+  200: 成功响应
 
 ### DELETE /api/chat/conversations
+会话管理 API
 
 Query Parameters:
   - `kbId`: string (required) - 按知识库筛选
@@ -101,29 +90,35 @@ Query Parameters:
   - `limit`: integer (默认: 20) - 每页数量
 
 Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
+  200: 成功响应
 
 ### GET /api/chat/message
+单条消息 API
+
+**Types:** ChatMessage (响应)
 
 Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
+  200: 成功响应 (ChatMessage)
+    { success: boolean, data: ChatMessage }
+  404: 资源不存在
 
 ### GET /api/chat/messages
+聊天消息列表 API
 
 **Types:** ChatMessageListResult (响应)
 
 Query Parameters:
+  - `conversationId`: string (required) - 按会话ID筛选
+  - `role`: string (required) - 按角色筛选
   - `page`: integer (默认: 1) - 页码
-  - `limit`: integer (默认: 20) - 每页数量
+  - `limit`: integer (默认: 50) - 每页数量
 
 Response Body:
   200: 成功响应 (ChatMessageListResult)
     { success: boolean, data: ChatMessageListResult }
 
 ### GET /api/chat/stream
-⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️
+⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️ 本端点设计为一次连接、永久存活。连接只会在以下情况断开： 1. 用户关闭浏览器标签页（req.on('close')） 2. 服务器进程终止 禁止的行为（无论什么理由，零容忍）： ❌ 禁止在 done/error 事件后 res.end() 或 return ❌ 禁止添加超时自动关闭逻辑 ❌ 禁止在流被清理后退出循环 ❌ 禁止以"防止连接泄漏"为名添加任何退出路径 ❌ 禁止把本端点改成短连接或轮询模式 ❌ 禁止用 Blocking XREAD 替代轮询（会阻塞线程） 设计意图： - 前端维护一个 EventSource 实例，贯穿整个页面生命周期 - 多次对话共用同一条 SSE 连接，后端只管往 Redis Stream 推数据 - clearMessageStream() 会在每轮对话结束后清理流，但连接不关 - 下一轮对话重建流，前端同一条连接继续读 如果后来的大模型读到这里： - 你没理解错，这个 while(true) 就是死循环，设计如此 - 不要碰 done/error 的处理逻辑，前端自己知道什么时候停 - 不要擅自"优化"成读写分离、连接池、超时回收 - 看不懂不要改，去问人，不要猜
 
 Response Body:
   200: 成功响应（SSE 流式响应）
@@ -134,19 +129,20 @@ Response Body:
 
 ---
 
-## Other
+## Init
 
 ### GET /api/init/providers
+初始化默认提供商 API
 
 Response Body:
-  200: 成功响应 (object)
-    { success: boolean, data: object }
+  200: 成功响应
 
 ---
 
 ## Knowledge Base
 
 ### POST /api/kb/create
+创建知识库 API
 
 **Types:** CreateKBRequest (请求), KnowledgeBaseInfo (响应)
 
@@ -160,26 +156,21 @@ Response Body:
     { success: boolean, data: KnowledgeBaseInfo }
   201: 创建成功 (KnowledgeBaseInfo)
     { success: boolean, data: KnowledgeBaseInfo }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/kb/delete
+删除知识库 API
 
-**Types:** DeleteRequest (请求), void (响应)
+**Types:** DeleteRequest (请求)
 
 Request Body:
   type: DeleteRequest
   - `id`: string (required)
 
 Response Body:
-  200: 成功响应 (void)
-    { success: boolean, data: void }
-  201: 创建成功 (void)
-    { success: boolean, data: void }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
+  200: 成功响应
 
 ### POST /api/kb/ingest
+文本入库 API
 
 **Types:** IngestTextResponse (响应)
 
@@ -197,14 +188,14 @@ Response Body:
     Content-Type: text/event-stream
     事件格式: data: { type: string, message?: string, data?: object }
     事件类型:
-      - complete: complete
-      - error: error
-  201: 创建成功 (IngestTextResponse)
-    { success: boolean, data: IngestTextResponse }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
+      - status: 状态更新通知 → message: string
+      - progress: 处理进度更新 → object
+      - chunk_detail: 片段处理详情 → object
+      - complete: 处理完成 → IngestTextResponse
+      - error: 处理出错 → message: string, code: string
 
 ### POST /api/kb/list
+知识库列表 API
 
 **Types:** ListRequest (请求), ListItem[] (响应)
 
@@ -215,14 +206,11 @@ Request Body:
   - `limit`: number
 
 Response Body:
-  200: 成功响应 (ListItem[])
+  200: 知识库列表 (ListItem[])
     { success: boolean, data: ListItem[] }
-  201: 创建成功 (ListItem[])
-    { success: boolean, data: ListItem[] }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/kb/search
+知识库搜索 API
 
 **Types:** SearchRequest (请求), SearchResult[] (响应)
 
@@ -234,14 +222,11 @@ Request Body:
   - `context_window`: number
 
 Response Body:
-  200: 成功响应 (SearchResult[])
+  200: 检索结果 (SearchResult[])
     { success: boolean, data: SearchResult[] }
-  201: 创建成功 (SearchResult[])
-    { success: boolean, data: SearchResult[] }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/kb/stats
+知识库统计 API
 
 **Types:** StatsRequest (请求), Stats (响应)
 
@@ -250,12 +235,8 @@ Request Body:
   - `kbId`: string
 
 Response Body:
-  200: 成功响应 (Stats)
+  200: 统计信息 (Stats)
     { success: boolean, data: Stats }
-  201: 创建成功 (Stats)
-    { success: boolean, data: Stats }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
 
 ---
 
@@ -267,12 +248,12 @@ Response Body:
 **Types:** Model (响应)
 
 Path Parameters:
-  - `id`: string (required) - 模型ID
+  - `id`: string (required) - id
 
 Response Body:
   200: 成功响应 (Model)
     { success: boolean, data: Model }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### PUT /api/models/{id}
 单个模型 API
@@ -280,7 +261,7 @@ Response Body:
 **Types:** UpdateModelRequest (请求), Model (响应)
 
 Path Parameters:
-  - `id`: string (required) - 模型ID
+  - `id`: string (required) - id
 
 Request Body:
   type: UpdateModelRequest
@@ -292,22 +273,18 @@ Request Body:
   - `isDefault`: boolean
 
 Response Body:
-  200: 成功响应 (Model)
+  200: 更新成功 (Model)
     { success: boolean, data: Model }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### DELETE /api/models/{id}
 单个模型 API
 
-**Types:** Model (响应)
-
 Path Parameters:
-  - `id`: string (required) - 模型ID
+  - `id`: string (required) - id
 
 Response Body:
-  200: 成功响应 (Model)
-    { success: boolean, data: Model }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### GET /api/models/default
 获取默认模型 API
@@ -315,10 +292,10 @@ Response Body:
 **Types:** Model (响应)
 
 Query Parameters:
-  - `capability`: string [chat|embedding|vision] - 模型能力
+  - `capability`: string (required) - 模型能力
 
 Response Body:
-  200: 成功响应 (Model)
+  200: 默认模型 (Model)
     { success: boolean, data: Model }
 
 ### GET /api/models/index
@@ -328,10 +305,10 @@ Response Body:
 
 Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
-  - `providerId`: string - 按提供商ID筛选
+  - `providerId`: string (required) - 按提供商ID筛选
 
 Response Body:
-  200: 成功响应 (Model[])
+  200: 模型列表 (Model[])
     { success: boolean, data: Model[] }
 
 ### POST /api/models/index
@@ -341,7 +318,7 @@ Response Body:
 
 Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
-  - `providerId`: string - 按提供商ID筛选
+  - `providerId`: string (required) - 按提供商ID筛选
 
 Request Body:
   type: CreateModelRequest
@@ -354,12 +331,8 @@ Request Body:
   - `isDefault`: boolean
 
 Response Body:
-  200: 成功响应 (Model)
-    { success: boolean, data: Model }
   201: 创建成功 (Model)
     { success: boolean, data: Model }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
 
 ---
 
@@ -371,12 +344,12 @@ Response Body:
 **Types:** Provider (响应)
 
 Path Parameters:
-  - `id`: string (required) - 提供商ID
+  - `id`: string (required) - id
 
 Response Body:
   200: 成功响应 (Provider)
     { success: boolean, data: Provider }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### PUT /api/providers/{id}
 单个提供商 API
@@ -384,7 +357,7 @@ Response Body:
 **Types:** UpdateProviderRequest (请求), Provider (响应)
 
 Path Parameters:
-  - `id`: string (required) - 提供商ID
+  - `id`: string (required) - id
 
 Request Body:
   type: UpdateProviderRequest
@@ -395,22 +368,18 @@ Request Body:
   - `isActive`: boolean
 
 Response Body:
-  200: 成功响应 (Provider)
+  200: 更新成功 (Provider)
     { success: boolean, data: Provider }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### DELETE /api/providers/{id}
 单个提供商 API
 
-**Types:** Provider (响应)
-
 Path Parameters:
-  - `id`: string (required) - 提供商ID
+  - `id`: string (required) - id
 
 Response Body:
-  200: 成功响应 (Provider)
-    { success: boolean, data: Provider }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### GET /api/providers/index
 提供商列表和创建 API
@@ -421,7 +390,7 @@ Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
 
 Response Body:
-  200: 成功响应 (Provider[])
+  200: 提供商列表 (Provider[])
     { success: boolean, data: Provider[] }
 
 ### POST /api/providers/index
@@ -441,16 +410,11 @@ Request Body:
   - `isActive`: boolean
 
 Response Body:
-  200: 成功响应 (Provider)
-    { success: boolean, data: Provider }
   201: 创建成功 (Provider)
     { success: boolean, data: Provider }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
 
 ### POST /api/providers/models
-
-**Types:** Model[] (响应)
+获取提供商模型列表 API
 
 Request Body:
   - `vendorId`: string (required)
@@ -458,12 +422,7 @@ Request Body:
   - `baseUrl`: string (required)
 
 Response Body:
-  200: 成功响应 (Model[])
-    { success: boolean, data: Model[] }
-  201: 创建成功 (Model[])
-    { success: boolean, data: Model[] }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
+  200: 成功响应
 
 ### GET /api/providers/tree
 提供商树形结构 API - 返回提供商及其下属模型的树
@@ -474,12 +433,11 @@ Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
 
 Response Body:
-  200: 成功响应 (ProviderTreeNode[])
+  200: 树形结构 (ProviderTreeNode[])
     { success: boolean, data: ProviderTreeNode[] }
 
 ### POST /api/providers/validate
-
-**Types:** boolean (响应)
+验证提供商 API
 
 Request Body:
   - `vendorId`: string (required)
@@ -487,61 +445,57 @@ Request Body:
   - `baseUrl`: string (required)
 
 Response Body:
-  200: 成功响应 (boolean)
-    { success: boolean, data: boolean }
-  201: 创建成功 (boolean)
-    { success: boolean, data: boolean }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
+  200: 成功响应
 
 ---
 
 ## Sessions
 
 ### GET /api/sessions/{id}
+单个会话 API
 
 **Types:** Session (响应)
 
 Path Parameters:
-  - `id`: string (required) - 会话ID
+  - `id`: string (required) - id
 
 Response Body:
   200: 成功响应 (Session)
     { success: boolean, data: Session }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### DELETE /api/sessions/{id}
-
-**Types:** Session (响应)
+单个会话 API
 
 Path Parameters:
-  - `id`: string (required) - 会话ID
+  - `id`: string (required) - id
 
 Response Body:
-  200: 成功响应 (Session)
-    { success: boolean, data: Session }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### GET /api/sessions/index
+会话列表 API
 
 **Types:** Session[] (响应)
 
 Query Parameters:
   - `kbId`: string (required) - 按知识库筛选
-  - `status`: string [pending|completed|failed] - 按状态筛选
+  - `modelType`: string (required) - 按模型类型筛选
+  - `status`: string (required) - 按状态筛选
   - `page`: integer (默认: 1) - 页码
   - `limit`: integer (默认: 20) - 每页数量
 
 Response Body:
-  200: 成功响应 (Session[])
+  200: 会话列表 (Session[])
     { success: boolean, data: Session[] }
 
 ### GET /api/sessions/stats
+会话统计 API
 
 **Types:** Stats (响应)
 
 Response Body:
-  200: 成功响应 (Stats)
+  200: 统计信息 (Stats)
     { success: boolean, data: Stats }
 
 ---
@@ -576,12 +530,12 @@ Response Body:
 **Types:** Vendor (响应)
 
 Path Parameters:
-  - `id`: string (required) - 厂商ID
+  - `id`: string (required) - id
 
 Response Body:
   200: 成功响应 (Vendor)
     { success: boolean, data: Vendor }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### PUT /api/vendors/{id}
 单个厂商 API
@@ -589,7 +543,7 @@ Response Body:
 **Types:** UpdateVendorRequest (请求), Vendor (响应)
 
 Path Parameters:
-  - `id`: string (required) - 厂商ID
+  - `id`: string (required) - id
 
 Request Body:
   type: UpdateVendorRequest
@@ -600,22 +554,18 @@ Request Body:
   - `isActive`: boolean
 
 Response Body:
-  200: 成功响应 (Vendor)
+  200: 更新成功 (Vendor)
     { success: boolean, data: Vendor }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### DELETE /api/vendors/{id}
 单个厂商 API
 
-**Types:** Vendor (响应)
-
 Path Parameters:
-  - `id`: string (required) - 厂商ID
+  - `id`: string (required) - id
 
 Response Body:
-  200: 成功响应 (Vendor)
-    { success: boolean, data: Vendor }
-  404: 资源不存在 (ErrorResponse)
+  404: 资源不存在
 
 ### GET /api/vendors/index
 厂商列表和创建 API
@@ -626,7 +576,7 @@ Query Parameters:
   - `includeInactive`: boolean (默认: false) - 是否包含已禁用的项
 
 Response Body:
-  200: 成功响应 (Vendor[])
+  200: 厂商列表 (Vendor[])
     { success: boolean, data: Vendor[] }
 
 ### POST /api/vendors/index
@@ -646,12 +596,8 @@ Request Body:
   - `isActive`: boolean
 
 Response Body:
-  200: 成功响应 (Vendor)
-    { success: boolean, data: Vendor }
   201: 创建成功 (Vendor)
     { success: boolean, data: Vendor }
-  400: 请求参数错误 (ErrorResponse)
-  409: 冲突（重复） (ErrorResponse)
 
 ---
 
@@ -917,6 +863,22 @@ url
 
 - `url`*: string
 - `mimeType`?: string
+
+### ChatSettingInfo
+Required:
+id, memoryContextThreshold, searchLinkCount, searchSummaryConcurrency, chunkCharRange, createdAt, updatedAt
+
+- `id`*: string
+- `memoryContextThreshold`*: number
+- `maxOutputTokens`?: number | null
+- `searchLinkCount`*: number
+- `searchSummaryConcurrency`*: number
+- `chunkCharRange`*: string
+- `userProfile`?: string | null
+- `memorySearchDisabled`?: boolean
+- `webSearchDisabled`?: boolean
+- `createdAt`*: Date
+- `updatedAt`*: Date
 
 ### Session
 Required:

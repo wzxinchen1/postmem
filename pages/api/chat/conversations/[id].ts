@@ -6,6 +6,11 @@ interface Deps {
   conversationService: ConversationService
 }
 
+/**
+ * 单个会话聊天 API
+ * @response.GET {Conversation} 200 - 成功响应
+ * @response 404 - 资源不存在
+ */
 export default createApiHandler<Deps>({
   dependencies: ['conversationService'],
   handler: async (req, res, deps) => {

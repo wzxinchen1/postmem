@@ -9,6 +9,9 @@ interface Deps {
 
 /**
  * 单个厂商 API
+ * @response.GET {Vendor} 200 - 成功响应
+ * @response.PUT {Vendor} 200 - 更新成功
+ * @response 404 - 资源不存在
  */
 export default createApiHandler<Deps>({
   dependencies: ['vendorService'],

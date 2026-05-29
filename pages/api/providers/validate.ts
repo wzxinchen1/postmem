@@ -6,6 +6,10 @@ interface Deps {
   providerValidateService: ProviderValidateService
 }
 
+/**
+ * 验证提供商 API
+ * @response 200 - 成功响应
+ */
 export default createApiHandler<Deps>({
   dependencies: ['providerValidateService'],
   handler: async (req, res, deps) => {

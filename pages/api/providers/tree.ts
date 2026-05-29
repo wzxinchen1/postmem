@@ -8,6 +8,8 @@ interface Deps {
 
 /**
  * 提供商树形结构 API - 返回提供商及其下属模型的树
+ * @query {boolean} [includeInactive=false] - 是否包含已禁用的项
+ * @response.GET {ProviderTreeNode[]} 200 - 树形结构
  */
 export default createApiHandler<Deps>({
   dependencies: ['providerService'],

@@ -9,6 +9,10 @@ interface Deps {
   settingService: SettingService
 }
 
+/**
+ * 知识库搜索 API
+ * @response {SearchResult[]} 200 - 检索结果
+ */
 export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['kbService', 'settingService'],

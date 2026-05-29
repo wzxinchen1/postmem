@@ -8,6 +8,10 @@ interface Deps {
   settingService: SettingService
 }
 
+/**
+ * 知识库列表 API
+ * @response {ListItem[]} 200 - 知识库列表
+ */
 export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['kbService', 'settingService'],

@@ -18,6 +18,10 @@ interface Deps {
   chatSettingService: ChatSettingService
 }
 
+/**
+ * 聊天补全 API
+ * @response 200 - 成功响应
+ */
 export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['chatService', 'conversationService', 'sseService', 'modelService', 'kbService', 'chatSettingService'],

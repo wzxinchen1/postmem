@@ -9,6 +9,9 @@ interface Deps {
 
 /**
  * 单个模型 API
+ * @response.GET {Model} 200 - 成功响应
+ * @response.PUT {Model} 200 - 更新成功
+ * @response 404 - 资源不存在
  */
 export default createApiHandler<Deps>({
   dependencies: ['modelService'],

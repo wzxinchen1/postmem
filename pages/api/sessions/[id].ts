@@ -6,6 +6,11 @@ interface Deps {
   sessionService: SessionService
 }
 
+/**
+ * 单个会话 API
+ * @response.GET {Session} 200 - 成功响应
+ * @response 404 - 资源不存在
+ */
 export default createApiHandler<Deps>({
   dependencies: ['sessionService'],
   handler: async (req, res, deps) => {

@@ -7,6 +7,14 @@ interface Deps {
   conversationService: ConversationService
 }
 
+/**
+ * 聊天消息列表 API
+ * @query {string} conversationId - 按会话ID筛选
+ * @query {string} role - 按角色筛选
+ * @query {integer} [page=1] - 页码
+ * @query {integer} [limit=50] - 每页数量
+ * @response.GET {ChatMessageListResult} 200 - 成功响应
+ */
 export default createApiHandler<Deps>({
   dependencies: ['conversationService'],
   handler: async (req, res, deps) => {

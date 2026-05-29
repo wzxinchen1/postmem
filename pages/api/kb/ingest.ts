@@ -8,6 +8,16 @@ interface Deps {
   kbService: KBService
 }
 
+/**
+ * 文本入库 API
+ * @sse - 文本入库 SSE 流式响应，实时推送处理进度
+ * @sse-event {message: string} status - 状态更新通知
+ * @sse-event {object} progress - 处理进度更新
+ * @sse-event {object} chunk_detail - 片段处理详情
+ * @sse-event {IngestTextResponse} complete - 处理完成
+ * @sse-event {message: string, code: string} error - 处理出错
+ * @response {IngestTextResponse} 200 - 成功响应
+ */
 export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['kbService'],

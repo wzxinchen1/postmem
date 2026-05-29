@@ -9,6 +9,9 @@ interface Deps {
 
 /**
  * 单个提供商 API
+ * @response.GET {Provider} 200 - 成功响应
+ * @response.PUT {Provider} 200 - 更新成功
+ * @response 404 - 资源不存在
  */
 export default createApiHandler<Deps>({
   dependencies: ['providerService'],

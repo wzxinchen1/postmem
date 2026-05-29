@@ -13,6 +13,10 @@ interface Deps {
   vendorService: VendorService
 }
 
+/**
+ * 初始化默认提供商 API
+ * @response 200 - 成功响应
+ */
 export default createApiHandler<Deps>({
   dependencies: ['initService', 'providerService', 'providerValidateService', 'modelService', 'vendorService'],
   handler: async (req, res, deps) => {

@@ -7,6 +7,10 @@ interface Deps {
   kbService: KBService
 }
 
+/**
+ * 删除知识库 API
+ * @response 200 - 成功响应
+ */
 export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['kbService'],

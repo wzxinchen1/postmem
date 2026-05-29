@@ -6,6 +6,10 @@ interface Deps {
   sessionService: SessionService
 }
 
+/**
+ * 会话统计 API
+ * @response.GET {Stats} 200 - 统计信息
+ */
 export default createApiHandler<Deps>({
   dependencies: ['sessionService'],
   handler: async (req, res, deps) => {

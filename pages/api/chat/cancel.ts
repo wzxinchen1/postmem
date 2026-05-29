@@ -6,6 +6,10 @@ interface Deps {
   chatService: ChatService
 }
 
+/**
+ * 取消聊天 API
+ * @response 200 - 成功响应
+ */
 export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['chatService'],

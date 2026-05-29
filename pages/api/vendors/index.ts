@@ -9,6 +9,9 @@ interface Deps {
 
 /**
  * 厂商列表和创建 API
+ * @query {boolean} [includeInactive=false] - 是否包含已禁用的项
+ * @response.GET {Vendor[]} 200 - 厂商列表
+ * @response.POST {Vendor} 201 - 创建成功
  */
 export default createApiHandler<Deps>({
   dependencies: ['vendorService'],

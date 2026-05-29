@@ -6,6 +6,10 @@ interface Deps {
   sseService: SSEService
 }
 
+/**
+ * 清理聊天流 API
+ * @response 200 - 成功响应
+ */
 export default createApiHandler<Deps>({
   methods: ['POST'],
   dependencies: ['sseService'],

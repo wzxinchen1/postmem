@@ -8,6 +8,7 @@ interface Deps {
 
 /**
  * 聊天设置 API - 管理 chat_settings 表
+ * @response {ChatSettingInfo} 200 - 成功响应
  */
 export default createApiHandler<Deps>({
   dependencies: ['chatSettingService'],

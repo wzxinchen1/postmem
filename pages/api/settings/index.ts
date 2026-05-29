@@ -8,6 +8,7 @@ interface Deps {
 
 /**
  * 应用设置 API
+ * @response {AppSettings} 200 - 成功响应
  */
 export default createApiHandler<Deps>({
   dependencies: ['settingService'],
