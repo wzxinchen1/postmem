@@ -59,7 +59,6 @@ let swaggerConfig: {
   }
   tagMap?: Record<string, string>
   tags?: Record<string, { name: string; description: string }>
-  responseExamples?: Record<string, Record<string, unknown>>
   responseWrapper?: {
     successField?: string
     dataField?: string
@@ -644,7 +643,7 @@ function resolveErrorCodes(schema: any, errorCodes: string[]): any {
   return schema
 }
 
-function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases: TypeAliasSchema[], errorCodes: string[], wrapperConfig?: { successField?: string; dataField?: string; properties?: Record<string, any> }, responseExamples?: Record<string, Record<string, unknown>>, responseWrappers?: { success?: string; error?: string }, responseWrapperSchemas?: Record<string, any>): object {
+function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases: TypeAliasSchema[], errorCodes: string[], wrapperConfig?: { successField?: string; dataField?: string; properties?: Record<string, any> }, responseWrappers?: { success?: string; error?: string }, responseWrapperSchemas?: Record<string, any>): object {
   const paths: Record<string, any> = {}
   const components: Record<string, any> = { schemas: {} }
 
@@ -760,9 +759,8 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
         const wrapper = codeNum < 400 ? successWrapper : errorWrapper
 
         let schema: any
-        const hasMatchingType = resp.type && types.find(t => t.name === resp.type)
-        if (hasMatchingType) {
-          schema = { $ref: `#/components/schemas/${resp.type}` }
+        if (resp.type) {
+          schema = typeToSwaggerType(resp.type, types, aliases)
         } else {
           schema = wrapperSchema(wrapper)
         }
@@ -772,20 +770,6 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
           content: {
             'application/json': { schema }
           }
-        }
-      }
-    }
-
-    if (responseExamples && Object.keys(responseExamples).length > 0) {
-      const key = `${ep.method} ${ep.path}`
-      const example = responseExamples[key]
-      if (example === undefined) {
-        throw new Error(`Missing response example for ${key} in swagger.config.json responseExamples`)
-      }
-      for (const code of Object.keys(operation.responses)) {
-        const content = operation.responses[code].content
-        if (content?.['application/json']) {
-          content['application/json'].example = example
         }
       }
     }
@@ -1107,10 +1091,9 @@ export function generate(workspaceRoot?: string, configPath?: string) {
 
   console.log('正在生成 OpenAPI 规范...')
   const wrapperConfig = swaggerConfig.responseWrapper
-  const responseExamples = swaggerConfig.responseExamples || {}
   const responseWrappers = swaggerConfig.responseWrappers || {}
   const responseWrapperSchemas = swaggerConfig.responseWrapperSchemas || {}
-  const spec = generateOpenAPI(allEndpoints, usedTypes, aliases, errorCodes, wrapperConfig, responseExamples, responseWrappers, responseWrapperSchemas)
+  const spec = generateOpenAPI(allEndpoints, usedTypes, aliases, errorCodes, wrapperConfig, responseWrappers, responseWrapperSchemas)
 
   fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true })
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(spec, null, 2) + '\n')
