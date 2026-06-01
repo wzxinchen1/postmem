@@ -460,7 +460,7 @@ function parseTypesFile(typesFilePath: string): { schemas: TypeSchema[]; aliases
     const body = match[3]
 
     const propExamples = parsePropertyExamples(body)
-    const propRegex = /(\w+)(\?)?:\s*([^;\n]+?)(?:\s*\/\/.*)?$/gm
+    const propRegex = /(\w+)(\?)?:\s*([^;\n]+)\s*;?(?:\s*\/\/.*)?$/gm
     const properties: TypeSchema['properties'] = []
 
     let propMatch
