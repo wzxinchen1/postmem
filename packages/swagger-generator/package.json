@@ -1,6 +1,6 @@
 {
   "name": "my-swagger-generator",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "OpenAPI 3.0 spec generator - parses API route files and TypeScript types",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
