@@ -177,7 +177,10 @@ function parseJSDoc(content: string): ParsedJSDoc {
           throw new Error(`@${tag.tag} tag has non-numeric status code "${tag.name}": "${tag.source[0]?.source.trim() || '(source unavailable)'}"`)
         }
         const method = tag.tag === 'response' ? undefined : tag.tag.slice(9)
-        const entry: JSDocResponseEntry = { code, description: d(tag.description) || '成功响应' }
+        const entry: JSDocResponseEntry = { code, description: d(tag.description) }
+        if (!entry.description) {
+          throw new Error(`@${tag.tag} ${tag.name} 缺少 description`)
+        }
         if (tag.type) entry.type = tag.type
         if (method) entry.method = method
         result.responseCodes[entry.code] = { description: entry.description, type: entry.type }
@@ -185,16 +188,23 @@ function parseJSDoc(content: string): ParsedJSDoc {
         break
       }
       case 'sse': {
-        result.sseDescription = tag.description || tag.name || 'SSE 流式响应'
+        if (!tag.description && !tag.name) {
+          throw new Error(`@sse 缺少描述`)
+        }
+        result.sseDescription = tag.description || tag.name
         break
       }
       case 'sse-event': {
         if (!tag.name) {
           throw new Error(`@sse-event tag missing event name: "${tag.source[0]?.source.trim() || '(source unavailable)'}"`)
         }
+        const sseEventDesc = d(tag.description)
+        if (!sseEventDesc) {
+          throw new Error(`@sse-event ${tag.name} 缺少描述`)
+        }
         result.sseEvents.push({
           name: tag.name,
-          description: d(tag.description) || tag.name,
+          description: sseEventDesc,
           ...(tag.type ? { dataType: tag.type } : {})
         })
         break
@@ -394,7 +404,7 @@ function parseEndpoint(
 
   if (jsdoc.sseDescription || jsdoc.sseEvents.length > 0) {
     endpoint.sse = {
-      description: jsdoc.sseDescription || 'SSE 流式响应',
+      description: jsdoc.sseDescription,
       eventTypes: jsdoc.sseEvents
     }
   } else if (content.includes('text/event-stream') || (content.includes('Content-Type') && content.includes('event-stream'))) {
@@ -452,7 +462,7 @@ function parsePropertyExamples(body: string): Record<string, unknown> {
       try {
         result[propName] = JSON.parse(raw)
       } catch {
-        result[propName] = raw.replace(/^["']|["']$/g, '')
+        throw new Error(`@example 值无法解析为 JSON: ${raw}`)
       }
     } else if (result.__pending !== undefined) {
       delete result.__pending
@@ -517,9 +527,10 @@ function parseTypesFile(typesFilePath: string): { schemas: TypeSchema[]; aliases
     const name = aliasMatch[1]
     const valueStr = aliasMatch[2].trim()
     const values = valueStr.split('|').map(v => v.trim().replace(/'/g, '')).filter(v => v.length > 0)
-    if (values.length > 0) {
-      aliases.push({ name, values })
+    if (values.length === 0) {
+      throw new Error(`类型别名 ${name} 没有有效的枚举值`)
     }
+    aliases.push({ name, values })
   }
 
   return { schemas, aliases }
@@ -709,7 +720,8 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
       } else if (matchedTypes.length === 1) {
         schema = { $ref: `#/components/schemas/${matchedTypes[0].name}` }
       } else {
-        schema = { type: 'object' }
+        throw new Error(`[${ep.method} ${ep.path}] 请求体类型 "${typeNames.join(', ')}" 未在类型定义中找到`)
+      }
       }
 
       const reqExample = matchedTypes.length === 1
@@ -1044,15 +1056,16 @@ export function generate(workspaceRoot?: string, configPath?: string) {
   const ERRORS_FILE = paths.errorsFile
 
   let errorCodes: string[] = []
+  const errorsJsonPath = path.resolve(root, ERRORS_FILE)
+  if (!fs.existsSync(errorsJsonPath)) {
+    throw new Error(`错误码文件不存在: ${errorsJsonPath}`)
+  }
   try {
-    const errorsJsonPath = path.resolve(root, ERRORS_FILE)
-    if (fs.existsSync(errorsJsonPath)) {
-      const errorsConfig = JSON.parse(fs.readFileSync(errorsJsonPath, 'utf-8'))
-      errorCodes = Object.keys(errorsConfig)
-      console.log(`  加载 ${errorCodes.length} 个错误码`)
-    }
-  } catch {
-    console.warn('  无法加载错误码配置，使用默认值')
+    const errorsConfig = JSON.parse(fs.readFileSync(errorsJsonPath, 'utf-8'))
+    errorCodes = Object.keys(errorsConfig)
+    console.log(`  加载 ${errorCodes.length} 个错误码`)
+  } catch (e) {
+    throw new Error(`错误码文件解析失败: ${errorsJsonPath}`)
   }
 
   console.log('正在生成标签映射...')
