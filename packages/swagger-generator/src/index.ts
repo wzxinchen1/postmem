@@ -722,7 +722,6 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
       } else {
         throw new Error(`[${ep.method} ${ep.path}] 请求体类型 "${typeNames.join(', ')}" 未在类型定义中找到`)
       }
-      }
 
       const reqExample = matchedTypes.length === 1
         ? Object.fromEntries(
