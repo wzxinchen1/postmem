@@ -1,5 +1,5 @@
 #!/usr/bin/env node
-import { generate } from './index'
+import { findWorkspaceRoot, findConfigFile, generate } from './index'
 
 function parseArgs(args: string[]): { workspaceRoot?: string; configPath?: string } {
   const result: { workspaceRoot?: string; configPath?: string } = {}
@@ -23,7 +23,9 @@ const command = process.argv[2]
 switch (command) {
   case 'generate': {
     const { workspaceRoot, configPath } = parseArgs(process.argv.slice(3))
-    generate(workspaceRoot, configPath)
+    const root = workspaceRoot || findWorkspaceRoot(process.cwd())
+    const cf = configPath || findConfigFile(root)
+    generate(root, cf)
     break
   }
   case 'help':
@@ -37,8 +39,8 @@ Commands:
   help       Show this help message
 
 Options (generate):
-  --workspace-root, -w <path>   Workspace root directory (default: auto-detect)
-  --config, -c <path>            Swagger config file path (default: <workspace-root>/swagger.config.json)
+  --workspace-root, -w <path>   Workspace root directory (required, unless running from workspace root)
+  --config, -c <path>            Swagger config file path (required, unless <workspace-root>/swagger.config.json exists)
 `)
     break
   default:

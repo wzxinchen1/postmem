@@ -78,7 +78,7 @@ let swaggerConfig: {
   }
 }
 
-function findWorkspaceRoot(startDir: string): string {
+export function findWorkspaceRoot(startDir: string): string {
   let current = path.resolve(startDir)
   while (true) {
     if (fs.existsSync(path.join(current, 'pnpm-workspace.yaml'))) return current
@@ -142,8 +142,11 @@ function parseJSDoc(content: string): ParsedJSDoc {
   }
 
   const block = blocks[0]
-  const descLines = block.description?.split('\n') || []
-  result.summary = descLines[0]?.trim() || ''
+  const descLines = block.description?.split('\n')
+  if (!descLines || !descLines[0]?.trim()) {
+    throw new Error('JSDoc 缺少描述，首行必须作为 summary')
+  }
+  result.summary = descLines[0].trim()
   result.description = result.summary
 
   function d(text: string): string {
@@ -154,11 +157,17 @@ function parseJSDoc(content: string): ParsedJSDoc {
     switch (tag.tag) {
       case 'query': {
         if (!tag.name) {
-          throw new Error(`@query tag missing parameter name: "${tag.source[0]?.source.trim() || '(source unavailable)'}"`)
+          throw new Error(`@query tag missing parameter name: "(source unavailable)"`)
+        }
+        if (!tag.type) {
+          throw new Error(`@query ${tag.name} 缺少类型`)
+        }
+        if (!d(tag.description)) {
+          throw new Error(`@query ${tag.name} 缺少描述`)
         }
         result.queryParams[tag.name] = {
-          type: tag.type || 'string',
-          description: d(tag.description) || tag.name,
+          type: tag.type,
+          description: d(tag.description),
           ...(tag.default !== undefined ? { default: tag.default } : {})
         }
         break
@@ -170,11 +179,11 @@ function parseJSDoc(content: string): ParsedJSDoc {
       case 'response.DELETE':
       case 'response.PATCH': {
         if (!tag.name) {
-          throw new Error(`@${tag.tag} tag missing status code: "${tag.source[0]?.source.trim() || '(source unavailable)'}"`)
+          throw new Error(`@${tag.tag} tag missing status code: "(source unavailable)"`)
         }
         const code = Number(tag.name)
         if (isNaN(code)) {
-          throw new Error(`@${tag.tag} tag has non-numeric status code "${tag.name}": "${tag.source[0]?.source.trim() || '(source unavailable)'}"`)
+          throw new Error(`@${tag.tag} tag has non-numeric status code "${tag.name}": "(source unavailable)"`)
         }
         const method = tag.tag === 'response' ? undefined : tag.tag.slice(9)
         const entry: JSDocResponseEntry = { code, description: d(tag.description) }
@@ -188,15 +197,15 @@ function parseJSDoc(content: string): ParsedJSDoc {
         break
       }
       case 'sse': {
-        if (!tag.description && !tag.name) {
+        if (!tag.description) {
           throw new Error(`@sse 缺少描述`)
         }
-        result.sseDescription = tag.description || tag.name
+        result.sseDescription = tag.description
         break
       }
       case 'sse-event': {
         if (!tag.name) {
-          throw new Error(`@sse-event tag missing event name: "${tag.source[0]?.source.trim() || '(source unavailable)'}"`)
+          throw new Error(`@sse-event tag missing event name: "(source unavailable)"`)
         }
         const sseEventDesc = d(tag.description)
         if (!sseEventDesc) {
@@ -223,8 +232,14 @@ function parseApiFile(filePath: string, apiDir: string, tagMap: Record<string, s
   const endpoints: ApiEndpoint[] = []
   const jsdoc = parseJSDoc(content)
 
-  const tagKey = Object.keys(tagMap).find(k => apiPath.includes(`/api/${k}`)) || ''
-  const tag = tagMap[tagKey] || 'Other'
+  const tagKey = Object.keys(tagMap).find(k => apiPath.includes(`/api/${k}`))
+  if (!tagKey) {
+    throw new Error(`API 路径 ${apiPath} 未能匹配任何已知 tag`)
+  }
+  const tag = tagMap[tagKey]
+  if (!tag) {
+    throw new Error(`Tag key ${tagKey} 在 tagMap 中不存在`)
+  }
 
   const appRouterRe = /export\s+async\s+function\s+(GET|POST|PUT|DELETE)\s*\(/g
   let appMatch
@@ -614,7 +629,7 @@ function typeToSwaggerType(typeStr: string, types?: TypeSchema[], aliases?: Type
 
   if (typeStr.includes('|')) {
     const enumValues = typeStr.split('|').map(v => v.trim().replace(/'/g, ''))
-    return { type: 'string', enum: enumValues.filter(v => !v.match(/^[A-Z][a-z]/)) || undefined }
+    return { type: 'string', enum: enumValues.filter(v => !v.match(/^[A-Z][a-z]/)) }
   }
 
   if (aliases) {
@@ -628,7 +643,11 @@ function typeToSwaggerType(typeStr: string, types?: TypeSchema[], aliases?: Type
     return { type: 'string', $ref: `#/components/schemas/${typeStr}` }
   }
 
-  return { type: baseMap[typeStr] || 'string' }
+  const mapped = baseMap[typeStr]
+  if (!mapped) {
+    throw new Error(`未知类型: ${typeStr}`)
+  }
+  return { type: mapped }
 }
 
 const PRIMITIVE_TYPES = new Set(['string', 'number', 'boolean', 'integer'])
@@ -658,8 +677,15 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
   const paths: Record<string, any> = {}
   const components: Record<string, any> = { schemas: {} }
 
-  const successWrapper = responseWrappers?.success || 'ErrorResponse'
-  const errorWrapper = responseWrappers?.error || 'string'
+  const successWrapper = responseWrappers?.success
+  const errorWrapper = responseWrappers?.error
+
+  if (responseWrappers && !successWrapper) {
+    throw new Error('responseWrappers.success 必须配置')
+  }
+  if (responseWrappers && !errorWrapper) {
+    throw new Error('responseWrappers.error 必须配置')
+  }
 
   const usedWrappers = new Set<string>()
 
@@ -773,6 +799,9 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
         if (resp.type) {
           schema = typeToSwaggerType(resp.type, types, aliases)
         } else {
+          if (!wrapper) {
+            throw new Error(`响应 ${code} 缺少 type，且未配置 responseWrappers`)
+          }
           schema = wrapperSchema(wrapper)
         }
 
@@ -802,7 +831,7 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
           return [p.name, {
             ...swaggerType,
             ...(p.example !== undefined ? { example: p.example } : {}),
-            description: p.description || p.name
+            ...(p.description ? { description: p.description } : {})
           }]
         })
       )
@@ -847,7 +876,10 @@ function scanDir(dir: string): string[] {
 function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[], aliases: TypeAliasSchema[]): string {
   const lines: string[] = []
 
-  const apiTitle = swaggerConfig?.openapi?.info?.title || 'API'
+  const apiTitle = swaggerConfig?.openapi?.info?.title
+  if (!apiTitle) {
+    throw new Error('swagger.config.json 缺少 openapi.info.title 配置')
+  }
   lines.push(`# ${apiTitle} Reference (for LLM)`)
   lines.push('# 自动生成的精简文档，供大模型理解 API 结构')
   lines.push('')
@@ -1017,7 +1049,10 @@ function simplifyType(type: string, aliases?: TypeAliasSchema[]): string {
 function groupByTag(endpoints: ApiEndpoint[]): Record<string, ApiEndpoint[]> {
   const groups: Record<string, ApiEndpoint[]> = {}
   for (const ep of endpoints) {
-    const tag = ep.tags[0] || 'Other'
+    const tag = ep.tags[0]
+    if (!tag) {
+      throw new Error(`Endpoint ${ep.method} ${ep.path} 没有 tag`)
+    }
     if (!groups[tag]) groups[tag] = []
     groups[tag].push(ep)
   }
@@ -1028,21 +1063,19 @@ function loadConfig(configPath: string) {
   return JSON.parse(fs.readFileSync(configPath, 'utf-8'))
 }
 
-function findConfigFile(root: string): string {
+export function findConfigFile(root: string): string {
   const candidates = ['swagger.config.json', 'swagger-config.json']
   for (const name of candidates) {
     const fullPath = path.join(root, name)
     if (fs.existsSync(fullPath)) return fullPath
   }
-  const defaultPath = path.join(root, 'swagger.config.json')
-  console.warn(`  未找到 swagger.config.json，尝试加载默认路径: ${defaultPath}`)
-  return defaultPath
+  throw new Error(`未找到 swagger 配置文件 (swagger.config.json / swagger-config.json): ${root}`)
 }
 
-export function generate(workspaceRoot?: string, configPath?: string) {
-  const root = workspaceRoot || findWorkspaceRoot(process.cwd())
+export function generate(workspaceRoot: string, configPath: string) {
+  const root = workspaceRoot
 
-  const resolvedConfigPath = configPath || findConfigFile(root)
+  const resolvedConfigPath = configPath
   swaggerConfig = loadConfig(resolvedConfigPath)
 
   // paths 属于插件内部配置默认值，不受业务 Fallback 规则管控
@@ -1070,13 +1103,19 @@ export function generate(workspaceRoot?: string, configPath?: string) {
   console.log('正在生成标签映射...')
   const { tagMap: autoTagMap, tagDefs: autoTagDefs } = generateTagMap(PAGES_API_DIR)
 
-  const configTagMap = swaggerConfig.tagMap || {}
-  const mergedTagMap: Record<string, string> = { ...autoTagMap, ...configTagMap }
+  const configTagMap = swaggerConfig.tagMap
+  const mergedTagMap: Record<string, string> = configTagMap ? { ...autoTagMap, ...configTagMap } : { ...autoTagMap }
 
-  const configTagDefs = swaggerConfig.openapi.tags || []
+  if (!swaggerConfig.openapi.tags) {
+    throw new Error('swagger.config.json 缺少 openapi.tags 配置')
+  }
+  const configTagDefs = swaggerConfig.openapi.tags
   const mergedTagDefs = Object.entries(mergedTagMap).map(([key, displayName]) => {
     const existingDef = configTagDefs.find(t => t.name === displayName)
-    return existingDef || { name: displayName, description: `${displayName} 管理接口` }
+    if (!existingDef) {
+      throw new Error(`swagger.config.json 中缺少 tag "${displayName}" 的定义，请在 openapi.tags 中配置`)
+    }
+    return existingDef
   })
   swaggerConfig.openapi.tags = mergedTagDefs
 
@@ -1103,8 +1142,8 @@ export function generate(workspaceRoot?: string, configPath?: string) {
 
   console.log('正在生成 OpenAPI 规范...')
   const wrapperConfig = swaggerConfig.responseWrapper
-  const responseWrappers = swaggerConfig.responseWrappers || {}
-  const responseWrapperSchemas = swaggerConfig.responseWrapperSchemas || {}
+  const responseWrappers = swaggerConfig.responseWrappers
+  const responseWrapperSchemas = swaggerConfig.responseWrapperSchemas
   const spec = generateOpenAPI(allEndpoints, usedTypes, aliases, errorCodes, wrapperConfig, responseWrappers, responseWrapperSchemas)
 
   fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true })
