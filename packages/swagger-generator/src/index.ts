@@ -138,7 +138,9 @@ function parseJSDoc(content: string): ParsedJSDoc {
     sseDescription: '', sseEvents: []
   }
 
-  if (blocks.length === 0) return result
+  if (blocks.length === 0) {
+    throw new Error('缺少 JSDoc 标注，每个 API 端点必须包含 JSDoc')
+  }
 
   const block = blocks[0]
   const descLines = block.description?.split('\n') || []
@@ -278,8 +280,8 @@ function parseEndpoint(
   const endpoint: ApiEndpoint = {
     path: apiPath,
     method,
-    summary: jsdoc.summary || `${method} ${apiPath}`,
-    description: jsdoc.description || `${method} ${apiPath}`,
+    summary: jsdoc.summary,
+    description: jsdoc.description,
     tags: [tag],
     responses: {}
   }
@@ -343,11 +345,14 @@ function parseEndpoint(
 
   const queryDescriptions: Record<string, { description: string; type: string; default?: unknown }> = {}
 
+  const codeQueryParams = new Set<string>()
+
   const queryParamRegex = /req\.query\.(\w+)\s*(?:[^,\n)]*)/g
   let queryMatch
   while ((queryMatch = queryParamRegex.exec(content)) !== null) {
     const paramName = queryMatch[1]
     if (paramName === 'id') continue
+    codeQueryParams.add(paramName)
     if (jsdoc.queryParams[paramName]) {
       queryDescriptions[paramName] = jsdoc.queryParams[paramName]
     }
@@ -358,8 +363,15 @@ function parseEndpoint(
   while ((appQueryMatch = appRouterQueryRe.exec(content)) !== null) {
     const paramName = appQueryMatch[1]
     if (paramName === 'id') continue
+    codeQueryParams.add(paramName)
     if (jsdoc.queryParams[paramName] && !queryDescriptions[paramName]) {
       queryDescriptions[paramName] = jsdoc.queryParams[paramName]
+    }
+  }
+
+  for (const paramName of codeQueryParams) {
+    if (!jsdoc.queryParams[paramName]) {
+      throw new Error(`[${method} ${apiPath}] query 参数 \`${paramName}\` 缺少 @query JSDoc 标注`)
     }
   }
 
@@ -368,13 +380,17 @@ function parseEndpoint(
   }
 
   if (jsdoc.responseEntries.length > 0) {
+    const hasMatchingResponse = jsdoc.responseEntries.some(e => !e.method || e.method === method)
+    if (!hasMatchingResponse) {
+      throw new Error(`[${method} ${apiPath}] 缺少 ${method} 方法的 @response JSDoc 标注`)
+    }
     for (const entry of jsdoc.responseEntries) {
       if (!entry.method || entry.method === method) {
         endpoint.responses[entry.code] = { description: entry.description, type: entry.type }
       }
     }
   } else {
-    endpoint.responses[200] = { description: '成功响应' }
+    throw new Error(`[${method} ${apiPath}] 缺少 @response JSDoc 标注`)
   }
 
   if (jsdoc.sseDescription || jsdoc.sseEvents.length > 0) {
