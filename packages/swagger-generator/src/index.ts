@@ -215,6 +215,16 @@ function parseApiFile(filePath: string, apiDir: string, tagMap: Record<string, s
   const tagKey = Object.keys(tagMap).find(k => apiPath.includes(`/api/${k}`)) || ''
   const tag = tagMap[tagKey] || 'Other'
 
+  const appRouterRe = /export\s+async\s+function\s+(GET|POST|PUT|DELETE)\s*\(/g
+  let appMatch
+  while ((appMatch = appRouterRe.exec(content)) !== null) {
+    endpoints.push(parseEndpoint(apiPath, appMatch[1], content, tag, jsdoc))
+  }
+
+  if (endpoints.length > 0) {
+    return endpoints
+  }
+
   const createApiHandlerMatch = content.match(/createApiHandler<[^>]*>\(\{[^}]*methods:\s*\[([^\]]*)\]/)
   if (createApiHandlerMatch) {
     const methods = createApiHandlerMatch[1].split(',').map(m => m.trim().replace(/['"]/g, '')).filter(Boolean)
@@ -275,8 +285,9 @@ function parseEndpoint(
   }
 
   if (/\[id\]\./.test(path.basename(apiPath).replace('{id}', '[id]')) || apiPath.includes('{id}')) {
-    const paramMatch = content.match(/req\.query\.(\w+)/)
-    const idName = apiPath.includes('{id}') ? 'id' : (paramMatch?.[1] || 'id')
+    const pagesParamMatch = content.match(/req\.query\.(\w+)/)
+    const appRouterParam = content.match(/\{\s*params\s*\}:\s*\{[^}]*\b(\w+)\b\s*:\s*string/)
+    const idName = appRouterParam?.[1] || (apiPath.includes('{id}') ? 'id' : (pagesParamMatch?.[1] || 'id'))
     endpoint.params = [{ name: idName, description: `${idName}`, type: 'string' }]
   }
 
@@ -302,6 +313,13 @@ function parseEndpoint(
       }
     }
 
+    if (!endpoint.requestBody) {
+      const appRouterBody = content.match(/\.json\(\)\s+as\s+(\w+Request)/)
+      if (appRouterBody) {
+        endpoint.requestBody = { type: appRouterBody[1] }
+      }
+    }
+
     const inlineBodyMatch = content.match(/const \{([^}]+)\}\s*=\s*req\.body/)
     if (inlineBodyMatch && !endpoint.requestBody) {
       const fields = inlineBodyMatch[1]
@@ -315,15 +333,24 @@ function parseEndpoint(
     }
   }
 
-  const queryParamRegex = /req\.query\.(\w+)\s*(?:[^,\n)]*)/g
-  let queryMatch
   const queryDescriptions: Record<string, { description: string; type: string; default?: unknown }> = {}
 
+  const queryParamRegex = /req\.query\.(\w+)\s*(?:[^,\n)]*)/g
+  let queryMatch
   while ((queryMatch = queryParamRegex.exec(content)) !== null) {
     const paramName = queryMatch[1]
     if (paramName === 'id') continue
-
     if (jsdoc.queryParams[paramName]) {
+      queryDescriptions[paramName] = jsdoc.queryParams[paramName]
+    }
+  }
+
+  const appRouterQueryRe = /\.searchParams\.get\(['"](\w+)['"]\)/g
+  let appQueryMatch
+  while ((appQueryMatch = appRouterQueryRe.exec(content)) !== null) {
+    const paramName = appQueryMatch[1]
+    if (paramName === 'id') continue
+    if (jsdoc.queryParams[paramName] && !queryDescriptions[paramName]) {
       queryDescriptions[paramName] = jsdoc.queryParams[paramName]
     }
   }
@@ -1050,13 +1077,16 @@ export function generate(workspaceRoot?: string, configPath?: string) {
   const responseWrapperSchemas = swaggerConfig.responseWrapperSchemas || {}
   const spec = generateOpenAPI(allEndpoints, usedTypes, aliases, errorCodes, wrapperConfig, responseExamples, responseWrappers, responseWrapperSchemas)
 
+  fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true })
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(spec, null, 2) + '\n')
   console.log(`已生成: ${OUTPUT_FILE}`)
   console.log(`  大小: ${(fs.statSync(OUTPUT_FILE).size / 1024).toFixed(1)} KB`)
 
   console.log('正在生成 LLM 友好的 YAML 文档...')
   const yaml = generateLLMYaml(allEndpoints, usedTypes, aliases)
-  fs.writeFileSync(path.resolve(root, LLM_YAML_FILE), yaml)
+  const llmOutputPath = path.resolve(root, LLM_YAML_FILE)
+  fs.mkdirSync(path.dirname(llmOutputPath), { recursive: true })
+  fs.writeFileSync(llmOutputPath, yaml)
   console.log(`已生成: ${path.resolve(root, LLM_YAML_FILE)}`)
   console.log(`  大小: ${(fs.statSync(path.resolve(root, LLM_YAML_FILE)).size / 1024).toFixed(1)} KB`)
 }
