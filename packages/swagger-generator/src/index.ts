@@ -206,7 +206,7 @@ function parseJSDoc(content: string): ParsedJSDoc {
 
 function parseApiFile(filePath: string, apiDir: string, tagMap: Record<string, string>): ApiEndpoint[] {
   const relativePath = path.relative(apiDir, filePath)
-  const apiPath = '/api/' + relativePath.replace(/\\/g, '/').replace(/\.ts$/, '').replace(/\[(\w+)\]/g, '{$1}')
+  const apiPath = ('/api/' + relativePath.replace(/\\/g, '/').replace(/\.ts$/, '').replace(/\[(\w+)\]/g, '{$1}')).replace(/\/route$/, '')
 
   const content = fs.readFileSync(filePath, 'utf-8')
   const endpoints: ApiEndpoint[] = []
