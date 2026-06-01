@@ -206,7 +206,7 @@ function parseJSDoc(content: string): ParsedJSDoc {
 
 function parseApiFile(filePath: string, apiDir: string, tagMap: Record<string, string>): ApiEndpoint[] {
   const relativePath = path.relative(apiDir, filePath)
-  const apiPath = '/api/' + relativePath.replace(/\\/g, '/').replace(/\.ts$/, '').replace(/\[id\]/g, '{id}')
+  const apiPath = '/api/' + relativePath.replace(/\\/g, '/').replace(/\.ts$/, '').replace(/\[(\w+)\]/g, '{$1}')
 
   const content = fs.readFileSync(filePath, 'utf-8')
   const endpoints: ApiEndpoint[] = []
@@ -284,11 +284,19 @@ function parseEndpoint(
     responses: {}
   }
 
-  if (/\[id\]\./.test(path.basename(apiPath).replace('{id}', '[id]')) || apiPath.includes('{id}')) {
+  const pathParams = apiPath.match(/\{(\w+)\}/g)
+  if (pathParams) {
+    const paramNames = pathParams.map(p => p.slice(1, -1))
     const pagesParamMatch = content.match(/req\.query\.(\w+)/)
-    const appRouterParam = content.match(/\{\s*params\s*\}:\s*\{[^}]*\b(\w+)\b\s*:\s*string/)
-    const idName = appRouterParam?.[1] || (apiPath.includes('{id}') ? 'id' : (pagesParamMatch?.[1] || 'id'))
-    endpoint.params = [{ name: idName, description: `${idName}`, type: 'string' }]
+    const appRouterParams = content.match(/\{\s*params\s*\}:\s*\{([^}]+)\}/)
+    const resolvedNames = paramNames.map(name => {
+      if (appRouterParams) {
+        const matchedParam = appRouterParams[1].match(new RegExp(`\\b${name}\\b`))
+        if (matchedParam) return name
+      }
+      return name
+    })
+    endpoint.params = paramNames.map(name => ({ name, description: name, type: 'string' }))
   }
 
   if (['POST', 'PUT'].includes(method)) {
@@ -689,10 +697,21 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
         schema = { type: 'object' }
       }
 
+      const reqExample = matchedTypes.length === 1
+        ? Object.fromEntries(
+            matchedTypes[0].properties
+              .filter(p => p.example !== undefined)
+              .map(p => [p.name, p.example])
+          )
+        : undefined
+
       operation.requestBody = {
         required: true,
         content: {
-          'application/json': { schema }
+          'application/json': {
+            schema,
+            ...(reqExample && Object.keys(reqExample).length > 0 ? { example: reqExample } : {})
+          }
         }
       }
     }
