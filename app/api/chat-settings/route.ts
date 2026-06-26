@@ -3,10 +3,17 @@ import type { UpdateChatSettingRequest } from '@/src/types'
 import { ChatSettingService } from '@/src/services/chat-setting.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   chatSettingService: ChatSettingService
 }
 
+/**
+ * 获取聊天设置
+ * @swagger
+ * @response 200 返回聊天设置
+ */
 export const GET = createApiHandler<Deps>({
   dependencies: ['chatSettingService'],
   handler: async (deps) => {
@@ -15,6 +22,11 @@ export const GET = createApiHandler<Deps>({
   },
 })
 
+/**
+ * 更新聊天设置
+ * @swagger
+ * @response 200 更新成功，返回聊天设置
+ */
 export const PUT = createApiHandler<Deps>({
   dependencies: ['chatSettingService'],
   handler: async (deps, request) => {

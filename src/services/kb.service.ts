@@ -6,6 +6,7 @@ import type {
   SearchResult,
   SearchSource,
   ListItem,
+  LongChunkItem,
   Stats,
   KnowledgeBaseInfo,
   IngestMessage,
@@ -1102,6 +1103,73 @@ export class KBService {
       })
 
       return { kbNames }
+    }
+  }
+
+  async findLongChunks(params: {
+    threshold: number
+    page: number
+    limit: number
+    kbId?: string
+  }): Promise<{ items: LongChunkItem[]; total: number; page: number; limit: number }> {
+    const skip = (params.page - 1) * params.limit
+
+    const whereClause = params.kbId
+      ? Prisma.sql`AND m.kb_id = ${params.kbId}`
+      : Prisma.empty
+
+    const [items, totalResult] = await Promise.all([
+      this.prisma.$queryRaw<Array<{
+        id: string
+        title: string
+        content: string
+        char_length: bigint
+        topic_id: string | null
+        topic_name: string | null
+        kb_id: string
+        kb_name: string
+        created_at: Date
+      }>>`
+        SELECT
+          m.id, m.title, m.content,
+          LENGTH(m.content) as char_length,
+          m.topic_id, t.name as topic_name,
+          m.kb_id, kb.name as kb_name,
+          m.created_at
+        FROM memories m
+        LEFT JOIN topics t ON t.id = m.topic_id
+        LEFT JOIN knowledge_bases kb ON kb.id = m.kb_id
+        WHERE LENGTH(m.content) > ${params.threshold}
+          ${whereClause}
+        ORDER BY char_length DESC
+        LIMIT ${params.limit}
+        OFFSET ${skip}
+      `,
+      this.prisma.$queryRaw<Array<{ total: bigint }>>`
+        SELECT COUNT(*) as total
+        FROM memories m
+        WHERE LENGTH(m.content) > ${params.threshold}
+          ${whereClause}
+      `,
+    ])
+
+    const total = Number(totalResult[0].total)
+
+    return {
+      items: items.map((item) => ({
+        id: item.id,
+        title: item.title,
+        content: item.content,
+        charLength: Number(item.char_length),
+        topicId: item.topic_id,
+        topicName: item.topic_name,
+        kbId: item.kb_id,
+        kbName: item.kb_name,
+        createdAt: item.created_at,
+      })),
+      total,
+      page: params.page,
+      limit: params.limit,
     }
   }
 }

@@ -55,29 +55,19 @@
   "paths": {
     "/api/chat/cancel": {
       "post": {
-        "summary": "取消聊天 API",
-        "description": "取消聊天 API",
+        "summary": "取消正在进行的聊天",
+        "description": "取消正在进行的聊天",
         "tags": [
           "Chat"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "取消成功",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponse"
                 }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CancelRequest"
               }
             }
           }
@@ -86,29 +76,19 @@
     },
     "/api/chat/cleanup": {
       "post": {
-        "summary": "清理聊天流 API",
-        "description": "清理聊天流 API",
+        "summary": "清理聊天 SSE 流",
+        "description": "清理聊天 SSE 流",
         "tags": [
           "Chat"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "清理成功",
             "content": {
               "application/json": {
                 "schema": {
                   "$ref": "#/components/schemas/ApiResponse"
                 }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CleanupRequest"
               }
             }
           }
@@ -117,14 +97,14 @@
     },
     "/api/chat/completions": {
       "post": {
-        "summary": "聊天补全 API",
-        "description": "聊天补全 API",
+        "summary": "聊天补全（异步触发，结果通过 SSE 推送）",
+        "description": "聊天补全（异步触发，结果通过 SSE 推送）",
         "tags": [
           "Chat"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回对话 ID",
             "content": {
               "application/json": {
                 "schema": {
@@ -133,13 +113,35 @@
               }
             }
           }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ChatCompletionRequest"
+        }
+      }
+    },
+    "/api/chat/conversations/{id}": {
+      "get": {
+        "summary": "获取对话详情",
+        "description": "获取对话详情",
+        "tags": [
+          "Chat"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "返回对话详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
               }
             }
           }
@@ -148,42 +150,14 @@
     },
     "/api/chat/conversations": {
       "get": {
-        "summary": "会话管理 API",
-        "description": "会话管理 API",
+        "summary": "查询对话列表",
+        "description": "查询对话列表",
         "tags": [
           "Chat"
         ],
-        "parameters": [
-          {
-            "name": "kbId",
-            "in": "query",
-            "description": "按知识库筛选",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "description": "页码",
-            "schema": {
-              "type": "integer",
-              "default": "1"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "每页数量",
-            "schema": {
-              "type": "integer",
-              "default": "20"
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回分页对话列表",
             "content": {
               "application/json": {
                 "schema": {
@@ -195,42 +169,14 @@
         }
       },
       "post": {
-        "summary": "会话管理 API",
-        "description": "会话管理 API",
+        "summary": "查询对话列表",
+        "description": "查询对话列表",
         "tags": [
           "Chat"
         ],
-        "parameters": [
-          {
-            "name": "kbId",
-            "in": "query",
-            "description": "按知识库筛选",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "description": "页码",
-            "schema": {
-              "type": "integer",
-              "default": "1"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "每页数量",
-            "schema": {
-              "type": "integer",
-              "default": "20"
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回分页对话列表",
             "content": {
               "application/json": {
                 "schema": {
@@ -239,55 +185,17 @@
               }
             }
           }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateConversationRequest"
-              }
-            }
-          }
         }
       },
       "delete": {
-        "summary": "会话管理 API",
-        "description": "会话管理 API",
+        "summary": "查询对话列表",
+        "description": "查询对话列表",
         "tags": [
           "Chat"
         ],
-        "parameters": [
-          {
-            "name": "kbId",
-            "in": "query",
-            "description": "按知识库筛选",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "description": "页码",
-            "schema": {
-              "type": "integer",
-              "default": "1"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "每页数量",
-            "schema": {
-              "type": "integer",
-              "default": "20"
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回分页对话列表",
             "content": {
               "application/json": {
                 "schema": {
@@ -301,28 +209,18 @@
     },
     "/api/chat/message": {
       "get": {
-        "summary": "单条消息 API",
-        "description": "单条消息 API",
+        "summary": "获取单条聊天消息",
+        "description": "获取单条聊天消息",
         "tags": [
           "Chat"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回消息内容",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChatMessage"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "资源不存在",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -332,54 +230,18 @@
     },
     "/api/chat/messages": {
       "get": {
-        "summary": "聊天消息列表 API",
-        "description": "聊天消息列表 API",
+        "summary": "查询聊天消息列表",
+        "description": "查询聊天消息列表",
         "tags": [
           "Chat"
         ],
-        "parameters": [
-          {
-            "name": "conversationId",
-            "in": "query",
-            "description": "按会话ID筛选",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "role",
-            "in": "query",
-            "description": "按角色筛选",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "description": "页码",
-            "schema": {
-              "type": "integer",
-              "default": "1"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "每页数量",
-            "schema": {
-              "type": "integer",
-              "default": "50"
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回分页消息列表",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChatMessageListResult"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -389,26 +251,24 @@
     },
     "/api/chat/stream": {
       "get": {
-        "summary": "永久SSE长连接，实时推送聊天事件",
-        "description": "永久SSE长连接，实时推送聊天事件",
+        "summary": "⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️",
+        "description": "⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️",
         "tags": [
           "Chat"
         ],
         "responses": {
           "200": {
-            "description": "SSE 长连接，持续推送聊天事件（text/event-stream）（SSE 流式响应）",
+            "description": "返回 SSE 流 本端点设计为一次连接、永久存活。连接只会在以下情况断开： 1. 用户关闭浏览器标签页（request.signal 触发 abort） 2. 服务器进程终止 禁止的行为（无论什么理由，零容忍）： ❌ 禁止在 done/error 事件后结束流或 return ❌ 禁止添加超时自动关闭逻辑 ❌ 禁止在流被清理后退出循环 ❌ 禁止以\"防止连接泄漏\"为名添加任何退出路径 ❌ 禁止把本端点改成短连接或轮询模式 ❌ 禁止用 Blocking XREAD 替代轮询（会阻塞线程） 设计意图： - 前端维护一个 EventSource 实例，贯穿整个页面生命周期 - 多次对话共用同一条 SSE 连接，后端只管往 Redis Stream 推数据 - clearMessageStream() 会在每轮对话结束后清理流，但连接不关 - 下一轮对话重建流，前端同一条连接继续读 如果后来的大模型读到这里： - 你没理解错，这个递归 poll() 就是永久轮询，设计如此 - 不要碰 done/error 的处理逻辑，前端自己知道什么时候停 - 不要擅自\"优化\"成读写分离、连接池、超时回收 - 看不懂不要改，去问人，不要猜（SSE 流式响应）",
             "content": {
               "text/event-stream": {
                 "schema": {
                   "type": "object",
-                  "description": "永久的 SSE 长连接，前端通过此连接持续接收聊天事件",
+                  "description": "长连接，永久轮询推送聊天事件",
                   "properties": {
                     "type": {
                       "type": "string",
                       "description": "事件类型",
-                      "enum": [
-                        "message"
-                      ]
+                      "enum": []
                     },
                     "message": {
                       "type": "string",
@@ -420,33 +280,27 @@
                     }
                   }
                 },
-                "x-sse-event-types": [
-                  {
-                    "event": "message",
-                    "description": "聊天事件（chunk/thinking/status/messageId/error/done）",
-                    "data": "object"
-                  }
-                ]
+                "x-sse-event-types": []
               }
             }
           }
         }
       }
     },
-    "/api/chat-settings/index": {
+    "/api/chat-settings": {
       "get": {
-        "summary": "聊天设置 API - 管理 chat_settings 表",
-        "description": "聊天设置 API - 管理 chat_settings 表",
+        "summary": "获取聊天设置",
+        "description": "获取聊天设置",
         "tags": [
           "Chat"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回聊天设置",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChatSettingInfo"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -454,29 +308,19 @@
         }
       },
       "put": {
-        "summary": "聊天设置 API - 管理 chat_settings 表",
-        "description": "聊天设置 API - 管理 chat_settings 表",
+        "summary": "获取聊天设置",
+        "description": "获取聊天设置",
         "tags": [
           "Chat"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回聊天设置",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ChatSettingInfo"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateChatSettingRequest"
               }
             }
           }
@@ -485,14 +329,14 @@
     },
     "/api/init/providers": {
       "get": {
-        "summary": "初始化默认提供商 API",
-        "description": "初始化默认提供商 API",
+        "summary": "初始化默认提供商",
+        "description": "初始化默认提供商",
         "tags": [
           "Init"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回初始化结果",
             "content": {
               "application/json": {
                 "schema": {
@@ -506,55 +350,14 @@
     },
     "/api/kb/create": {
       "post": {
-        "summary": "创建知识库 API",
-        "description": "创建知识库 API",
+        "summary": "创建知识库",
+        "description": "创建知识库",
         "tags": [
           "Knowledge Base"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KnowledgeBaseInfo"
-                }
-              }
-            }
-          },
-          "201": {
-            "description": "创建成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/KnowledgeBaseInfo"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateKBRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/kb/delete": {
-      "post": {
-        "summary": "删除知识库 API",
-        "description": "删除知识库 API",
-        "tags": [
-          "Knowledge Base"
-        ],
-        "responses": {
-          "200": {
-            "description": "成功响应",
+            "description": "创建成功，返回知识库信息",
             "content": {
               "application/json": {
                 "schema": {
@@ -563,13 +366,24 @@
               }
             }
           }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/DeleteRequest"
+        }
+      }
+    },
+    "/api/kb/delete": {
+      "post": {
+        "summary": "删除指定 memory 片段",
+        "description": "删除指定 memory 片段",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
               }
             }
           }
@@ -578,30 +392,24 @@
     },
     "/api/kb/ingest": {
       "post": {
-        "summary": "文本入库 API",
-        "description": "文本入库 API",
+        "summary": "知识入库（文本或消息列表）",
+        "description": "知识入库（文本或消息列表）",
         "tags": [
           "Knowledge Base"
         ],
         "responses": {
           "200": {
-            "description": "成功响应（SSE 流式响应）",
+            "description": "入库完成（文本模式返回 SSE 流）（SSE 流式响应）",
             "content": {
               "text/event-stream": {
                 "schema": {
                   "type": "object",
-                  "description": "文本入库 SSE 流式响应，实时推送处理进度",
+                  "description": "SSE 流式进度",
                   "properties": {
                     "type": {
                       "type": "string",
                       "description": "事件类型",
-                      "enum": [
-                        "status",
-                        "progress",
-                        "chunk_detail",
-                        "complete",
-                        "error"
-                      ]
+                      "enum": []
                     },
                     "message": {
                       "type": "string",
@@ -613,51 +421,7 @@
                     }
                   }
                 },
-                "x-sse-event-types": [
-                  {
-                    "event": "status",
-                    "description": "状态更新通知",
-                    "data": "message: string"
-                  },
-                  {
-                    "event": "progress",
-                    "description": "处理进度更新",
-                    "data": "object"
-                  },
-                  {
-                    "event": "chunk_detail",
-                    "description": "片段处理详情",
-                    "data": "object"
-                  },
-                  {
-                    "event": "complete",
-                    "description": "处理完成",
-                    "data": "IngestTextResponse"
-                  },
-                  {
-                    "event": "error",
-                    "description": "处理出错",
-                    "data": "message: string, code: string"
-                  }
-                ]
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "oneOf": [
-                  {
-                    "$ref": "#/components/schemas/IngestTextRequest"
-                  },
-                  {
-                    "$ref": "#/components/schemas/IngestMessagesRequest"
-                  }
-                ],
-                "description": "支持多种请求体格式: IngestTextRequest, IngestMessagesRequest"
+                "x-sse-event-types": []
               }
             }
           }
@@ -666,32 +430,40 @@
     },
     "/api/kb/list": {
       "post": {
-        "summary": "知识库列表 API",
-        "description": "知识库列表 API",
+        "summary": "分页查询知识库片段列表",
+        "description": "分页查询知识库片段列表",
         "tags": [
           "Knowledge Base"
         ],
         "responses": {
           "200": {
-            "description": "知识库列表",
+            "description": "返回分页片段列表",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ListItem"
-                  }
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
           }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/ListRequest"
+        }
+      }
+    },
+    "/api/kb/long-chunks": {
+      "post": {
+        "summary": "查询超长片段",
+        "description": "查询超长片段",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "查询成功 /api/kb/long-chunks: post: tags: [Knowledge Base] summary: 查询超长片段 description: 查询 content 字符数超过指定阈值的 memory 片段，支持按知识库过滤和分页 requestBody: required: true content: application/json: schema: type: object properties: threshold: type: integer description: 字符数阈值 example: 1000 kbId: type: string description: 知识库 ID（可选，不传查全部） example: \"clx...\" page: type: integer description: 页码 example: 1 limit: type: integer description: 每页条数 example: 20 responses: 200: description: 查询成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
               }
             }
           }
@@ -700,32 +472,19 @@
     },
     "/api/kb/search": {
       "post": {
-        "summary": "知识库搜索 API",
-        "description": "知识库搜索 API",
+        "summary": "混合检索知识库（Dense + Sparse + RRF）",
+        "description": "混合检索知识库（Dense + Sparse + RRF）",
         "tags": [
           "Knowledge Base"
         ],
         "responses": {
           "200": {
-            "description": "检索结果",
+            "description": "返回检索结果列表",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/SearchResult"
-                  }
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/SearchRequest"
               }
             }
           }
@@ -734,29 +493,19 @@
     },
     "/api/kb/stats": {
       "post": {
-        "summary": "知识库统计 API",
-        "description": "知识库统计 API",
+        "summary": "获取知识库统计",
+        "description": "获取知识库统计",
         "tags": [
           "Knowledge Base"
         ],
         "responses": {
           "200": {
-            "description": "统计信息",
+            "description": "返回统计信息",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Stats"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/StatsRequest"
               }
             }
           }
@@ -765,8 +514,8 @@
     },
     "/api/models/{id}": {
       "get": {
-        "summary": "单个模型 API",
-        "description": "单个模型 API",
+        "summary": "获取模型详情",
+        "description": "获取模型详情",
         "tags": [
           "Models"
         ],
@@ -783,21 +532,11 @@
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回模型详情",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Model"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "资源不存在",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -805,8 +544,8 @@
         }
       },
       "put": {
-        "summary": "单个模型 API",
-        "description": "单个模型 API",
+        "summary": "获取模型详情",
+        "description": "获取模型详情",
         "tags": [
           "Models"
         ],
@@ -823,40 +562,20 @@
         ],
         "responses": {
           "200": {
-            "description": "更新成功",
+            "description": "返回模型详情",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Model"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
-              }
-            }
-          },
-          "404": {
-            "description": "资源不存在",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateModelRequest"
               }
             }
           }
         }
       },
       "delete": {
-        "summary": "单个模型 API",
-        "description": "单个模型 API",
+        "summary": "获取模型详情",
+        "description": "获取模型详情",
         "tags": [
           "Models"
         ],
@@ -872,12 +591,12 @@
           }
         ],
         "responses": {
-          "404": {
-            "description": "资源不存在",
+          "200": {
+            "description": "返回模型详情",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -887,333 +606,14 @@
     },
     "/api/models/default": {
       "get": {
-        "summary": "获取默认模型 API",
-        "description": "获取默认模型 API",
+        "summary": "获取指定能力的默认模型",
+        "description": "获取指定能力的默认模型",
         "tags": [
           "Models"
         ],
-        "parameters": [
-          {
-            "name": "capability",
-            "in": "query",
-            "description": "模型能力",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "默认模型",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Model"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/models/index": {
-      "get": {
-        "summary": "模型列表和创建 API",
-        "description": "模型列表和创建 API",
-        "tags": [
-          "Models"
-        ],
-        "parameters": [
-          {
-            "name": "includeInactive",
-            "in": "query",
-            "description": "是否包含已禁用的项",
-            "schema": {
-              "type": "boolean",
-              "default": "false"
-            }
-          },
-          {
-            "name": "providerId",
-            "in": "query",
-            "description": "按提供商ID筛选",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "模型列表",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Model"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "模型列表和创建 API",
-        "description": "模型列表和创建 API",
-        "tags": [
-          "Models"
-        ],
-        "parameters": [
-          {
-            "name": "includeInactive",
-            "in": "query",
-            "description": "是否包含已禁用的项",
-            "schema": {
-              "type": "boolean",
-              "default": "false"
-            }
-          },
-          {
-            "name": "providerId",
-            "in": "query",
-            "description": "按提供商ID筛选",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "创建成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Model"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateModelRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/providers/{id}": {
-      "get": {
-        "summary": "单个提供商 API",
-        "description": "单个提供商 API",
-        "tags": [
-          "Providers"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "id",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "成功响应",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provider"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "资源不存在",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      },
-      "put": {
-        "summary": "单个提供商 API",
-        "description": "单个提供商 API",
-        "tags": [
-          "Providers"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "id",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "更新成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provider"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "资源不存在",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateProviderRequest"
-              }
-            }
-          }
-        }
-      },
-      "delete": {
-        "summary": "单个提供商 API",
-        "description": "单个提供商 API",
-        "tags": [
-          "Providers"
-        ],
-        "parameters": [
-          {
-            "name": "id",
-            "in": "path",
-            "required": true,
-            "description": "id",
-            "schema": {
-              "type": "string"
-            }
-          }
-        ],
-        "responses": {
-          "404": {
-            "description": "资源不存在",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/providers/index": {
-      "get": {
-        "summary": "提供商列表和创建 API",
-        "description": "提供商列表和创建 API",
-        "tags": [
-          "Providers"
-        ],
-        "parameters": [
-          {
-            "name": "includeInactive",
-            "in": "query",
-            "description": "是否包含已禁用的项",
-            "schema": {
-              "type": "boolean",
-              "default": "false"
-            }
-          }
-        ],
-        "responses": {
-          "200": {
-            "description": "提供商列表",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Provider"
-                  }
-                }
-              }
-            }
-          }
-        }
-      },
-      "post": {
-        "summary": "提供商列表和创建 API",
-        "description": "提供商列表和创建 API",
-        "tags": [
-          "Providers"
-        ],
-        "parameters": [
-          {
-            "name": "includeInactive",
-            "in": "query",
-            "description": "是否包含已禁用的项",
-            "schema": {
-              "type": "boolean",
-              "default": "false"
-            }
-          }
-        ],
-        "responses": {
-          "201": {
-            "description": "创建成功",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/Provider"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateProviderRequest"
-              }
-            }
-          }
-        }
-      }
-    },
-    "/api/providers/models": {
-      "post": {
-        "summary": "获取提供商模型列表 API",
-        "description": "获取提供商模型列表 API",
-        "tags": [
-          "Providers"
-        ],
-        "responses": {
-          "200": {
-            "description": "成功响应",
+            "description": "返回默认模型",
             "content": {
               "application/json": {
                 "schema": {
@@ -1222,13 +622,196 @@
               }
             }
           }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FetchModelsRequest"
+        }
+      }
+    },
+    "/api/models": {
+      "get": {
+        "summary": "查询模型列表",
+        "description": "查询模型列表",
+        "tags": [
+          "Models"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回模型列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "查询模型列表",
+        "description": "查询模型列表",
+        "tags": [
+          "Models"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回模型列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers/{id}": {
+      "get": {
+        "summary": "获取提供商详情",
+        "description": "获取提供商详情",
+        "tags": [
+          "Providers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "返回提供商详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "put": {
+        "summary": "获取提供商详情",
+        "description": "获取提供商详情",
+        "tags": [
+          "Providers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "返回提供商详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "delete": {
+        "summary": "获取提供商详情",
+        "description": "获取提供商详情",
+        "tags": [
+          "Providers"
+        ],
+        "parameters": [
+          {
+            "name": "id",
+            "in": "path",
+            "required": true,
+            "description": "id",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
+        "responses": {
+          "200": {
+            "description": "返回提供商详情",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers/models": {
+      "post": {
+        "summary": "获取提供商支持的模型列表",
+        "description": "获取提供商支持的模型列表",
+        "tags": [
+          "Providers"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回模型列表和厂商信息",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/providers": {
+      "get": {
+        "summary": "查询提供商列表",
+        "description": "查询提供商列表",
+        "tags": [
+          "Providers"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回提供商列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      },
+      "post": {
+        "summary": "查询提供商列表",
+        "description": "查询提供商列表",
+        "tags": [
+          "Providers"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回提供商列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
               }
             }
           }
@@ -1237,32 +820,18 @@
     },
     "/api/providers/tree": {
       "get": {
-        "summary": "提供商树形结构 API - 返回提供商及其下属模型的树",
-        "description": "提供商树形结构 API - 返回提供商及其下属模型的树",
+        "summary": "获取提供商树形结构",
+        "description": "获取提供商树形结构",
         "tags": [
           "Providers"
         ],
-        "parameters": [
-          {
-            "name": "includeInactive",
-            "in": "query",
-            "description": "是否包含已禁用的项",
-            "schema": {
-              "type": "boolean",
-              "default": "false"
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "树形结构",
+            "description": "返回树形结构",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/ProviderTreeNode"
-                  }
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -1272,14 +841,14 @@
     },
     "/api/providers/validate": {
       "post": {
-        "summary": "验证提供商 API",
-        "description": "验证提供商 API",
+        "summary": "验证提供商连接并获取可用模型",
+        "description": "验证提供商连接并获取可用模型",
         "tags": [
           "Providers"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回验证结果和可用模型列表",
             "content": {
               "application/json": {
                 "schema": {
@@ -1288,23 +857,13 @@
               }
             }
           }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/FetchModelsRequest"
-              }
-            }
-          }
         }
       }
     },
     "/api/sessions/{id}": {
       "get": {
-        "summary": "单个会话 API",
-        "description": "单个会话 API",
+        "summary": "获取指定 LLM 调用会话详情",
+        "description": "获取指定 LLM 调用会话详情",
         "tags": [
           "Sessions"
         ],
@@ -1321,21 +880,11 @@
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回会话详情",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Session"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "资源不存在",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -1343,8 +892,8 @@
         }
       },
       "delete": {
-        "summary": "单个会话 API",
-        "description": "单个会话 API",
+        "summary": "获取指定 LLM 调用会话详情",
+        "description": "获取指定 LLM 调用会话详情",
         "tags": [
           "Sessions"
         ],
@@ -1360,12 +909,12 @@
           }
         ],
         "responses": {
-          "404": {
-            "description": "资源不存在",
+          "200": {
+            "description": "返回会话详情",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -1373,67 +922,20 @@
         }
       }
     },
-    "/api/sessions/index": {
+    "/api/sessions": {
       "get": {
-        "summary": "会话列表 API",
-        "description": "会话列表 API",
+        "summary": "查询 LLM 调用会话列表",
+        "description": "查询 LLM 调用会话列表",
         "tags": [
           "Sessions"
         ],
-        "parameters": [
-          {
-            "name": "kbId",
-            "in": "query",
-            "description": "按知识库筛选",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "modelType",
-            "in": "query",
-            "description": "按模型类型筛选",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "status",
-            "in": "query",
-            "description": "按状态筛选",
-            "schema": {
-              "type": "string"
-            }
-          },
-          {
-            "name": "page",
-            "in": "query",
-            "description": "页码",
-            "schema": {
-              "type": "integer",
-              "default": "1"
-            }
-          },
-          {
-            "name": "limit",
-            "in": "query",
-            "description": "每页数量",
-            "schema": {
-              "type": "integer",
-              "default": "20"
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "会话列表",
+            "description": "返回分页会话列表",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Session"
-                  }
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -1443,18 +945,18 @@
     },
     "/api/sessions/stats": {
       "get": {
-        "summary": "会话统计 API",
-        "description": "会话统计 API",
+        "summary": "获取 LLM 调用会话统计",
+        "description": "获取 LLM 调用会话统计",
         "tags": [
           "Sessions"
         ],
         "responses": {
           "200": {
-            "description": "统计信息",
+            "description": "返回统计结果",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Stats"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -1462,20 +964,20 @@
         }
       }
     },
-    "/api/settings/index": {
+    "/api/settings": {
       "get": {
-        "summary": "应用设置 API",
-        "description": "应用设置 API",
+        "summary": "获取应用设置",
+        "description": "获取应用设置",
         "tags": [
           "Settings"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回当前应用设置",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AppSettings"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -1483,29 +985,19 @@
         }
       },
       "put": {
-        "summary": "应用设置 API",
-        "description": "应用设置 API",
+        "summary": "获取应用设置",
+        "description": "获取应用设置",
         "tags": [
           "Settings"
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回当前应用设置",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/AppSettings"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateAppSettingsRequest"
               }
             }
           }
@@ -1514,8 +1006,8 @@
     },
     "/api/vendors/{id}": {
       "get": {
-        "summary": "单个厂商 API",
-        "description": "单个厂商 API",
+        "summary": "获取厂商详情",
+        "description": "获取厂商详情",
         "tags": [
           "Vendors"
         ],
@@ -1532,21 +1024,11 @@
         ],
         "responses": {
           "200": {
-            "description": "成功响应",
+            "description": "返回厂商详情",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Vendor"
-                }
-              }
-            }
-          },
-          "404": {
-            "description": "资源不存在",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -1554,8 +1036,8 @@
         }
       },
       "put": {
-        "summary": "单个厂商 API",
-        "description": "单个厂商 API",
+        "summary": "获取厂商详情",
+        "description": "获取厂商详情",
         "tags": [
           "Vendors"
         ],
@@ -1572,40 +1054,20 @@
         ],
         "responses": {
           "200": {
-            "description": "更新成功",
+            "description": "返回厂商详情",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Vendor"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
-              }
-            }
-          },
-          "404": {
-            "description": "资源不存在",
-            "content": {
-              "application/json": {
-                "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
-                }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/UpdateVendorRequest"
               }
             }
           }
         }
       },
       "delete": {
-        "summary": "单个厂商 API",
-        "description": "单个厂商 API",
+        "summary": "获取厂商详情",
+        "description": "获取厂商详情",
         "tags": [
           "Vendors"
         ],
@@ -1621,12 +1083,12 @@
           }
         ],
         "responses": {
-          "404": {
-            "description": "资源不存在",
+          "200": {
+            "description": "返回厂商详情",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ErrorResponse"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -1634,34 +1096,20 @@
         }
       }
     },
-    "/api/vendors/index": {
+    "/api/vendors": {
       "get": {
-        "summary": "厂商列表和创建 API",
-        "description": "厂商列表和创建 API",
+        "summary": "查询厂商列表",
+        "description": "查询厂商列表",
         "tags": [
           "Vendors"
         ],
-        "parameters": [
-          {
-            "name": "includeInactive",
-            "in": "query",
-            "description": "是否包含已禁用的项",
-            "schema": {
-              "type": "boolean",
-              "default": "false"
-            }
-          }
-        ],
         "responses": {
           "200": {
-            "description": "厂商列表",
+            "description": "返回厂商列表",
             "content": {
               "application/json": {
                 "schema": {
-                  "type": "array",
-                  "items": {
-                    "$ref": "#/components/schemas/Vendor"
-                  }
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
               }
             }
@@ -1669,40 +1117,19 @@
         }
       },
       "post": {
-        "summary": "厂商列表和创建 API",
-        "description": "厂商列表和创建 API",
+        "summary": "查询厂商列表",
+        "description": "查询厂商列表",
         "tags": [
           "Vendors"
         ],
-        "parameters": [
-          {
-            "name": "includeInactive",
-            "in": "query",
-            "description": "是否包含已禁用的项",
-            "schema": {
-              "type": "boolean",
-              "default": "false"
-            }
-          }
-        ],
         "responses": {
-          "201": {
-            "description": "创建成功",
+          "200": {
+            "description": "返回厂商列表",
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/Vendor"
+                  "$ref": "#/components/schemas/ApiResponse"
                 }
-              }
-            }
-          }
-        },
-        "requestBody": {
-          "required": true,
-          "content": {
-            "application/json": {
-              "schema": {
-                "$ref": "#/components/schemas/CreateVendorRequest"
               }
             }
           }
@@ -1712,1081 +1139,6 @@
   },
   "components": {
     "schemas": {
-      "MemoryMetadata": {
-        "type": "object",
-        "properties": {
-          "cutModel": {
-            "type": "string"
-          },
-          "messageId": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string"
-          }
-        }
-      },
-      "SearchResult": {
-        "type": "object",
-        "required": [
-          "id",
-          "title",
-          "content",
-          "score",
-          "topicId",
-          "metadata",
-          "source"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string"
-          },
-          "score": {
-            "type": "number"
-          },
-          "topicId": {
-            "type": "string",
-            "nullable": true
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/MemoryMetadata"
-          },
-          "source": {
-            "type": "string",
-            "enum": [
-              "dense",
-              "sparse",
-              "hybrid"
-            ]
-          },
-          "context": {
-            "type": "object"
-          }
-        }
-      },
-      "ListItem": {
-        "type": "object",
-        "required": [
-          "id",
-          "title",
-          "content",
-          "topicId",
-          "metadata",
-          "createdAt"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "title": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string"
-          },
-          "topicId": {
-            "type": "string",
-            "nullable": true
-          },
-          "metadata": {
-            "$ref": "#/components/schemas/MemoryMetadata"
-          },
-          "createdAt": {
-            "type": "string"
-          }
-        }
-      },
-      "Stats": {
-        "type": "object",
-        "required": [
-          "total"
-        ],
-        "properties": {
-          "kbId": {
-            "type": "string"
-          },
-          "kbName": {
-            "type": "string"
-          },
-          "total": {
-            "type": "number"
-          },
-          "lastUpdated": {
-            "type": "string"
-          }
-        }
-      },
-      "IngestMessage": {
-        "type": "object",
-        "required": [
-          "id",
-          "role",
-          "content"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "system",
-              "user",
-              "assistant"
-            ]
-          },
-          "content": {
-            "type": "string"
-          }
-        }
-      },
-      "IngestTextRequest": {
-        "type": "object",
-        "required": [
-          "kbId",
-          "content"
-        ],
-        "properties": {
-          "kbId": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string"
-          }
-        }
-      },
-      "IngestMessagesRequest": {
-        "type": "object",
-        "required": [
-          "kbId",
-          "messages"
-        ],
-        "properties": {
-          "kbId": {
-            "type": "string"
-          },
-          "messages": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/IngestMessage"
-            }
-          }
-        }
-      },
-      "IngestTextResponse": {
-        "type": "object",
-        "required": [
-          "count",
-          "memoryIds"
-        ],
-        "properties": {
-          "count": {
-            "type": "number"
-          },
-          "memoryIds": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "topicsInvolved": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "SearchRequest": {
-        "type": "object",
-        "required": [
-          "kbId",
-          "query"
-        ],
-        "properties": {
-          "kbId": {
-            "type": "string"
-          },
-          "query": {
-            "type": "string"
-          },
-          "top_k": {
-            "type": "number"
-          },
-          "context_window": {
-            "type": "number"
-          }
-        }
-      },
-      "ListRequest": {
-        "type": "object",
-        "required": [
-          "kbId"
-        ],
-        "properties": {
-          "kbId": {
-            "type": "string"
-          },
-          "page": {
-            "type": "number"
-          },
-          "limit": {
-            "type": "number"
-          }
-        }
-      },
-      "DeleteRequest": {
-        "type": "object",
-        "required": [
-          "id"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          }
-        }
-      },
-      "StatsRequest": {
-        "type": "object",
-        "properties": {
-          "kbId": {
-            "type": "string"
-          }
-        }
-      },
-      "Vendor": {
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "url",
-          "isActive",
-          "createdAt",
-          "updatedAt"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "url": {
-            "type": "string"
-          },
-          "chatModelClass": {
-            "type": "string",
-            "nullable": true
-          },
-          "embeddingModelClass": {
-            "type": "string",
-            "nullable": true
-          },
-          "factoryCode": {
-            "type": "string",
-            "nullable": true
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          }
-        }
-      },
-      "Provider": {
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "vendorId",
-          "baseUrl",
-          "isActive",
-          "createdAt",
-          "updatedAt"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "vendorId": {
-            "type": "string"
-          },
-          "vendor": {
-            "$ref": "#/components/schemas/Vendor"
-          },
-          "apiKey": {
-            "type": "string"
-          },
-          "baseUrl": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          }
-        }
-      },
-      "Model": {
-        "type": "object",
-        "required": [
-          "id",
-          "providerId",
-          "name",
-          "capabilities",
-          "config",
-          "isActive",
-          "isDefault",
-          "createdAt",
-          "updatedAt"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "providerId": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "capabilities": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "chat",
-                "embedding",
-                "vision",
-                "reasoning"
-              ]
-            }
-          },
-          "config": {
-            "type": "object"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "isDefault": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          }
-        }
-      },
-      "CreateProviderRequest": {
-        "type": "object",
-        "required": [
-          "name",
-          "vendorId",
-          "baseUrl"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "vendorId": {
-            "type": "string"
-          },
-          "apiKey": {
-            "type": "string"
-          },
-          "baseUrl": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        }
-      },
-      "UpdateProviderRequest": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "vendorId": {
-            "type": "string"
-          },
-          "apiKey": {
-            "type": "string"
-          },
-          "baseUrl": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        }
-      },
-      "FetchModelsRequest": {
-        "type": "object",
-        "required": [
-          "vendorId",
-          "baseUrl"
-        ],
-        "properties": {
-          "vendorId": {
-            "type": "string"
-          },
-          "apiKey": {
-            "type": "string"
-          },
-          "baseUrl": {
-            "type": "string"
-          }
-        }
-      },
-      "CreateVendorRequest": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "chatModelClass": {
-            "type": "string"
-          },
-          "embeddingModelClass": {
-            "type": "string"
-          },
-          "factoryCode": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        }
-      },
-      "UpdateVendorRequest": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "chatModelClass": {
-            "type": "string"
-          },
-          "embeddingModelClass": {
-            "type": "string"
-          },
-          "factoryCode": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        }
-      },
-      "CreateModelRequest": {
-        "type": "object",
-        "required": [
-          "providerId",
-          "name",
-          "capabilities"
-        ],
-        "properties": {
-          "providerId": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "capabilities": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "chat",
-                "embedding",
-                "vision",
-                "reasoning"
-              ]
-            }
-          },
-          "config": {
-            "type": "object"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "isDefault": {
-            "type": "boolean"
-          }
-        }
-      },
-      "UpdateModelRequest": {
-        "type": "object",
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "capabilities": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "chat",
-                "embedding",
-                "vision",
-                "reasoning"
-              ]
-            }
-          },
-          "config": {
-            "type": "object"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "isDefault": {
-            "type": "boolean"
-          }
-        }
-      },
-      "AppSettings": {
-        "type": "object",
-        "required": [
-          "maxContentLength",
-          "defaultTopK",
-          "defaultContextWindow",
-          "defaultPageSize"
-        ],
-        "properties": {
-          "maxContentLength": {
-            "type": "number"
-          },
-          "defaultTopK": {
-            "type": "number"
-          },
-          "defaultContextWindow": {
-            "type": "number"
-          },
-          "defaultPageSize": {
-            "type": "number"
-          }
-        }
-      },
-      "UpdateAppSettingsRequest": {
-        "type": "object",
-        "properties": {
-          "maxContentLength": {
-            "type": "number"
-          },
-          "defaultTopK": {
-            "type": "number"
-          },
-          "defaultContextWindow": {
-            "type": "number"
-          },
-          "defaultPageSize": {
-            "type": "number"
-          }
-        }
-      },
-      "CreateKBRequest": {
-        "type": "object",
-        "required": [
-          "name"
-        ],
-        "properties": {
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          }
-        }
-      },
-      "KnowledgeBaseInfo": {
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "createdAt",
-          "updatedAt"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "description": {
-            "type": "string"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          }
-        }
-      },
-      "ChatMessage": {
-        "type": "object",
-        "required": [
-          "id",
-          "conversationId",
-          "role",
-          "content",
-          "tokens",
-          "totalTokens",
-          "memoried",
-          "metadata",
-          "createdAt"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "conversationId": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string",
-            "enum": [
-              "system",
-              "user",
-              "assistant"
-            ]
-          },
-          "content": {
-            "type": "string"
-          },
-          "tokens": {
-            "type": "number"
-          },
-          "totalTokens": {
-            "type": "number"
-          },
-          "reasoningTokens": {
-            "type": "number"
-          },
-          "memoried": {
-            "type": "boolean"
-          },
-          "images": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ChatMessageImage"
-            }
-          },
-          "urls": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          },
-          "metadata": {
-            "type": "object"
-          },
-          "createdAt": {
-            "type": "string"
-          }
-        }
-      },
-      "ChatMessageListResult": {
-        "type": "object",
-        "required": [
-          "messages",
-          "total",
-          "page",
-          "limit",
-          "conversationId"
-        ],
-        "properties": {
-          "messages": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ChatMessage"
-            }
-          },
-          "total": {
-            "type": "number"
-          },
-          "page": {
-            "type": "number"
-          },
-          "limit": {
-            "type": "number"
-          },
-          "conversationId": {
-            "type": "string"
-          }
-        }
-      },
-      "CreateConversationRequest": {
-        "type": "object",
-        "properties": {
-          "metadata": {
-            "type": "object"
-          }
-        }
-      },
-      "ChatCompletionRequest": {
-        "type": "object",
-        "required": [
-          "messages",
-          "modelId",
-          "kbId"
-        ],
-        "properties": {
-          "messages": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ChatMessageInput"
-            }
-          },
-          "conversationId": {
-            "type": "string"
-          },
-          "newConversation": {
-            "type": "boolean"
-          },
-          "regenerateMessageId": {
-            "type": "string"
-          },
-          "modelId": {
-            "type": "string"
-          },
-          "kbId": {
-            "type": "string"
-          },
-          "thinkingEffort": {
-            "type": "string",
-            "enum": [
-              "none",
-              "minimal",
-              "low",
-              "medium",
-              "high",
-              "xhigh"
-            ]
-          }
-        }
-      },
-      "CleanupRequest": {
-        "type": "object",
-        "properties": {
-          "conversationId": {
-            "type": "string"
-          }
-        }
-      },
-      "CancelRequest": {
-        "type": "object",
-        "properties": {
-          "conversationId": {
-            "type": "string"
-          }
-        }
-      },
-      "ChatMessageInput": {
-        "type": "object",
-        "required": [
-          "id",
-          "content"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string"
-          },
-          "images": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ChatMessageImage"
-            }
-          },
-          "urls": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            }
-          }
-        }
-      },
-      "ChatMessageImage": {
-        "type": "object",
-        "required": [
-          "url"
-        ],
-        "properties": {
-          "url": {
-            "type": "string"
-          },
-          "mimeType": {
-            "type": "string"
-          }
-        }
-      },
-      "ChatSettingInfo": {
-        "type": "object",
-        "required": [
-          "id",
-          "memoryContextThreshold",
-          "searchLinkCount",
-          "searchSummaryConcurrency",
-          "chunkCharRange",
-          "createdAt",
-          "updatedAt"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "memoryContextThreshold": {
-            "type": "number"
-          },
-          "maxOutputTokens": {
-            "type": "number",
-            "nullable": true
-          },
-          "searchLinkCount": {
-            "type": "number"
-          },
-          "searchSummaryConcurrency": {
-            "type": "number"
-          },
-          "chunkCharRange": {
-            "type": "string"
-          },
-          "userProfile": {
-            "type": "string",
-            "nullable": true
-          },
-          "memorySearchDisabled": {
-            "type": "boolean"
-          },
-          "webSearchDisabled": {
-            "type": "boolean"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "updatedAt": {
-            "type": "string"
-          }
-        }
-      },
-      "UpdateChatSettingRequest": {
-        "type": "object",
-        "properties": {
-          "memoryContextThreshold": {
-            "type": "number"
-          },
-          "maxOutputTokens": {
-            "type": "number",
-            "nullable": true
-          },
-          "searchLinkCount": {
-            "type": "number"
-          },
-          "searchSummaryConcurrency": {
-            "type": "number"
-          },
-          "chunkCharRange": {
-            "type": "string"
-          },
-          "userProfile": {
-            "type": "string",
-            "nullable": true
-          }
-        }
-      },
-      "Session": {
-        "type": "object",
-        "required": [
-          "id",
-          "modelType",
-          "modelName",
-          "provider",
-          "status",
-          "metadata",
-          "createdAt"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "kbId": {
-            "type": "string"
-          },
-          "modelType": {
-            "type": "string"
-          },
-          "modelName": {
-            "type": "string"
-          },
-          "provider": {
-            "type": "string"
-          },
-          "status": {
-            "type": "string"
-          },
-          "error": {
-            "type": "string"
-          },
-          "metadata": {
-            "type": "object"
-          },
-          "createdAt": {
-            "type": "string"
-          },
-          "messages": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/SessionMessage"
-            }
-          }
-        }
-      },
-      "SessionMessage": {
-        "type": "object",
-        "required": [
-          "id",
-          "sessionId",
-          "role",
-          "content",
-          "tokens",
-          "metadata",
-          "createdAt"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "sessionId": {
-            "type": "string"
-          },
-          "role": {
-            "type": "string"
-          },
-          "content": {
-            "type": "string"
-          },
-          "tokens": {
-            "type": "number"
-          },
-          "metadata": {
-            "type": "object"
-          },
-          "createdAt": {
-            "type": "string"
-          }
-        }
-      },
-      "ProviderTreeNode": {
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "vendorName",
-          "baseUrl",
-          "isActive",
-          "models"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "vendorName": {
-            "type": "string"
-          },
-          "baseUrl": {
-            "type": "string"
-          },
-          "isActive": {
-            "type": "boolean"
-          },
-          "models": {
-            "type": "array",
-            "items": {
-              "$ref": "#/components/schemas/ModelTreeNode"
-            }
-          }
-        }
-      },
-      "ModelTreeNode": {
-        "type": "object",
-        "required": [
-          "id",
-          "name",
-          "displayName",
-          "capabilities",
-          "isDefault",
-          "isActive"
-        ],
-        "properties": {
-          "id": {
-            "type": "string"
-          },
-          "name": {
-            "type": "string"
-          },
-          "displayName": {
-            "type": "string"
-          },
-          "capabilities": {
-            "type": "array",
-            "items": {
-              "type": "string",
-              "enum": [
-                "chat",
-                "embedding",
-                "vision",
-                "reasoning"
-              ]
-            }
-          },
-          "isDefault": {
-            "type": "boolean"
-          },
-          "isActive": {
-            "type": "boolean"
-          }
-        }
-      },
       "ApiResponse": {
         "type": "object",
         "properties": {
@@ -2803,235 +1155,6 @@
             "properties": {
               "code": {
                 "type": "string"
-              },
-              "message": {
-                "type": "string"
-              },
-              "details": {
-                "type": "string"
-              }
-            }
-          }
-        }
-      },
-      "ErrorResponse": {
-        "type": "object",
-        "properties": {
-          "success": {
-            "type": "boolean",
-            "example": false
-          },
-          "error": {
-            "type": "object",
-            "properties": {
-              "code": {
-                "type": "string",
-                "enum": [
-                  "METHOD_NOT_ALLOWED",
-                  "MISSING_MESSAGES",
-                  "MISSING_MODEL_ID",
-                  "MISSING_KB_ID",
-                  "MODEL_NOT_FOUND",
-                  "INVALID_THINKING_EFFORT",
-                  "INVALID_MEMORY_CONTEXT_THRESHOLD",
-                  "TOO_MANY_IMAGES",
-                  "TOO_MANY_URLS",
-                  "CHAT_PROCESSING",
-                  "REGENERATE_MESSAGE_NOT_FOUND",
-                  "REGENERATE_NOT_USER_MESSAGE",
-                  "MEMORIED_MESSAGE_CANNOT_REGENERATE",
-                  "MISSING_CONVERSATION_ID",
-                  "CONVERSATION_NOT_FOUND",
-                  "MISSING_ID",
-                  "INVALID_ID",
-                  "INVALID_ROLE",
-                  "MESSAGE_NOT_FOUND",
-                  "SESSION_NOT_FOUND",
-                  "INVALID_SESSION_ID",
-                  "VENDOR_NOT_FOUND",
-                  "VENDOR_NAME_REQUIRED",
-                  "VENDOR_NAME_DUPLICATE",
-                  "PROVIDER_NOT_FOUND",
-                  "PROVIDER_NAME_AND_BASE_URL_REQUIRED",
-                  "PROVIDER_NAME_DUPLICATE",
-                  "PROVIDER_VENDOR_ID_REQUIRED",
-                  "PROVIDER_BASE_URL_REQUIRED",
-                  "PROVIDER_VALIDATE_FAILED",
-                  "MODEL_NAME_AND_CAPABILITIES_REQUIRED",
-                  "MODEL_NAME_DUPLICATE",
-                  "MODEL_CAPABILITY_REQUIRED",
-                  "KB_ID_REQUIRED",
-                  "KB_CONTENT_OR_MESSAGES_REQUIRED",
-                  "KB_CONTENT_REQUIRED",
-                  "KB_MESSAGES_REQUIRED",
-                  "KB_MESSAGE_ID_REQUIRED",
-                  "KB_MESSAGE_ROLE_REQUIRED",
-                  "KB_MESSAGE_CONTENT_REQUIRED",
-                  "KB_MESSAGE_INVALID_ROLE",
-                  "CHAT_SETTING_MEMORY_CONTEXT_THRESHOLD_TYPE",
-                  "CHAT_SETTING_MEMORY_CONTEXT_THRESHOLD_RANGE",
-                  "CHAT_SETTING_MAX_OUTPUT_TOKENS_TYPE",
-                  "CHAT_SETTING_MAX_OUTPUT_TOKENS_RANGE",
-                  "CHAT_SETTING_SEARCH_LINK_COUNT_TYPE",
-                  "CHAT_SETTING_SEARCH_LINK_COUNT_RANGE",
-                  "CHAT_SETTING_SEARCH_SUMMARY_CONCURRENCY_TYPE",
-                  "CHAT_SETTING_SEARCH_SUMMARY_CONCURRENCY_RANGE",
-                  "CHAT_SETTING_CHUNK_CHAR_RANGE_TYPE",
-                  "CHAT_SETTING_CHUNK_CHAR_RANGE_FORMAT",
-                  "CHAT_SETTING_CHUNK_CHAR_RANGE_INVALID",
-                  "CHAT_SETTING_USER_PROFILE_TYPE",
-                  "CHAT_SETTING_USER_PROFILE_TOO_LONG",
-                  "SETTING_MAX_CONTENT_LENGTH_INVALID",
-                  "SETTING_DEFAULT_TOP_K_INVALID",
-                  "SETTING_DEFAULT_CONTEXT_WINDOW_INVALID",
-                  "SETTING_DEFAULT_PAGE_SIZE_INVALID",
-                  "KB_PAGE_REQUIRED",
-                  "KB_LIMIT_REQUIRED",
-                  "KB_PAGE_INVALID",
-                  "KB_LIMIT_INVALID",
-                  "KB_QUERY_REQUIRED",
-                  "KB_TOP_K_REQUIRED",
-                  "KB_CONTEXT_WINDOW_REQUIRED",
-                  "KB_TOP_K_INVALID",
-                  "KB_CONTEXT_WINDOW_INVALID",
-                  "INTERNAL_ERROR",
-                  "KB_CREATE_NAME_REQUIRED",
-                  "KB_CREATE_NAME_INVALID_FORMAT",
-                  "KB_CREATE_NAME_DUPLICATE",
-                  "KB_INGEST_TEXT_STREAM_CONTENT_REQUIRED",
-                  "KB_INGEST_TEXT_STREAM_CONTENT_TOO_LONG",
-                  "KB_INGEST_TEXT_CONTENT_REQUIRED",
-                  "KB_INGEST_TEXT_CONTENT_TOO_LONG",
-                  "KB_INGEST_MESSAGES_EMPTY",
-                  "KB_INGEST_MESSAGE_CONTENT_TOO_LONG",
-                  "KB_SEARCH_QUERY_REQUIRED",
-                  "KB_SEARCH_IN_TOPIC_QUERY_REQUIRED",
-                  "PROVIDER_CREATE_IS_ACTIVE_REQUIRED",
-                  "VENDOR_CREATE_IS_ACTIVE_REQUIRED",
-                  "VENDOR_CREATE_URL_REQUIRED",
-                  "CONVERSATION_ADD_MSG_ASSISTANT_NAME_REQUIRED",
-                  "CONVERSATION_LIST_PAGE_REQUIRED",
-                  "CONVERSATION_LIST_LIMIT_REQUIRED",
-                  "CONVERSATION_REGENERATE_MEMORIED",
-                  "CONVERSATION_ADD_MSG_WITH_ID_ASSISTANT_NAME_REQUIRED",
-                  "CONVERSATION_LIST_MESSAGES_PAGE_REQUIRED",
-                  "CONVERSATION_LIST_MESSAGES_LIMIT_REQUIRED",
-                  "CHAT_SEARCH_CONFIRM_MISSING_LAST_MESSAGE",
-                  "CHAT_SEARCH_KEYWORD_REQUIRED",
-                  "CHAT_SEARCH_GET_CURRENT_QUERY_MISSING",
-                  "PROVIDER_VALIDATE_VENDOR_NOT_FOUND",
-                  "PROVIDER_VALIDATE_BASE_URL_REQUIRED",
-                  "PROVIDER_VALIDATE_API_KEY_REQUIRED",
-                  "MODEL_CREATE_IS_ACTIVE_REQUIRED",
-                  "MODEL_CREATE_IS_DEFAULT_REQUIRED",
-                  "MODEL_SET_DEFAULT_CAPABILITY_REQUIRED",
-                  "CHAT_CONVERSATION_ID_REQUIRED",
-                  "SESSION_LIST_PAGE_REQUIRED",
-                  "SESSION_LIST_LIMIT_REQUIRED",
-                  "KB_NOT_FOUND",
-                  "PROVIDER_VENDOR_NOT_LINKED",
-                  "PROVIDER_VALIDATE_OLLAMA_REQUEST_FAILED",
-                  "PROVIDER_VALIDATE_OLLAMA_INVALID_FORMAT",
-                  "PROVIDER_VALIDATE_OPENAI_REQUEST_FAILED",
-                  "PROVIDER_VALIDATE_OPENAI_INVALID_FORMAT",
-                  "VENDOR_FACTORY_CODE_INVALID_EXPORT",
-                  "VENDOR_FACTORY_CODE_INVALID_METHOD",
-                  "CONVERSATION_ADD_MSG_TOKENS_REQUIRED",
-                  "CONVERSATION_ADD_MSG_TOTAL_TOKENS_REQUIRED",
-                  "CONVERSATION_ADD_MSG_MEMORIED_REQUIRED",
-                  "CONVERSATION_ADD_MSG_INVALID_TOKENS",
-                  "CHAT_SEARCH_TAVILY_API_KEY_MISSING",
-                  "CHAT_SEARCH_WEBPAGE_MISSING_TITLE",
-                  "CHAT_SEARCH_WEBPAGE_MISSING_SUMMARY",
-                  "CHAT_SEARCH_TAVILY_NO_RESULTS",
-                  "CHAT_SEARCH_TAVILY_FAILED",
-                  "CHAT_SEARCH_ALL_RESULTS_UNAVAILABLE",
-                  "CHAT_SEARCH_SUMMARY_FAILED",
-                  "CHAT_SEARCH_URL_REQUEST_FAILED",
-                  "CHAT_SEARCH_PDF_CONTENT_TOO_SHORT",
-                  "CHAT_SEARCH_PDF_PARSE_FAILED",
-                  "CHAT_SEARCH_URL_CONTENT_TOO_SHORT",
-                  "CHAT_SEARCH_URL_FETCH_FAILED",
-                  "CHAT_SEARCH_SUMMARY_EMPTY",
-                  "CHAT_SEARCH_CURRENT_QUERY_EMPTY",
-                  "EMBEDDING_DEFAULT_MODEL_NOT_CONFIGURED",
-                  "EMBEDDING_PROVIDER_MISSING_VENDOR",
-                  "CHAT_MEMORY_QUERY_REQUIRED",
-                  "LLM_INVOKE_MISSING_MAX_RETRIES",
-                  "LLM_INVOKE_MISSING_TIMEOUT",
-                  "LLM_EMPTY_RESPONSE",
-                  "LLM_INVOKE_FAILED",
-                  "LLM_VALIDATION_FAILED",
-                  "LLM_STREAM_MISSING_MAX_RETRIES",
-                  "LLM_STREAM_MISSING_TIMEOUT",
-                  "LLM_USAGE_MISSING_INPUT_TOKENS",
-                  "LLM_USAGE_MISSING_OUTPUT_TOKENS",
-                  "LLM_RESPONSE_MISSING_PROMPT_EVAL_COUNT",
-                  "LLM_RESPONSE_MISSING_EVAL_COUNT",
-                  "LLM_STREAM_EMPTY_RESPONSE",
-                  "LLM_STREAM_FAILED",
-                  "LLM_JSON_PARSE_FAILED",
-                  "AGENT_VISION_MODEL_NOT_CONFIGURED",
-                  "AGENT_CHAT_MODEL_NOT_CONFIGURED",
-                  "AGENT_MODEL_PROVIDER_NOT_FOUND",
-                  "AGENT_PROVIDER_VENDOR_NOT_LINKED",
-                  "AGENT_PROVIDER_MISSING_API_KEY",
-                  "AGENT_PROVIDER_MISSING_BASE_URL",
-                  "AGENT_VISION_EMPTY_RESPONSE",
-                  "KB_CHUNK_MISSING_CONTENT",
-                  "KB_CHUNK_MISSING_TOPIC_PLAN",
-                  "KB_TOPIC_NOT_FOUND",
-                  "KB_TOPIC_CREATE_FAILED",
-                  "KB_SEARCH_RESULT_MISSING_FIELDS",
-                  "KB_CHUNK_NOT_FOUND",
-                  "KB_STATS_COUNT_EMPTY",
-                  "KB_STATS_LAST_UPDATED_EMPTY",
-                  "CUT_MODEL_DEFAULT_NOT_CONFIGURED",
-                  "CUT_MODEL_PROVIDER_MISSING_VENDOR",
-                  "CUT_MODEL_LLM_SDK_NULL_ADDITIONAL_KWARGS",
-                  "CUT_MODEL_LLM_FAILED",
-                  "CUT_MODEL_INVALID_FORMAT_MISSING_CUTPOINTS",
-                  "CUT_MODEL_INVALID_FORMAT_MISSING_GROUPS",
-                  "CUT_MODEL_GROUP_MISSING_MESSAGE_IDS",
-                  "CUT_MODEL_GROUP_INVALID_MESSAGE_IDS",
-                  "CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS",
-                  "CUT_MODEL_CHUNK_MISSING_TITLE",
-                  "CUT_MODEL_CHUNK_MISSING_CONTENT",
-                  "CUT_MODEL_INVALID_FORMAT_MISSING_ACTION",
-                  "CUT_MODEL_INVALID_FORMAT_MERGE_MISSING_TARGET_ID",
-                  "CUT_MODEL_INVALID_FORMAT_MERGE_MISSING_CONTENT",
-                  "CUT_MODEL_LLM_MISSING_REASON",
-                  "CUT_MODEL_INVALID_FORMAT_SELECT_MISSING_TOPIC_NAME",
-                  "CUT_MODEL_INVALID_FORMAT_MISSING_NAME",
-                  "CUT_MODEL_INVALID_FORMAT_MISSING_DESCRIPTION",
-                  "CUT_MODEL_INVALID_FORMAT_MISSING_TOPICS",
-                  "CUT_MODEL_INVALID_FORMAT_MISSING_PLANS",
-                  "CUT_MODEL_PLAN_INVALID_OBJECT",
-                  "CUT_MODEL_PLAN_MISSING_INDEX",
-                  "CUT_MODEL_PLAN_INVALID_ACTION",
-                  "CUT_MODEL_PLAN_SELECT_MISSING_TOPIC_NAME",
-                  "CUT_MODEL_PLAN_CREATE_MISSING_NEW_TOPIC_NAME",
-                  "CUT_MODEL_PLAN_INVALID_TOPIC_NAME",
-                  "CUT_MODEL_LLM_PLAN_MISSING_REASON",
-                  "LLM_STREAM_TIMEOUT",
-                  "VENDOR_PROTOCOL_UNKNOWN_MODEL_CLASS",
-                  "VENDOR_PROTOCOL_NO_MODEL_CONFIG",
-                  "CHAT_MODEL_FACTORY_MODEL_NAME_REQUIRED",
-                  "CHAT_MODEL_FACTORY_API_KEY_REQUIRED",
-                  "CHAT_MODEL_FACTORY_BASE_URL_REQUIRED",
-                  "CHAT_MODEL_FACTORY_AGENT_NOT_FOUND",
-                  "SYSTEM_TOKENS_CALIBRATION_FAILED",
-                  "SYSTEM_TOKENS_CONTENT_CALIBRATION_FAILED",
-                  "CHAT_SEARCH_PARSE_RESULT_INVALID",
-                  "CHAT_SEARCH_WEB_REASON_MISSING",
-                  "CHAT_SEARCH_NEED_SEARCH_WEB_MISSING",
-                  "CHAT_SEARCH_WEB_KEYWORDS_MISSING",
-                  "CHAT_SEARCH_MEMORY_REASON_MISSING",
-                  "CHAT_SEARCH_NEED_SEARCH_MEMORY_MISSING",
-                  "CHAT_SEARCH_MEMORY_QUERY_TYPE_INVALID",
-                  "VENDOR_FACTORY_CODE_SYNTAX_ERROR",
-                  "VENDOR_FACTORY_CODE_EXECUTION_ERROR"
-                ]
               },
               "message": {
                 "type": "string"

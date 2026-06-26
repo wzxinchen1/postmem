@@ -7,6 +7,11 @@ interface Deps {
   chatService: ChatService
 }
 
+/**
+ * 取消正在进行的聊天
+ * @swagger
+ * @response 200 取消成功
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['chatService'],
   handler: async (deps, request) => {

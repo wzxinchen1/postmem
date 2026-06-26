@@ -12,6 +12,11 @@ import { logger } from '@/src/lib/logger'
 import { formatErrorChain } from '@/src/lib/errors'
 import { ThinkingEffort, type ChatCompletionRequest } from '@/src/types'
 
+/**
+ * 聊天补全（异步触发，结果通过 SSE 推送）
+ * @swagger
+ * @response 200 返回对话 ID
+ */
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const scope = container.createScope()
   const chatService = scope.resolve<ChatService>('chatService')

@@ -7,6 +7,12 @@ interface Deps {
   vendorService: VendorService
 }
 
+/**
+ * 查询厂商列表
+ * @swagger
+ * @response 200 返回厂商列表
+ * @query {string} includeInactive 是否包含已禁用的
+ */
 export const GET = createApiHandler<Deps>({
   dependencies: ['vendorService'],
   handler: async (deps, request) => {
@@ -16,6 +22,11 @@ export const GET = createApiHandler<Deps>({
   },
 })
 
+/**
+ * 创建厂商
+ * @swagger
+ * @response 201 创建成功，返回厂商信息
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['vendorService'],
   handler: async (deps, request) => {

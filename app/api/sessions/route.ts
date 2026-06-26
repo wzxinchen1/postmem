@@ -6,6 +6,16 @@ interface Deps {
   sessionService: SessionService
 }
 
+/**
+ * 查询 LLM 调用会话列表
+ * @swagger
+ * @response 200 返回分页会话列表
+ * @query {string} kbId 知识库 ID
+ * @query {string} modelType 模型类型
+ * @query {string} status 会话状态
+ * @query {string} page 页码
+ * @query {string} limit 每页条数
+ */
 export const GET = createApiHandler<Deps>({
   dependencies: ['sessionService'],
   handler: async (deps, request) => {

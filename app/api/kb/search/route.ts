@@ -9,6 +9,11 @@ interface Deps {
   settingService: SettingService
 }
 
+/**
+ * 混合检索知识库（Dense + Sparse + RRF）
+ * @swagger
+ * @response 200 返回检索结果列表
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['kbService', 'settingService'],
   handler: async (deps, request) => {

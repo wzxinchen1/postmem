@@ -6,6 +6,11 @@ interface Deps {
   conversationService: ConversationService
 }
 
+/**
+ * 获取对话详情
+ * @swagger
+ * @response 200 返回对话详情
+ */
 export const GET = createApiHandler<Deps, { id: string }>({
   dependencies: ['conversationService'],
   handler: async (deps, _request, { params }) => {

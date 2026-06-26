@@ -7,6 +7,15 @@ interface Deps {
   conversationService: ConversationService
 }
 
+/**
+ * 查询聊天消息列表
+ * @swagger
+ * @response 200 返回分页消息列表
+ * @query {string} conversationId 对话 ID
+ * @query {string} role 消息角色过滤
+ * @query {string} page 页码
+ * @query {string} limit 每页条数
+ */
 export const GET = createApiHandler<Deps>({
   dependencies: ['conversationService'],
   handler: async (deps, request) => {

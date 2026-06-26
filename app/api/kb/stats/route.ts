@@ -7,6 +7,11 @@ interface Deps {
   kbService: KBService
 }
 
+/**
+ * 获取知识库统计
+ * @swagger
+ * @response 200 返回统计信息
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['kbService'],
   handler: async (deps, request) => {

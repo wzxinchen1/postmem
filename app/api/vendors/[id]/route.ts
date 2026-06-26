@@ -7,6 +7,11 @@ interface Deps {
   vendorService: VendorService
 }
 
+/**
+ * 获取厂商详情
+ * @swagger
+ * @response 200 返回厂商详情
+ */
 export const GET = createApiHandler<Deps, { id: string }>({
   dependencies: ['vendorService'],
   handler: async (deps, _request, { params }) => {
@@ -25,6 +30,11 @@ export const GET = createApiHandler<Deps, { id: string }>({
   },
 })
 
+/**
+ * 更新厂商
+ * @swagger
+ * @response 200 更新成功，返回厂商信息
+ */
 export const PUT = createApiHandler<Deps, { id: string }>({
   dependencies: ['vendorService'],
   handler: async (deps, request, { params }) => {
@@ -52,6 +62,11 @@ export const PUT = createApiHandler<Deps, { id: string }>({
   },
 })
 
+/**
+ * 删除厂商
+ * @swagger
+ * @response 200 删除成功
+ */
 export const DELETE = createApiHandler<Deps, { id: string }>({
   dependencies: ['vendorService'],
   handler: async (deps, _request, { params }) => {

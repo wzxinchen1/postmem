@@ -7,6 +7,11 @@ interface Deps {
   modelService: ModelService
 }
 
+/**
+ * 获取模型详情
+ * @swagger
+ * @response 200 返回模型详情
+ */
 export const GET = createApiHandler<Deps, { id: string }>({
   dependencies: ['modelService'],
   handler: async (deps, _request, { params }) => {
@@ -25,6 +30,11 @@ export const GET = createApiHandler<Deps, { id: string }>({
   },
 })
 
+/**
+ * 更新模型
+ * @swagger
+ * @response 200 更新成功，返回模型信息
+ */
 export const PUT = createApiHandler<Deps, { id: string }>({
   dependencies: ['modelService'],
   handler: async (deps, request, { params }) => {
@@ -52,6 +62,11 @@ export const PUT = createApiHandler<Deps, { id: string }>({
   },
 })
 
+/**
+ * 删除模型
+ * @swagger
+ * @response 200 删除成功
+ */
 export const DELETE = createApiHandler<Deps, { id: string }>({
   dependencies: ['modelService'],
   handler: async (deps, _request, { params }) => {

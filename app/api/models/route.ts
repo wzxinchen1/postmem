@@ -7,6 +7,13 @@ interface Deps {
   modelService: ModelService
 }
 
+/**
+ * 查询模型列表
+ * @swagger
+ * @response 200 返回模型列表
+ * @query {string} includeInactive 是否包含已禁用的
+ * @query {string} providerId 按提供商过滤
+ */
 export const GET = createApiHandler<Deps>({
   dependencies: ['modelService'],
   handler: async (deps, request) => {
@@ -24,6 +31,11 @@ export const GET = createApiHandler<Deps>({
   },
 })
 
+/**
+ * 创建模型
+ * @swagger
+ * @response 201 创建成功，返回模型信息
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['modelService'],
   handler: async (deps, request) => {

@@ -1,4 +1,10 @@
 {
+  "paths": {
+    "apiDir": "app/api",
+    "typesFile": "src/types/index.ts",
+    "outputFile": "public/swagger.json",
+    "errorsFile": "src/config/api-errors.json"
+  },
   "openapi": {
     "openapi": "3.0.0",
     "info": {

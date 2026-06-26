@@ -3,10 +3,17 @@ import type { UpdateAppSettingsRequest } from '@/src/types'
 import { SettingService } from '@/src/services/setting.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   settingService: SettingService
 }
 
+/**
+ * 获取应用设置
+ * @swagger
+ * @response 200 返回当前应用设置
+ */
 export const GET = createApiHandler<Deps>({
   dependencies: ['settingService'],
   handler: async (deps) => {
@@ -15,6 +22,11 @@ export const GET = createApiHandler<Deps>({
   },
 })
 
+/**
+ * 更新应用设置
+ * @swagger
+ * @response 200 更新成功
+ */
 export const PUT = createApiHandler<Deps>({
   dependencies: ['settingService'],
   handler: async (deps, request) => {

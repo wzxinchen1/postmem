@@ -7,6 +7,11 @@ interface Deps {
   providerService: ProviderService
 }
 
+/**
+ * 获取提供商详情
+ * @swagger
+ * @response 200 返回提供商详情
+ */
 export const GET = createApiHandler<Deps, { id: string }>({
   dependencies: ['providerService'],
   handler: async (deps, _request, { params }) => {
@@ -25,6 +30,11 @@ export const GET = createApiHandler<Deps, { id: string }>({
   },
 })
 
+/**
+ * 更新提供商
+ * @swagger
+ * @response 200 更新成功，返回提供商信息
+ */
 export const PUT = createApiHandler<Deps, { id: string }>({
   dependencies: ['providerService'],
   handler: async (deps, request, { params }) => {
@@ -52,6 +62,11 @@ export const PUT = createApiHandler<Deps, { id: string }>({
   },
 })
 
+/**
+ * 删除提供商
+ * @swagger
+ * @response 200 删除成功
+ */
 export const DELETE = createApiHandler<Deps, { id: string }>({
   dependencies: ['providerService'],
   handler: async (deps, _request, { params }) => {

@@ -7,6 +7,11 @@ interface Deps {
   kbService: KBService
 }
 
+/**
+ * 删除指定 memory 片段
+ * @swagger
+ * @response 200 删除成功
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['kbService'],
   handler: async (deps, request) => {

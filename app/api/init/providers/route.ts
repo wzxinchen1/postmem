@@ -5,6 +5,8 @@ import { ModelService } from '@/src/services/model.service'
 import { VendorService } from '@/src/services/vendor.service'
 import { createApiHandler, successResponse } from '@/src/lib/api-utils'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   initService: InitService
   providerService: ProviderService
@@ -13,6 +15,11 @@ interface Deps {
   vendorService: VendorService
 }
 
+/**
+ * 初始化默认提供商
+ * @swagger
+ * @response 200 返回初始化结果
+ */
 export const GET = createApiHandler<Deps>({
   dependencies: ['initService', 'providerService', 'providerValidateService', 'modelService', 'vendorService'],
   handler: async (deps) => {

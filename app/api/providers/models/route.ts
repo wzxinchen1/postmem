@@ -7,6 +7,11 @@ interface Deps {
   providerValidateService: ProviderValidateService
 }
 
+/**
+ * 获取提供商支持的模型列表
+ * @swagger
+ * @response 200 返回模型列表和厂商信息
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['providerValidateService'],
   handler: async (deps, request) => {

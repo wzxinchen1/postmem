@@ -121,3 +121,29 @@ export interface KnowledgeBaseInfo {
   total: number
   lastUpdated?: string
 }
+
+export interface LongChunkItem {
+  id: string
+  title: string
+  content: string
+  charLength: number
+  topicId: string | null
+  topicName: string | null
+  kbId: string
+  kbName: string
+  createdAt: string
+}
+
+export interface LongChunksResponse {
+  success: boolean
+  data?: {
+    items: LongChunkItem[]
+    total: number
+    page: number
+    limit: number
+  }
+  error?: {
+    code: string
+    message: string
+  }
+}

@@ -101,6 +101,21 @@ export interface ListItem {
 }
 
 /**
+ * 超长片段项
+ */
+export interface LongChunkItem {
+  id: string
+  title: string
+  content: string
+  charLength: number
+  topicId: string | null
+  topicName: string | null
+  kbId: string
+  kbName: string
+  createdAt: Date
+}
+
+/**
  * 统计信息
  */
 export interface Stats {

@@ -623,6 +623,30 @@
     "statusCode": 500,
     "message": "搜索结果缺少 cosineSim 和 tsRank"
   },
+  "KB_LONG_CHUNKS_THRESHOLD_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: threshold"
+  },
+  "KB_LONG_CHUNKS_THRESHOLD_INVALID": {
+    "statusCode": 400,
+    "message": "threshold 必须 >= {min}，实际: {actual}"
+  },
+  "KB_LONG_CHUNKS_PAGE_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: page"
+  },
+  "KB_LONG_CHUNKS_LIMIT_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: limit"
+  },
+  "KB_LONG_CHUNKS_PAGE_INVALID": {
+    "statusCode": 400,
+    "message": "page 必须是大于 0 的数字"
+  },
+  "KB_LONG_CHUNKS_LIMIT_INVALID": {
+    "statusCode": 400,
+    "message": "limit 必须在 {min}-{max} 之间的数字，实际: {actual}"
+  },
   "KB_CHUNK_NOT_FOUND": {
     "statusCode": 400,
     "message": "片段不存在"

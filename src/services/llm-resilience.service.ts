@@ -93,7 +93,7 @@ export class LLMResilienceService {
       }
     }
 
-    throw new AppError('LLM_INVOKE_FAILED', { maxRetries, lastError: lastError?.message })
+    throw new AppError('LLM_INVOKE_FAILED', { maxRetries, lastError: lastError?.message ?? '未知错误' })
   }
 
   async invokeWithValidation<T>(
@@ -132,7 +132,7 @@ export class LLMResilienceService {
       }
     }
 
-    throw new AppError('LLM_VALIDATION_FAILED', { maxRetries, lastError: lastError?.message })
+    throw new AppError('LLM_VALIDATION_FAILED', { maxRetries, lastError: lastError?.message ?? '未知错误' })
   }
 
   async streamWithRetry(options: LLMStreamOptions): Promise<LLMStreamResult> {
@@ -236,7 +236,7 @@ export class LLMResilienceService {
       }
     }
 
-    throw new AppError('LLM_STREAM_FAILED', { maxRetries, lastError: lastError?.message })
+    throw new AppError('LLM_STREAM_FAILED', { maxRetries, lastError: lastError?.message ?? '未知错误' })
   }
 
   /**

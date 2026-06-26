@@ -6,6 +6,11 @@ interface Deps {
   sessionService: SessionService
 }
 
+/**
+ * 获取指定 LLM 调用会话详情
+ * @swagger
+ * @response 200 返回会话详情
+ */
 export const GET = createApiHandler<Deps, { id: string }>({
   dependencies: ['sessionService'],
   handler: async (deps, _request, { params }) => {
@@ -25,6 +30,11 @@ export const GET = createApiHandler<Deps, { id: string }>({
   },
 })
 
+/**
+ * 删除指定 LLM 调用会话
+ * @swagger
+ * @response 200 删除成功
+ */
 export const DELETE = createApiHandler<Deps, { id: string }>({
   dependencies: ['sessionService'],
   handler: async (deps, _request, { params }) => {

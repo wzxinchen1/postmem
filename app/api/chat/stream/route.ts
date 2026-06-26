@@ -6,6 +6,9 @@ import { SSEService } from '@/src/services/sse.service'
 
 /**
  * ⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️
+ * @swagger
+ * @sse SSE 长连接，永久轮询推送聊天事件
+ * @response 200 返回 SSE 流
  *
  * 本端点设计为一次连接、永久存活。连接只会在以下情况断开：
  *   1. 用户关闭浏览器标签页（request.signal 触发 abort）

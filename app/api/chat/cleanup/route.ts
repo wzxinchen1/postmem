@@ -7,6 +7,11 @@ interface Deps {
   sseService: SSEService
 }
 
+/**
+ * 清理聊天 SSE 流
+ * @swagger
+ * @response 200 清理成功
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['sseService'],
   handler: async (deps, request) => {

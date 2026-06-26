@@ -7,6 +7,12 @@ interface Deps {
   providerService: ProviderService
 }
 
+/**
+ * 查询提供商列表
+ * @swagger
+ * @response 200 返回提供商列表
+ * @query {string} includeInactive 是否包含已禁用的
+ */
 export const GET = createApiHandler<Deps>({
   dependencies: ['providerService'],
   handler: async (deps, request) => {
@@ -16,6 +22,11 @@ export const GET = createApiHandler<Deps>({
   },
 })
 
+/**
+ * 创建提供商
+ * @swagger
+ * @response 201 创建成功，返回提供商信息
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['providerService'],
   handler: async (deps, request) => {

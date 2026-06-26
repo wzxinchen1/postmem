@@ -6,6 +6,12 @@ import { successResponse, errorResponse } from '@/src/lib/api-utils'
 import container from '@/src/lib/container'
 import type { IngestTextRequest, IngestMessagesRequest } from '@/src/types'
 
+/**
+ * 知识入库（文本或消息列表）
+ * @swagger
+ * @sse 文本入库模式返回 SSE 流式进度
+ * @response 200 入库完成（文本模式返回 SSE 流）
+ */
 export const POST = withErrorHandler(async (request: NextRequest) => {
   const scope = container.createScope()
   const kbService = scope.resolve<KBService>('kbService')
