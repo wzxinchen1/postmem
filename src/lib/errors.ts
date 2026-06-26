@@ -16,3 +16,19 @@ export class AppError extends Error {
     this.name = 'AppError'
   }
 }
+
+export function formatErrorChain(error: unknown): { type: string; message: string; stack: string | undefined }[] {
+  if (!(error instanceof Error)) return []
+
+  const chains: { type: string; message: string; stack: string | undefined }[] = []
+  let current: Error | undefined = error
+  while (current) {
+    chains.push({
+      type: current.constructor.name,
+      message: current.message,
+      stack: current.stack,
+    })
+    current = (current as any).cause instanceof Error ? (current as any).cause : undefined
+  }
+  return chains
+}

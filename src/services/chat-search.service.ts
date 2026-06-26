@@ -77,12 +77,20 @@ export class SearchService {
   }
 
   async getCachedWebpages(keywords: string[]) {
-    return this.prisma.webPage.findMany({
+    const results = await this.prisma.webPage.findMany({
       where: {
         keywords: { hasSome: keywords },
       },
-      take: 5,
+      orderBy: { updatedAt: 'desc' },
+      take: 10,
     })
+    logger.info('[SearchService] getCachedWebpages', {
+      queryKeywords: keywords,
+      resultCount: results.length,
+      resultTitles: results.map(r => r.title),
+      resultKeywords: results.map(r => r.keywords),
+    })
+    return results
   }
 
   async confirmNeedSearchWeb(
@@ -92,6 +100,7 @@ export class SearchService {
   ): Promise<boolean> {
     logger.info("二次判断缓存是否足够回答:" + cachedWebpages?.length);
     if (!cachedWebpages || cachedWebpages.length === 0) {
+      logger.info('[SearchService] confirmNeedSearchWeb: 缓存为空，需要重新搜索')
       return true
     }
 
@@ -108,7 +117,10 @@ export class SearchService {
     const webpagesText = cachedWebpages.map(w => {
       if (!w.title) throw new AppError('CHAT_SEARCH_WEBPAGE_MISSING_TITLE', { url: w.url })
       if (!w.summary) throw new AppError('CHAT_SEARCH_WEBPAGE_MISSING_SUMMARY', { url: w.url })
-      return `链接：${w.url}\n标题：${w.title}\n摘要：${w.summary}`
+      const cacheTime = w.updatedAt
+        ? new Date(w.updatedAt).toLocaleString('zh-CN', { timeZone: 'Asia/Shanghai' })
+        : '未知'
+      return `链接：${w.url}\n标题：${w.title}\n摘要：${w.summary}\n缓存时间：${cacheTime}`
     }).join('\n\n')
 
     const prompt = Prompts.confirmSearchWeb(historyText, currentQuery, webpagesText)
@@ -121,13 +133,21 @@ export class SearchService {
     })
 
     const rawContent = result.content.trim().toLowerCase()
-    return rawContent === 'true' || rawContent.includes('true')
+    const decision = rawContent === 'true' || rawContent.includes('true')
+    logger.info('[SearchService] confirmNeedSearchWeb 结果', {
+      cachedCount: cachedWebpages.length,
+      llmRawResponse: result.content.trim(),
+      decision: decision ? '需要重新搜索' : '缓存足够',
+    })
+    return decision
   }
 
-  async searchWeb(keywords: string[]): Promise<WebpageResult[]> {
+  async searchWeb(keywords: string[], conversationId: string): Promise<WebpageResult[]> {
     if (!keywords || keywords.length === 0) {
       throw new AppError('CHAT_SEARCH_KEYWORD_REQUIRED')
     }
+
+    logger.info('[SearchService] searchWeb 开始', { keywords, conversationId })
 
     const chatSetting = await this.chatSettingService.get()
     const linkCount = chatSetting.searchLinkCount
@@ -182,7 +202,7 @@ export class SearchService {
     for (let i = 0; i < fetchedWebpages.length; i += concurrency) {
       const batch = fetchedWebpages.slice(i, i + concurrency)
       for (const wp of batch) {
-        await this.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, url: wp.url })
+        await this.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, url: wp.url, conversationId })
       }
       const results = await Promise.all(
         batch.map(wp => this.summarizeOne(summaryAgent, wp))

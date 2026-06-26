@@ -40,7 +40,7 @@ export class ChatMemoryService {
       content: m.content,
     }))
 
-    const memorizedIds = await this.ingestMessages(kbId, ingestMessages)
+    const memorizedIds = await this.ingestMessages(kbId, ingestMessages, conversationId)
 
     return memorizedIds
   }
@@ -63,9 +63,10 @@ export class ChatMemoryService {
 
   private async ingestMessages(
     kbId: string,
-    messages: IngestMessage[]
+    messages: IngestMessage[],
+    conversationId: string
   ): Promise<string[]> {
-    const result = await this.kbService.ingestMessages(kbId, messages)
+    const result = await this.kbService.ingestMessages(kbId, messages, conversationId)
     return result.memorizedMessageIds
   }
 }

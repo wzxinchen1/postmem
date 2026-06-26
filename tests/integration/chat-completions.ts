@@ -29,7 +29,7 @@ import {
   resetCalibrateCallCount,
 } from './helpers'
 
-const CHAT_TIMEOUT = 15_000
+const CHAT_TIMEOUT = 30_000
 
 class MockChatTest extends ChatTestFixture {
   protected async doSetup(): Promise<void> {

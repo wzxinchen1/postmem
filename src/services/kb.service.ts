@@ -472,7 +472,7 @@ export class KBService {
  *           每个片段语义完整连贯，标题由LLM生成
  * 去重策略：每个分块先搜索相似记忆，LLM 判断是否有增量价值
  */
-  async ingestMessages(kbId: string, messages: IngestMessage[]): Promise<IngestMessagesResponse> {
+  async ingestMessages(kbId: string, messages: IngestMessage[], conversationId: string, isTest = false): Promise<IngestMessagesResponse> {
     const settings = await this.settingService.getAppSettings()
     const maxLength = settings.maxContentLength
 
@@ -495,11 +495,15 @@ export class KBService {
       })
       .join('\n\n')
 
-    await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: '正在切分文本...' })
+    if (!isTest) {
+      await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: '正在切分文本...', conversationId })
+    }
 
     const chunks = await this.cutModelService.cutAndRewrite(conversationText, kbId)
 
-    await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `已切分为 ${chunks.length} 个片段` })
+    if (!isTest) {
+      await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `已切分为 ${chunks.length} 个片段`, conversationId })
+    }
 
     const existingTopics = await this.prisma.topic.findMany({
       where: { kbId },
@@ -514,7 +518,9 @@ export class KBService {
     }
     for (const p of plan.plans) {
       if (p.action === 'create' && p.newTopicName && !topicNameMap.has(p.newTopicName)) {
-        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `创建主题：${p.newTopicName}` })
+        if (!isTest) {
+          await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `创建主题：${p.newTopicName}`, conversationId })
+        }
 
         const sampleChunk = chunks[p.index]
         if (!sampleChunk?.content) throw new AppError('KB_CHUNK_MISSING_CONTENT', { index: p.index })
@@ -537,7 +543,9 @@ export class KBService {
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i]
 
-      await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `处理片段 ${i + 1}/${chunks.length}：${chunk.title}` })
+      if (!isTest) {
+        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `处理片段 ${i + 1}/${chunks.length}：${chunk.title}`, conversationId })
+      }
 
       const planItem = plan.plans.find((p) => p.index === chunk.index)
       if (!planItem) {
@@ -563,7 +571,9 @@ export class KBService {
       similarMemories = similarMemories.filter((m) => !thisBatchIds.has(m.id))
 
       if (similarMemories.length === 0) {
-        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `入库` })
+        if (!isTest) {
+          await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `入库`, conversationId })
+        }
 
         const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
@@ -578,7 +588,9 @@ export class KBService {
         continue
       }
 
-      await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `去重判断` })
+      if (!isTest) {
+        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `去重判断`, conversationId })
+      }
 
       const result = await this.cutModelService.shouldIngestChunk(
         chunk.content,
@@ -587,12 +599,16 @@ export class KBService {
       )
 
       if (result.action === 'skip') {
-        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `跳过重复` })
+        if (!isTest) {
+          await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `跳过重复`, conversationId })
+        }
         continue
       }
 
       if (result.action === 'merge' && result.targetMemoryId && result.mergedContent) {
-        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `合并到已有记录` })
+        if (!isTest) {
+          await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `合并到已有记录`, conversationId })
+        }
 
         const mergeEmbedding = await this.embeddingService.generateEmbedding(result.mergedContent)
 
@@ -608,7 +624,9 @@ export class KBService {
         continue
       }
 
-      await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `新记录入库` })
+      if (!isTest) {
+        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `新记录入库`, conversationId })
+      }
 
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 

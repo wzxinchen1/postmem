@@ -82,9 +82,16 @@ export function createSearchNode(deps: GraphDependencies) {
     let fetchedUrls: string[] = []
 
     if (searchNeeds.needSearchWeb && searchNeeds.webKeywords.length > 0 && webSearchEnabled) {
-      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb })
+      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, conversationId: state.conversationId })
 
+      logger.info('[ChatGraph] 缓存查询', {
+        webKeywords: searchNeeds.webKeywords,
+      })
       const cachedWebpages = await deps.searchService.getCachedWebpages(searchNeeds.webKeywords)
+      logger.info('[ChatGraph] 缓存查询结果', {
+        cachedCount: cachedWebpages.length,
+        cachedTitles: cachedWebpages.map(w => w.title),
+      })
 
       let confirm = true
       confirm = await deps.searchService.confirmNeedSearchWeb(
@@ -92,9 +99,14 @@ export function createSearchNode(deps: GraphDependencies) {
         state.agent as any,
         cachedWebpages
       )
+      logger.info('[ChatGraph] 缓存判断结果', {
+        cachedCount: cachedWebpages.length,
+        confirm,
+        action: confirm ? '重新搜索' : '使用缓存',
+      })
 
       if (confirm) {
-        const webpages = await deps.searchService.searchWeb(searchNeeds.webKeywords)
+        const webpages = await deps.searchService.searchWeb(searchNeeds.webKeywords, state.conversationId)
         fetchedUrls = webpages.map(w => w.url)
         searchResult = webpages.map(w =>
           `链接：${w.url}\n标题：${w.title}\n摘要：${w.summary}`
@@ -106,7 +118,7 @@ export function createSearchNode(deps: GraphDependencies) {
           return { url: w.url, title: w.title, content: w.content, summary: w.summary, keywords: w.keywords as string[] }
         })
         for (const item of cachedItems) {
-          await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, url: item.url })
+          await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, url: item.url, conversationId: state.conversationId })
           fetchedUrls.push(item.url)
         }
         await deps.searchService.saveWebpages(cachedItems)
@@ -116,11 +128,11 @@ export function createSearchNode(deps: GraphDependencies) {
         searchResult = cachedResult
       }
 
-      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb })
+      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, conversationId: state.conversationId })
     }
 
     if (searchNeeds.needSearchMemory && searchNeeds.memoryQuery) {
-      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory })
+      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
 
       const similarSummaries = await deps.chatMemoryService.searchSimilar(
         state.kbId,
@@ -128,7 +140,7 @@ export function createSearchNode(deps: GraphDependencies) {
       )
       memoryText = similarSummaries.map(s => s.content).join('\n\n')
 
-      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory })
+      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
     }
 
     if (state.fetchedUrlContent) {

@@ -322,6 +322,15 @@ export interface UpdateProviderRequest {
 }
 
 /**
+ * 获取提供商模型列表请求
+ */
+export interface FetchModelsRequest {
+  vendorId: string
+  apiKey?: string
+  baseUrl: string
+}
+
+/**
  * 创建厂商请求
  */
 export interface CreateVendorRequest {
@@ -388,6 +397,16 @@ export interface AppSettings {
   defaultTopK: number
   defaultContextWindow: number
   defaultPageSize: number
+}
+
+/**
+ * 更新应用设置请求
+ */
+export interface UpdateAppSettingsRequest {
+  maxContentLength?: number
+  defaultTopK?: number
+  defaultContextWindow?: number
+  defaultPageSize?: number
 }
 
 /**
@@ -492,6 +511,20 @@ export interface ChatCompletionRequest {
 }
 
 /**
+ * 清理聊天流请求
+ */
+export interface CleanupRequest {
+  conversationId?: string
+}
+
+/**
+ * 取消聊天请求
+ */
+export interface CancelRequest {
+  conversationId?: string
+}
+
+/**
  * 聊天消息输入
  */
 export interface ChatMessageInput {
@@ -550,22 +583,39 @@ export enum ThinkingEffort {
   XHigh = 'xhigh',
 }
 
+export interface ToolCall {
+  id: string
+  type: 'function'
+  function: {
+    name: string
+    arguments: string
+  }
+}
+
 export enum DoneReason {
+  Stop = 'stop',
   Truncated = 'truncated',
   InsufficientBalance = 'insufficient_balance',
   ContentFiltered = 'content_filtered',
+  ToolCalls = 'tool_calls',
 }
 
 /**
  * SSE 流事件
  */
-export type StreamEvent =
-  | { type: 'chunk'; content: string; model: { id: string; name: string } }
-  | { type: 'thinking'; content: string }
-  | { type: 'status'; status: StreamStatus; message?: string; url?: string }
-  | { type: 'messageId'; role: 'user' | 'assistant'; id: string; message?: ChatMessage }
-  | { type: 'error'; message: string }
-  | { type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number; reasoningTokens?: number }
+export type StreamEvent = {
+  type: 'chunk'; content: string; model: { id: string; name: string }; conversationId?: string
+} | {
+  type: 'thinking'; content: string; conversationId?: string
+} | {
+  type: 'status'; status: StreamStatus; message?: string; url?: string; conversationId?: string
+} | {
+  type: 'messageId'; role: 'user' | 'assistant'; id: string; message?: ChatMessage; conversationId?: string
+} | {
+  type: 'error'; message: string; conversationId?: string
+} | {
+  type: 'done'; reason?: DoneReason; error?: string; userTokens?: number; userTotalTokens?: number; totalTokens?: number; completionTokens?: number; reasoningTokens?: number; toolCalls?: ToolCall[]; conversationId?: string
+}
 
 /**
  * 网页缓存
@@ -598,6 +648,18 @@ export interface ChatSettingInfo {
   webSearchDisabled?: boolean
   createdAt: Date
   updatedAt: Date
+}
+
+/**
+ * 更新聊天设置请求
+ */
+export interface UpdateChatSettingRequest {
+  memoryContextThreshold?: number
+  maxOutputTokens?: number | null
+  searchLinkCount?: number
+  searchSummaryConcurrency?: number
+  chunkCharRange?: string
+  userProfile?: string | null
 }
 
 export interface Session {

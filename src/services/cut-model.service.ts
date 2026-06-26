@@ -101,9 +101,15 @@ export class CutModelService {
     return result
   }
 
-  private async createModel(model: Model, provider: Provider): Promise<BaseChatModel> {
+  private async createModel(model: Model, provider: Provider, reasoningEffort?: string): Promise<BaseChatModel> {
     if (!provider.vendor) {
       throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
+    }
+
+    const config: Record<string, unknown> = { ...model.config }
+    if (reasoningEffort) {
+      config.reasoning = true
+      config.reasoningEffort = reasoningEffort
     }
 
     return this.vendorService.createModel(provider.vendor, {
@@ -111,11 +117,7 @@ export class CutModelService {
       modelType: 'chat',
       apiKey: provider.apiKey,
       baseUrl: provider.baseUrl,
-      config: {
-        ...model.config,
-        reasoning: true,
-        reasoningEffort: ThinkingEffort.XHigh,
-      },
+      config,
     }) as BaseChatModel
   }
 
@@ -124,9 +126,10 @@ export class CutModelService {
     systemPrompt: string,
     model: Model,
     provider: Provider,
-    sessionId: string
+    sessionId: string,
+    reasoningEffort?: string
   ): Promise<string> {
-    const chatModel = await this.createModel(model, provider)
+    const chatModel = await this.createModel(model, provider, reasoningEffort)
 
     await this.sessionService.addMessage({
       sessionId,
@@ -183,14 +186,15 @@ export class CutModelService {
     model: Model,
     provider: Provider,
     sessionId: string,
-    validator: (parsed: unknown) => T
+    validator: (parsed: unknown) => T,
+    reasoningEffort?: string
   ): Promise<T> {
     let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= CutModelService.MAX_RETRIES; attempt++) {
       let content: string
       try {
-        content = await this.callLLM(prompt, systemPrompt, model, provider, sessionId)
+        content = await this.callLLM(prompt, systemPrompt, model, provider, sessionId, reasoningEffort)
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
 
@@ -388,7 +392,7 @@ export class CutModelService {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS')
       }
       return obj as { chunks: any[] }
-    })
+    }, ThinkingEffort.XHigh)
 
     await this.sessionService.complete(session.id)
 

@@ -77,7 +77,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/CancelRequest"
               }
             }
           }
@@ -108,7 +108,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/CleanupRequest"
               }
             }
           }
@@ -139,7 +139,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/ChatCompletionRequest"
               }
             }
           }
@@ -245,7 +245,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/CreateConversationRequest"
               }
             }
           }
@@ -389,19 +389,19 @@
     },
     "/api/chat/stream": {
       "get": {
-        "summary": "⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️ 本端点设计为一次连接、永久存活。连接只会在以下情况断开： 1. 用户关闭浏览器标签页（req.on('close')） 2. 服务器进程终止 禁止的行为（无论什么理由，零容忍）： ❌ 禁止在 done/error 事件后 res.end() 或 return ❌ 禁止添加超时自动关闭逻辑 ❌ 禁止在流被清理后退出循环 ❌ 禁止以\"防止连接泄漏\"为名添加任何退出路径 ❌ 禁止把本端点改成短连接或轮询模式 ❌ 禁止用 Blocking XREAD 替代轮询（会阻塞线程） 设计意图： - 前端维护一个 EventSource 实例，贯穿整个页面生命周期 - 多次对话共用同一条 SSE 连接，后端只管往 Redis Stream 推数据 - clearMessageStream() 会在每轮对话结束后清理流，但连接不关 - 下一轮对话重建流，前端同一条连接继续读 如果后来的大模型读到这里： - 你没理解错，这个 while(true) 就是死循环，设计如此 - 不要碰 done/error 的处理逻辑，前端自己知道什么时候停 - 不要擅自\"优化\"成读写分离、连接池、超时回收 - 看不懂不要改，去问人，不要猜",
-        "description": "⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️ 本端点设计为一次连接、永久存活。连接只会在以下情况断开： 1. 用户关闭浏览器标签页（req.on('close')） 2. 服务器进程终止 禁止的行为（无论什么理由，零容忍）： ❌ 禁止在 done/error 事件后 res.end() 或 return ❌ 禁止添加超时自动关闭逻辑 ❌ 禁止在流被清理后退出循环 ❌ 禁止以\"防止连接泄漏\"为名添加任何退出路径 ❌ 禁止把本端点改成短连接或轮询模式 ❌ 禁止用 Blocking XREAD 替代轮询（会阻塞线程） 设计意图： - 前端维护一个 EventSource 实例，贯穿整个页面生命周期 - 多次对话共用同一条 SSE 连接，后端只管往 Redis Stream 推数据 - clearMessageStream() 会在每轮对话结束后清理流，但连接不关 - 下一轮对话重建流，前端同一条连接继续读 如果后来的大模型读到这里： - 你没理解错，这个 while(true) 就是死循环，设计如此 - 不要碰 done/error 的处理逻辑，前端自己知道什么时候停 - 不要擅自\"优化\"成读写分离、连接池、超时回收 - 看不懂不要改，去问人，不要猜",
+        "summary": "永久SSE长连接，实时推送聊天事件",
+        "description": "永久SSE长连接，实时推送聊天事件",
         "tags": [
           "Chat"
         ],
         "responses": {
           "200": {
-            "description": "成功响应（SSE 流式响应）",
+            "description": "SSE 长连接，持续推送聊天事件（text/event-stream）（SSE 流式响应）",
             "content": {
               "text/event-stream": {
                 "schema": {
                   "type": "object",
-                  "description": "SSE 流式响应",
+                  "description": "永久的 SSE 长连接，前端通过此连接持续接收聊天事件",
                   "properties": {
                     "type": {
                       "type": "string",
@@ -423,7 +423,8 @@
                 "x-sse-event-types": [
                   {
                     "event": "message",
-                    "description": "流式消息事件"
+                    "description": "聊天事件（chunk/thinking/status/messageId/error/done）",
+                    "data": "object"
                   }
                 ]
               }
@@ -466,6 +467,16 @@
                 "schema": {
                   "$ref": "#/components/schemas/ChatSettingInfo"
                 }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateChatSettingRequest"
               }
             }
           }
@@ -666,7 +677,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ListItem"
+                  }
                 }
               }
             }
@@ -697,7 +711,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/SearchResult"
+                  }
                 }
               }
             }
@@ -931,7 +948,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Model"
+                  }
                 }
               }
             }
@@ -1133,7 +1153,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Provider"
+                  }
                 }
               }
             }
@@ -1205,7 +1228,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/FetchModelsRequest"
               }
             }
           }
@@ -1236,7 +1259,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/ProviderTreeNode"
+                  }
                 }
               }
             }
@@ -1268,7 +1294,7 @@
           "content": {
             "application/json": {
               "schema": {
-                "type": "object"
+                "$ref": "#/components/schemas/FetchModelsRequest"
               }
             }
           }
@@ -1404,7 +1430,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Session"
+                  }
                 }
               }
             }
@@ -1467,6 +1496,16 @@
                 "schema": {
                   "$ref": "#/components/schemas/AppSettings"
                 }
+              }
+            }
+          }
+        },
+        "requestBody": {
+          "required": true,
+          "content": {
+            "application/json": {
+              "schema": {
+                "$ref": "#/components/schemas/UpdateAppSettingsRequest"
               }
             }
           }
@@ -1619,7 +1658,10 @@
             "content": {
               "application/json": {
                 "schema": {
-                  "$ref": "#/components/schemas/ApiResponse"
+                  "type": "array",
+                  "items": {
+                    "$ref": "#/components/schemas/Vendor"
+                  }
                 }
               }
             }
@@ -1672,25 +1714,15 @@
     "schemas": {
       "MemoryMetadata": {
         "type": "object",
-        "required": [
-          "key"
-        ],
         "properties": {
           "cutModel": {
-            "type": "string",
-            "description": "cutModel"
+            "type": "string"
           },
           "messageId": {
-            "type": "string",
-            "description": "messageId"
+            "type": "string"
           },
           "role": {
-            "type": "string",
-            "description": "role"
-          },
-          "key": {
-            "type": "string",
-            "description": "key"
+            "type": "string"
           }
         }
       },
@@ -1703,39 +1735,27 @@
           "score",
           "topicId",
           "metadata",
-          "source",
-          "prev",
-          "next"
+          "source"
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "title": {
-            "type": "string",
-            "description": "title"
+            "type": "string"
           },
           "content": {
-            "type": "string",
-            "description": "content"
+            "type": "string"
           },
           "score": {
-            "type": "number",
-            "description": "score"
+            "type": "number"
           },
           "topicId": {
             "type": "string",
-            "enum": [
-              "string",
-              "null"
-            ],
-            "description": "topicId"
+            "nullable": true
           },
           "metadata": {
-            "type": "string",
-            "$ref": "#/components/schemas/MemoryMetadata",
-            "description": "metadata"
+            "$ref": "#/components/schemas/MemoryMetadata"
           },
           "source": {
             "type": "string",
@@ -1743,26 +1763,10 @@
               "dense",
               "sparse",
               "hybrid"
-            ],
-            "description": "source"
+            ]
           },
           "context": {
-            "type": "string",
-            "description": "context"
-          },
-          "prev": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "prev"
-          },
-          "next": {
-            "type": "array",
-            "items": {
-              "type": "string"
-            },
-            "description": "next"
+            "type": "object"
           }
         }
       },
@@ -1778,33 +1782,23 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "title": {
-            "type": "string",
-            "description": "title"
+            "type": "string"
           },
           "content": {
-            "type": "string",
-            "description": "content"
+            "type": "string"
           },
           "topicId": {
             "type": "string",
-            "enum": [
-              "string",
-              "null"
-            ],
-            "description": "topicId"
+            "nullable": true
           },
           "metadata": {
-            "type": "string",
-            "$ref": "#/components/schemas/MemoryMetadata",
-            "description": "metadata"
+            "$ref": "#/components/schemas/MemoryMetadata"
           },
           "createdAt": {
-            "type": "string",
-            "description": "createdAt"
+            "type": "string"
           }
         }
       },
@@ -1815,20 +1809,16 @@
         ],
         "properties": {
           "kbId": {
-            "type": "string",
-            "description": "kbId"
+            "type": "string"
           },
           "kbName": {
-            "type": "string",
-            "description": "kbName"
+            "type": "string"
           },
           "total": {
-            "type": "number",
-            "description": "total"
+            "type": "number"
           },
           "lastUpdated": {
-            "type": "string",
-            "description": "lastUpdated"
+            "type": "string"
           }
         }
       },
@@ -1841,8 +1831,7 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "role": {
             "type": "string",
@@ -1850,12 +1839,10 @@
               "system",
               "user",
               "assistant"
-            ],
-            "description": "role"
+            ]
           },
           "content": {
-            "type": "string",
-            "description": "content"
+            "type": "string"
           }
         }
       },
@@ -1867,12 +1854,10 @@
         ],
         "properties": {
           "kbId": {
-            "type": "string",
-            "description": "kbId"
+            "type": "string"
           },
           "content": {
-            "type": "string",
-            "description": "content"
+            "type": "string"
           }
         }
       },
@@ -1884,16 +1869,13 @@
         ],
         "properties": {
           "kbId": {
-            "type": "string",
-            "description": "kbId"
+            "type": "string"
           },
           "messages": {
             "type": "array",
             "items": {
-              "type": "string",
               "$ref": "#/components/schemas/IngestMessage"
-            },
-            "description": "messages"
+            }
           }
         }
       },
@@ -1905,22 +1887,19 @@
         ],
         "properties": {
           "count": {
-            "type": "number",
-            "description": "count"
+            "type": "number"
           },
           "memoryIds": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "memoryIds"
+            }
           },
           "topicsInvolved": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "topicsInvolved"
+            }
           }
         }
       },
@@ -1932,20 +1911,16 @@
         ],
         "properties": {
           "kbId": {
-            "type": "string",
-            "description": "kbId"
+            "type": "string"
           },
           "query": {
-            "type": "string",
-            "description": "query"
+            "type": "string"
           },
           "top_k": {
-            "type": "number",
-            "description": "top_k"
+            "type": "number"
           },
           "context_window": {
-            "type": "number",
-            "description": "context_window"
+            "type": "number"
           }
         }
       },
@@ -1956,16 +1931,13 @@
         ],
         "properties": {
           "kbId": {
-            "type": "string",
-            "description": "kbId"
+            "type": "string"
           },
           "page": {
-            "type": "number",
-            "description": "page"
+            "type": "number"
           },
           "limit": {
-            "type": "number",
-            "description": "limit"
+            "type": "number"
           }
         }
       },
@@ -1976,8 +1948,7 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           }
         }
       },
@@ -1985,8 +1956,7 @@
         "type": "object",
         "properties": {
           "kbId": {
-            "type": "string",
-            "description": "kbId"
+            "type": "string"
           }
         }
       },
@@ -2002,52 +1972,34 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "url": {
-            "type": "string",
-            "description": "url"
+            "type": "string"
           },
           "chatModelClass": {
             "type": "string",
-            "enum": [
-              "string",
-              "null"
-            ],
-            "description": "chatModelClass"
+            "nullable": true
           },
           "embeddingModelClass": {
             "type": "string",
-            "enum": [
-              "string",
-              "null"
-            ],
-            "description": "embeddingModelClass"
+            "nullable": true
           },
           "factoryCode": {
             "type": "string",
-            "enum": [
-              "string",
-              "null"
-            ],
-            "description": "factoryCode"
+            "nullable": true
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
           },
           "createdAt": {
-            "type": "string",
-            "description": "createdAt"
+            "type": "string"
           },
           "updatedAt": {
-            "type": "string",
-            "description": "updatedAt"
+            "type": "string"
           }
         }
       },
@@ -2064,41 +2016,31 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "vendorId": {
-            "type": "string",
-            "description": "vendorId"
+            "type": "string"
           },
           "vendor": {
-            "type": "string",
-            "$ref": "#/components/schemas/Vendor",
-            "description": "vendor"
+            "$ref": "#/components/schemas/Vendor"
           },
           "apiKey": {
-            "type": "string",
-            "description": "apiKey"
+            "type": "string"
           },
           "baseUrl": {
-            "type": "string",
-            "description": "baseUrl"
+            "type": "string"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
           },
           "createdAt": {
-            "type": "string",
-            "description": "createdAt"
+            "type": "string"
           },
           "updatedAt": {
-            "type": "string",
-            "description": "updatedAt"
+            "type": "string"
           }
         }
       },
@@ -2117,20 +2059,16 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "providerId": {
-            "type": "string",
-            "description": "providerId"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "displayName": {
-            "type": "string",
-            "description": "displayName"
+            "type": "string"
           },
           "capabilities": {
             "type": "array",
@@ -2142,28 +2080,22 @@
                 "vision",
                 "reasoning"
               ]
-            },
-            "description": "capabilities"
+            }
           },
           "config": {
-            "type": "object",
-            "description": "config"
+            "type": "object"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
           },
           "isDefault": {
-            "type": "boolean",
-            "description": "isDefault"
+            "type": "boolean"
           },
           "createdAt": {
-            "type": "string",
-            "description": "createdAt"
+            "type": "string"
           },
           "updatedAt": {
-            "type": "string",
-            "description": "updatedAt"
+            "type": "string"
           }
         }
       },
@@ -2176,24 +2108,19 @@
         ],
         "properties": {
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "vendorId": {
-            "type": "string",
-            "description": "vendorId"
+            "type": "string"
           },
           "apiKey": {
-            "type": "string",
-            "description": "apiKey"
+            "type": "string"
           },
           "baseUrl": {
-            "type": "string",
-            "description": "baseUrl"
+            "type": "string"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
           }
         }
       },
@@ -2201,24 +2128,37 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "vendorId": {
-            "type": "string",
-            "description": "vendorId"
+            "type": "string"
           },
           "apiKey": {
-            "type": "string",
-            "description": "apiKey"
+            "type": "string"
           },
           "baseUrl": {
-            "type": "string",
-            "description": "baseUrl"
+            "type": "string"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
+          }
+        }
+      },
+      "FetchModelsRequest": {
+        "type": "object",
+        "required": [
+          "vendorId",
+          "baseUrl"
+        ],
+        "properties": {
+          "vendorId": {
+            "type": "string"
+          },
+          "apiKey": {
+            "type": "string"
+          },
+          "baseUrl": {
+            "type": "string"
           }
         }
       },
@@ -2229,24 +2169,19 @@
         ],
         "properties": {
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "chatModelClass": {
-            "type": "string",
-            "description": "chatModelClass"
+            "type": "string"
           },
           "embeddingModelClass": {
-            "type": "string",
-            "description": "embeddingModelClass"
+            "type": "string"
           },
           "factoryCode": {
-            "type": "string",
-            "description": "factoryCode"
+            "type": "string"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
           }
         }
       },
@@ -2254,24 +2189,19 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "chatModelClass": {
-            "type": "string",
-            "description": "chatModelClass"
+            "type": "string"
           },
           "embeddingModelClass": {
-            "type": "string",
-            "description": "embeddingModelClass"
+            "type": "string"
           },
           "factoryCode": {
-            "type": "string",
-            "description": "factoryCode"
+            "type": "string"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
           }
         }
       },
@@ -2284,16 +2214,13 @@
         ],
         "properties": {
           "providerId": {
-            "type": "string",
-            "description": "providerId"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "displayName": {
-            "type": "string",
-            "description": "displayName"
+            "type": "string"
           },
           "capabilities": {
             "type": "array",
@@ -2305,20 +2232,16 @@
                 "vision",
                 "reasoning"
               ]
-            },
-            "description": "capabilities"
+            }
           },
           "config": {
-            "type": "object",
-            "description": "config"
+            "type": "object"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
           },
           "isDefault": {
-            "type": "boolean",
-            "description": "isDefault"
+            "type": "boolean"
           }
         }
       },
@@ -2326,12 +2249,10 @@
         "type": "object",
         "properties": {
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "displayName": {
-            "type": "string",
-            "description": "displayName"
+            "type": "string"
           },
           "capabilities": {
             "type": "array",
@@ -2343,20 +2264,16 @@
                 "vision",
                 "reasoning"
               ]
-            },
-            "description": "capabilities"
+            }
           },
           "config": {
-            "type": "object",
-            "description": "config"
+            "type": "object"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
           },
           "isDefault": {
-            "type": "boolean",
-            "description": "isDefault"
+            "type": "boolean"
           }
         }
       },
@@ -2370,20 +2287,33 @@
         ],
         "properties": {
           "maxContentLength": {
-            "type": "number",
-            "description": "maxContentLength"
+            "type": "number"
           },
           "defaultTopK": {
-            "type": "number",
-            "description": "defaultTopK"
+            "type": "number"
           },
           "defaultContextWindow": {
-            "type": "number",
-            "description": "defaultContextWindow"
+            "type": "number"
           },
           "defaultPageSize": {
-            "type": "number",
-            "description": "defaultPageSize"
+            "type": "number"
+          }
+        }
+      },
+      "UpdateAppSettingsRequest": {
+        "type": "object",
+        "properties": {
+          "maxContentLength": {
+            "type": "number"
+          },
+          "defaultTopK": {
+            "type": "number"
+          },
+          "defaultContextWindow": {
+            "type": "number"
+          },
+          "defaultPageSize": {
+            "type": "number"
           }
         }
       },
@@ -2394,12 +2324,10 @@
         ],
         "properties": {
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "description": {
-            "type": "string",
-            "description": "description"
+            "type": "string"
           }
         }
       },
@@ -2413,24 +2341,19 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "description": {
-            "type": "string",
-            "description": "description"
+            "type": "string"
           },
           "createdAt": {
-            "type": "string",
-            "description": "createdAt"
+            "type": "string"
           },
           "updatedAt": {
-            "type": "string",
-            "description": "updatedAt"
+            "type": "string"
           }
         }
       },
@@ -2449,12 +2372,10 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "conversationId": {
-            "type": "string",
-            "description": "conversationId"
+            "type": "string"
           },
           "role": {
             "type": "string",
@@ -2462,51 +2383,40 @@
               "system",
               "user",
               "assistant"
-            ],
-            "description": "role"
+            ]
           },
           "content": {
-            "type": "string",
-            "description": "content"
+            "type": "string"
           },
           "tokens": {
-            "type": "number",
-            "description": "tokens"
+            "type": "number"
           },
           "totalTokens": {
-            "type": "number",
-            "description": "totalTokens"
+            "type": "number"
           },
           "reasoningTokens": {
-            "type": "number",
-            "description": "reasoningTokens"
+            "type": "number"
           },
           "memoried": {
-            "type": "boolean",
-            "description": "memoried"
+            "type": "boolean"
           },
           "images": {
             "type": "array",
             "items": {
-              "type": "string",
               "$ref": "#/components/schemas/ChatMessageImage"
-            },
-            "description": "images"
+            }
           },
           "urls": {
             "type": "array",
             "items": {
               "type": "string"
-            },
-            "description": "urls"
+            }
           },
           "metadata": {
-            "type": "object",
-            "description": "metadata"
+            "type": "object"
           },
           "createdAt": {
-            "type": "string",
-            "description": "createdAt"
+            "type": "string"
           }
         }
       },
@@ -2523,26 +2433,113 @@
           "messages": {
             "type": "array",
             "items": {
-              "type": "string",
               "$ref": "#/components/schemas/ChatMessage"
-            },
-            "description": "messages"
+            }
           },
           "total": {
-            "type": "number",
-            "description": "total"
+            "type": "number"
           },
           "page": {
-            "type": "number",
-            "description": "page"
+            "type": "number"
           },
           "limit": {
-            "type": "number",
-            "description": "limit"
+            "type": "number"
           },
           "conversationId": {
+            "type": "string"
+          }
+        }
+      },
+      "CreateConversationRequest": {
+        "type": "object",
+        "properties": {
+          "metadata": {
+            "type": "object"
+          }
+        }
+      },
+      "ChatCompletionRequest": {
+        "type": "object",
+        "required": [
+          "messages",
+          "modelId",
+          "kbId"
+        ],
+        "properties": {
+          "messages": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageInput"
+            }
+          },
+          "conversationId": {
+            "type": "string"
+          },
+          "newConversation": {
+            "type": "boolean"
+          },
+          "regenerateMessageId": {
+            "type": "string"
+          },
+          "modelId": {
+            "type": "string"
+          },
+          "kbId": {
+            "type": "string"
+          },
+          "thinkingEffort": {
             "type": "string",
-            "description": "conversationId"
+            "enum": [
+              "none",
+              "minimal",
+              "low",
+              "medium",
+              "high",
+              "xhigh"
+            ]
+          }
+        }
+      },
+      "CleanupRequest": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          }
+        }
+      },
+      "CancelRequest": {
+        "type": "object",
+        "properties": {
+          "conversationId": {
+            "type": "string"
+          }
+        }
+      },
+      "ChatMessageInput": {
+        "type": "object",
+        "required": [
+          "id",
+          "content"
+        ],
+        "properties": {
+          "id": {
+            "type": "string"
+          },
+          "content": {
+            "type": "string"
+          },
+          "images": {
+            "type": "array",
+            "items": {
+              "$ref": "#/components/schemas/ChatMessageImage"
+            }
+          },
+          "urls": {
+            "type": "array",
+            "items": {
+              "type": "string"
+            }
           }
         }
       },
@@ -2553,12 +2550,10 @@
         ],
         "properties": {
           "url": {
-            "type": "string",
-            "description": "url"
+            "type": "string"
           },
           "mimeType": {
-            "type": "string",
-            "description": "mimeType"
+            "type": "string"
           }
         }
       },
@@ -2575,56 +2570,64 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "memoryContextThreshold": {
-            "type": "number",
-            "description": "memoryContextThreshold"
+            "type": "number"
           },
           "maxOutputTokens": {
-            "type": "string",
-            "enum": [
-              "number",
-              "null"
-            ],
-            "description": "maxOutputTokens"
+            "type": "number",
+            "nullable": true
           },
           "searchLinkCount": {
-            "type": "number",
-            "description": "searchLinkCount"
+            "type": "number"
           },
           "searchSummaryConcurrency": {
-            "type": "number",
-            "description": "searchSummaryConcurrency"
+            "type": "number"
           },
           "chunkCharRange": {
-            "type": "string",
-            "description": "chunkCharRange"
+            "type": "string"
           },
           "userProfile": {
             "type": "string",
-            "enum": [
-              "string",
-              "null"
-            ],
-            "description": "userProfile"
+            "nullable": true
           },
           "memorySearchDisabled": {
-            "type": "boolean",
-            "description": "memorySearchDisabled"
+            "type": "boolean"
           },
           "webSearchDisabled": {
-            "type": "boolean",
-            "description": "webSearchDisabled"
+            "type": "boolean"
           },
           "createdAt": {
-            "type": "string",
-            "description": "createdAt"
+            "type": "string"
           },
           "updatedAt": {
+            "type": "string"
+          }
+        }
+      },
+      "UpdateChatSettingRequest": {
+        "type": "object",
+        "properties": {
+          "memoryContextThreshold": {
+            "type": "number"
+          },
+          "maxOutputTokens": {
+            "type": "number",
+            "nullable": true
+          },
+          "searchLinkCount": {
+            "type": "number"
+          },
+          "searchSummaryConcurrency": {
+            "type": "number"
+          },
+          "chunkCharRange": {
+            "type": "string"
+          },
+          "userProfile": {
             "type": "string",
-            "description": "updatedAt"
+            "nullable": true
           }
         }
       },
@@ -2641,48 +2644,37 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "kbId": {
-            "type": "string",
-            "description": "kbId"
+            "type": "string"
           },
           "modelType": {
-            "type": "string",
-            "description": "modelType"
+            "type": "string"
           },
           "modelName": {
-            "type": "string",
-            "description": "modelName"
+            "type": "string"
           },
           "provider": {
-            "type": "string",
-            "description": "provider"
+            "type": "string"
           },
           "status": {
-            "type": "string",
-            "description": "status"
+            "type": "string"
           },
           "error": {
-            "type": "string",
-            "description": "error"
+            "type": "string"
           },
           "metadata": {
-            "type": "object",
-            "description": "metadata"
+            "type": "object"
           },
           "createdAt": {
-            "type": "string",
-            "description": "createdAt"
+            "type": "string"
           },
           "messages": {
             "type": "array",
             "items": {
-              "type": "string",
               "$ref": "#/components/schemas/SessionMessage"
-            },
-            "description": "messages"
+            }
           }
         }
       },
@@ -2699,32 +2691,25 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "sessionId": {
-            "type": "string",
-            "description": "sessionId"
+            "type": "string"
           },
           "role": {
-            "type": "string",
-            "description": "role"
+            "type": "string"
           },
           "content": {
-            "type": "string",
-            "description": "content"
+            "type": "string"
           },
           "tokens": {
-            "type": "number",
-            "description": "tokens"
+            "type": "number"
           },
           "metadata": {
-            "type": "object",
-            "description": "metadata"
+            "type": "object"
           },
           "createdAt": {
-            "type": "string",
-            "description": "createdAt"
+            "type": "string"
           }
         }
       },
@@ -2740,32 +2725,25 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "vendorName": {
-            "type": "string",
-            "description": "vendorName"
+            "type": "string"
           },
           "baseUrl": {
-            "type": "string",
-            "description": "baseUrl"
+            "type": "string"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
           },
           "models": {
             "type": "array",
             "items": {
-              "type": "string",
               "$ref": "#/components/schemas/ModelTreeNode"
-            },
-            "description": "models"
+            }
           }
         }
       },
@@ -2781,16 +2759,13 @@
         ],
         "properties": {
           "id": {
-            "type": "string",
-            "description": "id"
+            "type": "string"
           },
           "name": {
-            "type": "string",
-            "description": "name"
+            "type": "string"
           },
           "displayName": {
-            "type": "string",
-            "description": "displayName"
+            "type": "string"
           },
           "capabilities": {
             "type": "array",
@@ -2802,16 +2777,13 @@
                 "vision",
                 "reasoning"
               ]
-            },
-            "description": "capabilities"
+            }
           },
           "isDefault": {
-            "type": "boolean",
-            "description": "isDefault"
+            "type": "boolean"
           },
           "isActive": {
-            "type": "boolean",
-            "description": "isActive"
+            "type": "boolean"
           }
         }
       },

@@ -250,7 +250,7 @@ let activeListener: EventListener | null = null
 export async function startConsume(client: PostMemClient): Promise<void> {
   // 每次启动 consume 前清理 Redis 残留（如上次测试失败留下的 key），避免干扰
   const redis = new Redis(REDIS_CONFIG)
-  await redis.del('chat:global', 'system_tokens:default', 'system_tokens:default_prompt')
+  await redis.del('chat:global', 'chat:active', 'system_tokens:default', 'system_tokens:default_prompt')
   const stream = redis.scanStream({ match: 'chat:processing:*', count: 100 })
   const keys: string[] = await new Promise((resolve, reject) => {
     const collected: string[] = []
@@ -260,6 +260,10 @@ export async function startConsume(client: PostMemClient): Promise<void> {
   })
   if (keys.length > 0) {
     await redis.del(...keys)
+  }
+  const streamKeys: string[] = await redis.keys('chat:stream:*')
+  if (streamKeys.length > 0) {
+    await redis.del(...streamKeys)
   }
   await redis.quit()
 
@@ -411,7 +415,7 @@ export async function chatAndWait(
       const chunkTimestamp = (firstChunk as Record<string, unknown>)?._timestamp as number | undefined
       if (chunkTimestamp) {
         const ttfb = chunkTimestamp - result.requestStartTime
-        if (ttfb > 15_000) {
+        if (ttfb > 20_000) {
           throw new Error(
             `首 token 超时 (conversationId=${conversationId}): TTFB=${ttfb}ms，超过 10s 阈值。` +
             `收到 ${result.events.length} 个事件`

@@ -12,7 +12,7 @@ import { AgentService } from '@/src/services/agent.service'
 import { SystemTokensService } from '@/src/services/system-tokens.service'
 import { createChatGraph } from '@/src/services/chat-graph'
 import { logger } from '@/src/lib/logger'
-import { AppError } from '@/src/lib/errors'
+import { AppError, formatErrorChain } from '@/src/lib/errors'
 import { createId } from '@paralleldrive/cuid2'
 import type { ChatCompletionRequest, ChatMessageImage } from '@/src/types'
 
@@ -150,16 +150,16 @@ export class ChatService {
         images: lastMessage.images,
         urls: lastMessage.urls,
       })
-      await this.sseService.emit({ type: 'messageId', role: 'user', id: userMessageId, message: savedMessage })
+      await this.sseService.emit({ type: 'messageId', role: 'user', id: userMessageId, message: savedMessage, conversationId: convId })
       }
     }
 
     const aiMessageId = createId()
-    await this.sseService.emit({ type: 'messageId', role: 'assistant', id: aiMessageId })
+    await this.sseService.emit({ type: 'messageId', role: 'assistant', id: aiMessageId, conversationId: convId })
 
     if (await this.sseService.isCancelled(convId)) {
       await this.sseService.clearCancelled(convId)
-      await this.sseService.emit({ type: 'done' })
+      await this.sseService.emit({ type: 'done', conversationId: convId })
       return null
     }
 
@@ -215,7 +215,7 @@ export class ChatService {
       const appError = error instanceof AppError
         ? error
         : new AppError('INTERNAL_ERROR', undefined, error instanceof Error ? error : undefined)
-      logger.error('[ChatGraph] 流式响应异常', { conversationId: convId, errorMessage: appError.message, stack: error instanceof Error ? error.stack : undefined })
+      logger.error('[ChatGraph] 流式响应异常', { conversationId: convId, errorMessage: appError.message, errorChain: formatErrorChain(error) })
       throw error
     } finally {
       logger.info('[ChatService] 清理 processing 状态', { conversationId: convId })

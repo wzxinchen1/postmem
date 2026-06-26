@@ -1,6 +1,6 @@
 import { Annotation } from '@langchain/langgraph'
 import { HumanMessage, AIMessage, SystemMessage } from '@langchain/core/messages'
-import type { ChatMessageImage } from '@/src/types'
+import type { ChatMessageImage, ToolCall } from '@/src/types'
 
 export enum ChatNode {
   Init = 'init',
@@ -38,6 +38,7 @@ export const ChatGraphState = Annotation.Root({
   fetchedUrlContent: Annotation<string>,
   systemTokens: Annotation<number>,
   lastUserMessageId: Annotation<string>,
+  toolCalls: Annotation<ToolCall[]>,
 })
 
 export type ChatState = typeof ChatGraphState.State

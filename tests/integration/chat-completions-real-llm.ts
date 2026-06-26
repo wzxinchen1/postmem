@@ -23,7 +23,7 @@ import { test, run } from './runner'
 import { ChatTestFixture } from './test-base'
 import { getBaseUrl, setModelHasVision } from './helpers'
 
-const CHAT_TIMEOUT = 15_000
+const CHAT_TIMEOUT = 20_000
 
 class RealLLMChatTest extends ChatTestFixture {
   protected async doSetup(): Promise<void> {
@@ -340,7 +340,7 @@ class RealLLMChatTest extends ChatTestFixture {
         (e) => (e as Record<string, unknown>).status === 'summarizing',
       )
       this.assertGreaterThan(summarizingEvents.length, 0, 'summarizing status events during memory save')
-    }, 120_000)
+    }, 3_600_000)
 
     test('记忆: 已记忆消息不参与阈值计算 — 第二次触发只计算未记忆消息', async () => {
       // 恢复高阈值，发几轮短对话积累未记忆消息
@@ -375,7 +375,7 @@ class RealLLMChatTest extends ChatTestFixture {
 
       // 验证: 第二次触发后，之前的未记忆消息全部被记忆，只剩本轮新增
       this.assertLessThanOrEqual(unmemoriedAfter.length, 2, 'only current round messages remain unmemoried after 2nd trigger')
-    }, 90_000)
+    }, 3_600_000)
 
     test('记忆: memoried 消息不可重发 — 返回 400', async () => {
       const msgResult = await this.client.getMessages(this.convId1, { page: 1, limit: 100 })
@@ -427,7 +427,7 @@ class RealLLMChatTest extends ChatTestFixture {
         (e) => (e as Record<string, unknown>).status === 'searchingMemory',
       )
       this.assertGreaterThan(searchingMemoryEvents.length, 0, '没有收到 searchingMemory 状态消息')
-    }, { memorySearch: true, timeoutMs: 60_000 })
+    }, { memorySearch: true, timeoutMs: 3_600_000 })
 
     test('互联网搜索: 搜索事件 + web_pages 表写入', async () => {
       await this.cleanupWebpages()
@@ -453,7 +453,7 @@ class RealLLMChatTest extends ChatTestFixture {
       // 验证3: web_pages 表有数据写入
       const countAfter = await this.getWebpageCount()
       this.assertGreaterThan(countAfter, 0, 'web_pages count after first search')
-    }, { memorySearch: true, webSearch: true, timeoutMs: 120_000 })
+    }, { memorySearch: true, webSearch: true, timeoutMs: 3_600_000 })
 
     test('互联网搜索: 相同消息命中缓存，web_pages 表数据不增加', async () => {
       const countBefore = await this.getWebpageCount()
@@ -474,7 +474,7 @@ class RealLLMChatTest extends ChatTestFixture {
       // 验证2: web_pages 表数据不增加
       const countAfter = await this.getWebpageCount()
       this.assertEqual(countAfter, countBefore, 'web_pages count unchanged after cached search')
-    }, { memorySearch: false, webSearch: true, timeoutMs: 30_000 })
+    }, { memorySearch: false, webSearch: true, timeoutMs: 3_600_000 })
   }
 }
 

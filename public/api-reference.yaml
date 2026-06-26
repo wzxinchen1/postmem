@@ -17,7 +17,16 @@ Response Body:
 ### PUT /api/chat-settings/index
 聊天设置 API - 管理 chat_settings 表
 
-**Types:** ChatSettingInfo (响应)
+**Types:** UpdateChatSettingRequest (请求), ChatSettingInfo (响应)
+
+Request Body:
+  type: UpdateChatSettingRequest
+  - `memoryContextThreshold`: number
+  - `maxOutputTokens`: number | null
+  - `searchLinkCount`: number
+  - `searchSummaryConcurrency`: number
+  - `chunkCharRange`: string
+  - `userProfile`: string | null
 
 Response Body:
   200: 成功响应 (ChatSettingInfo)
@@ -26,8 +35,11 @@ Response Body:
 ### POST /api/chat/cancel
 取消聊天 API
 
+**Types:** CancelRequest (请求)
+
 Request Body:
-  - `conversationId`: string (required)
+  type: CancelRequest
+  - `conversationId`: string
 
 Response Body:
   200: 成功响应
@@ -35,8 +47,11 @@ Response Body:
 ### POST /api/chat/cleanup
 清理聊天流 API
 
+**Types:** CleanupRequest (请求)
+
 Request Body:
-  - `conversationId`: string (required)
+  type: CleanupRequest
+  - `conversationId`: string
 
 Response Body:
   200: 成功响应
@@ -44,14 +59,17 @@ Response Body:
 ### POST /api/chat/completions
 聊天补全 API
 
+**Types:** ChatCompletionRequest (请求)
+
 Request Body:
-  - `messages`: string (required)
-  - `conversationId`: string (required)
-  - `newConversation`: string (required)
-  - `regenerateMessageId`: string (required)
+  type: ChatCompletionRequest
+  - `messages`: Array<ChatMessageInput> (required)
+  - `conversationId`: string
+  - `newConversation`: boolean
+  - `regenerateMessageId`: string
   - `modelId`: string (required)
   - `kbId`: string (required)
-  - `thinkingEffort`: string (required)
+  - `thinkingEffort`: ThinkingEffort [none|minimal|low|medium|high|xhigh]
 
 Response Body:
   200: 成功响应
@@ -70,13 +88,16 @@ Response Body:
 ### POST /api/chat/conversations
 会话管理 API
 
+**Types:** CreateConversationRequest (请求)
+
 Query Parameters:
   - `kbId`: string (required) - 按知识库筛选
   - `page`: integer (默认: 1) - 页码
   - `limit`: integer (默认: 20) - 每页数量
 
 Request Body:
-  - `kbId`: string (required)
+  type: CreateConversationRequest
+  - `metadata`: unknown
 
 Response Body:
   200: 成功响应
@@ -121,11 +142,11 @@ Response Body:
 ⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️ 本端点设计为一次连接、永久存活。连接只会在以下情况断开： 1. 用户关闭浏览器标签页（req.on('close')） 2. 服务器进程终止 禁止的行为（无论什么理由，零容忍）： ❌ 禁止在 done/error 事件后 res.end() 或 return ❌ 禁止添加超时自动关闭逻辑 ❌ 禁止在流被清理后退出循环 ❌ 禁止以"防止连接泄漏"为名添加任何退出路径 ❌ 禁止把本端点改成短连接或轮询模式 ❌ 禁止用 Blocking XREAD 替代轮询（会阻塞线程） 设计意图： - 前端维护一个 EventSource 实例，贯穿整个页面生命周期 - 多次对话共用同一条 SSE 连接，后端只管往 Redis Stream 推数据 - clearMessageStream() 会在每轮对话结束后清理流，但连接不关 - 下一轮对话重建流，前端同一条连接继续读 如果后来的大模型读到这里： - 你没理解错，这个 while(true) 就是死循环，设计如此 - 不要碰 done/error 的处理逻辑，前端自己知道什么时候停 - 不要擅自"优化"成读写分离、连接池、超时回收 - 看不懂不要改，去问人，不要猜
 
 Response Body:
-  200: 成功响应（SSE 流式响应）
+  200: SSE 长连接，持续推送聊天事件（text/event-stream）（SSE 流式响应）
     Content-Type: text/event-stream
     事件格式: data: { type: string, message?: string, data?: object }
     事件类型:
-      - message: 流式消息事件
+      - message: 聊天事件（chunk/thinking/status/messageId/error/done） → object
 
 ---
 
@@ -181,7 +202,7 @@ Request Body:
       - `content`: string (required)
   - IngestMessagesRequest:
       - `kbId`: string (required)
-      - `messages`: IngestMessage[] (required)
+      - `messages`: Array<IngestMessage> (required)
 
 Response Body:
   200: 成功响应（SSE 流式响应）
@@ -267,7 +288,7 @@ Request Body:
   type: UpdateModelRequest
   - `name`: string
   - `displayName`: string
-  - `capabilities`: ModelCapability[]
+  - `capabilities`: Array<ModelCapability>
   - `config`: unknown
   - `isActive`: boolean
   - `isDefault`: boolean
@@ -325,7 +346,7 @@ Request Body:
   - `providerId`: string (required)
   - `name`: string (required)
   - `displayName`: string
-  - `capabilities`: ModelCapability[] (required)
+  - `capabilities`: Array<ModelCapability> (required)
   - `config`: unknown
   - `isActive`: boolean
   - `isDefault`: boolean
@@ -416,9 +437,12 @@ Response Body:
 ### POST /api/providers/models
 获取提供商模型列表 API
 
+**Types:** FetchModelsRequest (请求)
+
 Request Body:
+  type: FetchModelsRequest
   - `vendorId`: string (required)
-  - `apiKey`: string (required)
+  - `apiKey`: string
   - `baseUrl`: string (required)
 
 Response Body:
@@ -439,9 +463,12 @@ Response Body:
 ### POST /api/providers/validate
 验证提供商 API
 
+**Types:** FetchModelsRequest (请求)
+
 Request Body:
+  type: FetchModelsRequest
   - `vendorId`: string (required)
-  - `apiKey`: string (required)
+  - `apiKey`: string
   - `baseUrl`: string (required)
 
 Response Body:
@@ -514,7 +541,14 @@ Response Body:
 ### PUT /api/settings/index
 应用设置 API
 
-**Types:** AppSettings (响应)
+**Types:** UpdateAppSettingsRequest (请求), AppSettings (响应)
+
+Request Body:
+  type: UpdateAppSettingsRequest
+  - `maxContentLength`: number
+  - `defaultTopK`: number
+  - `defaultContextWindow`: number
+  - `defaultPageSize`: number
 
 Response Body:
   200: 成功响应 (AppSettings)
@@ -604,17 +638,14 @@ Response Body:
 ## Data Types
 
 ### MemoryMetadata
-Required:
-key
 
 - `cutModel`?: string
 - `messageId`?: string
 - `role`?: string
-- `key`*: string]: unknown
 
 ### SearchResult
 Required:
-id, title, content, score, topicId, metadata, source, prev, next
+id, title, content, score, topicId, metadata, source
 
 - `id`*: string
 - `title`*: string
@@ -623,9 +654,7 @@ id, title, content, score, topicId, metadata, source, prev, next
 - `topicId`*: string | null
 - `metadata`*: MemoryMetadata
 - `source`*: SearchSource [dense|sparse|hybrid]
-- `context`?: {
-- `prev`*: string[]
-- `next`*: string[]
+- `context`?: object
 
 ### ListItem
 Required:
@@ -667,15 +696,15 @@ Required:
 kbId, messages
 
 - `kbId`*: string
-- `messages`*: IngestMessage[]
+- `messages`*: Array<IngestMessage>
 
 ### IngestTextResponse
 Required:
 count, memoryIds
 
 - `count`*: number
-- `memoryIds`*: string[]
-- `topicsInvolved`?: string[]
+- `memoryIds`*: Array<string>
+- `topicsInvolved`?: Array<string>
 
 ### SearchRequest
 Required:
@@ -740,7 +769,7 @@ id, providerId, name, capabilities, config, isActive, isDefault, createdAt, upda
 - `providerId`*: string
 - `name`*: string
 - `displayName`?: string
-- `capabilities`*: ModelCapability[]
+- `capabilities`*: Array<ModelCapability>
 - `config`*: unknown
 - `isActive`*: boolean
 - `isDefault`*: boolean
@@ -764,6 +793,14 @@ name, vendorId, baseUrl
 - `apiKey`?: string
 - `baseUrl`?: string
 - `isActive`?: boolean
+
+### FetchModelsRequest
+Required:
+vendorId, baseUrl
+
+- `vendorId`*: string
+- `apiKey`?: string
+- `baseUrl`*: string
 
 ### CreateVendorRequest
 Required:
@@ -790,7 +827,7 @@ providerId, name, capabilities
 - `providerId`*: string
 - `name`*: string
 - `displayName`?: string
-- `capabilities`*: ModelCapability[]
+- `capabilities`*: Array<ModelCapability>
 - `config`?: unknown
 - `isActive`?: boolean
 - `isDefault`?: boolean
@@ -799,7 +836,7 @@ providerId, name, capabilities
 
 - `name`?: string
 - `displayName`?: string
-- `capabilities`?: ModelCapability[]
+- `capabilities`?: Array<ModelCapability>
 - `config`?: unknown
 - `isActive`?: boolean
 - `isDefault`?: boolean
@@ -812,6 +849,13 @@ maxContentLength, defaultTopK, defaultContextWindow, defaultPageSize
 - `defaultTopK`*: number
 - `defaultContextWindow`*: number
 - `defaultPageSize`*: number
+
+### UpdateAppSettingsRequest
+
+- `maxContentLength`?: number
+- `defaultTopK`?: number
+- `defaultContextWindow`?: number
+- `defaultPageSize`?: number
 
 ### CreateKBRequest
 Required:
@@ -842,8 +886,8 @@ id, conversationId, role, content, tokens, totalTokens, memoried, metadata, crea
 - `totalTokens`*: number
 - `reasoningTokens`?: number
 - `memoried`*: boolean
-- `images`?: ChatMessageImage[]
-- `urls`?: string[]
+- `images`?: Array<ChatMessageImage>
+- `urls`?: Array<string>
 - `metadata`*: unknown
 - `createdAt`*: Date
 
@@ -851,11 +895,44 @@ id, conversationId, role, content, tokens, totalTokens, memoried, metadata, crea
 Required:
 messages, total, page, limit, conversationId
 
-- `messages`*: ChatMessage[]
+- `messages`*: Array<ChatMessage>
 - `total`*: number
 - `page`*: number
 - `limit`*: number
 - `conversationId`*: string
+
+### CreateConversationRequest
+
+- `metadata`?: unknown
+
+### ChatCompletionRequest
+Required:
+messages, modelId, kbId
+
+- `messages`*: Array<ChatMessageInput>
+- `conversationId`?: string
+- `newConversation`?: boolean
+- `regenerateMessageId`?: string
+- `modelId`*: string
+- `kbId`*: string
+- `thinkingEffort`?: ThinkingEffort [none|minimal|low|medium|high|xhigh]
+
+### CleanupRequest
+
+- `conversationId`?: string
+
+### CancelRequest
+
+- `conversationId`?: string
+
+### ChatMessageInput
+Required:
+id, content
+
+- `id`*: string
+- `content`*: string
+- `images`?: Array<ChatMessageImage>
+- `urls`?: Array<string>
 
 ### ChatMessageImage
 Required:
@@ -880,6 +957,15 @@ id, memoryContextThreshold, searchLinkCount, searchSummaryConcurrency, chunkChar
 - `createdAt`*: Date
 - `updatedAt`*: Date
 
+### UpdateChatSettingRequest
+
+- `memoryContextThreshold`?: number
+- `maxOutputTokens`?: number | null
+- `searchLinkCount`?: number
+- `searchSummaryConcurrency`?: number
+- `chunkCharRange`?: string
+- `userProfile`?: string | null
+
 ### Session
 Required:
 id, modelType, modelName, provider, status, metadata, createdAt
@@ -893,7 +979,7 @@ id, modelType, modelName, provider, status, metadata, createdAt
 - `error`?: string
 - `metadata`*: unknown
 - `createdAt`*: Date
-- `messages`?: SessionMessage[]
+- `messages`?: Array<SessionMessage>
 
 ### SessionMessage
 Required:
@@ -916,7 +1002,7 @@ id, name, vendorName, baseUrl, isActive, models
 - `vendorName`*: string
 - `baseUrl`*: string
 - `isActive`*: boolean
-- `models`*: ModelTreeNode[]
+- `models`*: Array<ModelTreeNode>
 
 ### ModelTreeNode
 Required:
@@ -925,7 +1011,7 @@ id, name, displayName, capabilities, isDefault, isActive
 - `id`*: string
 - `name`*: string
 - `displayName`*: string
-- `capabilities`*: ModelCapability[]
+- `capabilities`*: Array<ModelCapability>
 - `isDefault`*: boolean
 - `isActive`*: boolean
 
@@ -947,4 +1033,13 @@ id, name, displayName, capabilities, isDefault, isActive
 
 ### MessageRole
 - system | user | assistant
+
+### StreamStatus
+- searchingWeb | searchingMemory | summarizing | memoryProgress | recognizing | fetchingUrl
+
+### ThinkingEffort
+- none | minimal | low | medium | high | xhigh
+
+### DoneReason
+- stop | truncated | insufficient_balance | content_filtered | tool_calls
 

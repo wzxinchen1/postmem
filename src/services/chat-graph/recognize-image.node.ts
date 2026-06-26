@@ -23,7 +23,7 @@ export function createRecognizeImageNode(deps: GraphDependencies) {
       return {}
     }
 
-    await deps.sseService.emit({ type: 'status', status: StreamStatus.Recognizing })
+    await deps.sseService.emit({ type: 'status', status: StreamStatus.Recognizing, conversationId: state.conversationId })
 
     const visionAgent = await deps.agentService.getVisionAgent()
 
@@ -60,7 +60,7 @@ export function createRecognizeImageNode(deps: GraphDependencies) {
       recognizedTextPreview: recognizedText.slice(0, 100),
     })
 
-    await deps.sseService.emit({ type: 'status', status: StreamStatus.Recognizing })
+    await deps.sseService.emit({ type: 'status', status: StreamStatus.Recognizing, conversationId: state.conversationId })
 
     return { recognizedText }
   }

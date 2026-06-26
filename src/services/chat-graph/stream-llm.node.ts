@@ -3,6 +3,7 @@ import type { GraphDependencies } from './index'
 import { HumanMessage } from '@langchain/core/messages'
 import { logger } from '@/src/lib/logger'
 import { AppError } from '@/src/lib/errors'
+import type { ToolCall } from '@/src/types'
 
 const STREAM_TIMEOUT_MS = 10_000
 
@@ -64,6 +65,7 @@ export function createStreamLLMNode(deps: GraphDependencies) {
     let completionTokens = 0
     let reasoningTokens = 0
     let finishReason = ''
+    const toolCallChunks = new Map<number, { name: string; id: string; args: string }>()
 
     const controller = new AbortController()
     const timeoutId = setTimeout(() => controller.abort(), STREAM_TIMEOUT_MS)
@@ -104,6 +106,20 @@ export function createStreamLLMNode(deps: GraphDependencies) {
           logger.info('[ChatGraph] 收到 finish_reason', { finishReason })
         }
 
+        // 收集 tool_call_chunks（按 index 归并 args，因为分块传输时 args 可能是碎片）
+        const chunkToolCalls = chunkAny.tool_call_chunks as Array<{ name?: string; id?: string; args?: string; index?: number }> | undefined
+        if (chunkToolCalls && Array.isArray(chunkToolCalls)) {
+          for (const tc of chunkToolCalls) {
+            if (tc.index === undefined) continue
+            const existing = toolCallChunks.get(tc.index)
+            if (existing) {
+              existing.args += tc.args ?? ''
+            } else {
+              toolCallChunks.set(tc.index, { name: tc.name ?? '', id: tc.id ?? '', args: tc.args ?? '' })
+            }
+          }
+        }
+
         if (chunkAny.additional_kwargs?.type === 'reasoning') {
           const thinkingContent = chunkAny.content ?? ''
           if (thinkingContent) {
@@ -111,7 +127,7 @@ export function createStreamLLMNode(deps: GraphDependencies) {
            if (await deps.sseService.isCancelled(state.conversationId)) {
               break
             }
-            await deps.sseService.emit({ type: 'thinking', content: thinkingContent })
+            await deps.sseService.emit({ type: 'thinking', content: thinkingContent, conversationId: state.conversationId })
           }
           continue
         }
@@ -128,6 +144,7 @@ export function createStreamLLMNode(deps: GraphDependencies) {
             type: 'chunk',
             content,
             model: { id: state.modelId, name: state.modelName },
+            conversationId: state.conversationId,
           })
         }
       }
@@ -187,7 +204,25 @@ export function createStreamLLMNode(deps: GraphDependencies) {
       logger.warn('[ChatGraph] 输出因内容审核被拦截', { conversationId: state.conversationId, finishReason })
     }
 
-    logger.info('[ChatGraph] streamLLM 完成', { userTokens, userTotalTokens, totalTokens, completionTokens, reasoningTokens, finishReason })
+    let toolCalls: ToolCall[] | undefined
+
+    if (finishReason === 'tool_calls' && toolCallChunks.size > 0) {
+      toolCalls = Array.from(toolCallChunks.values())
+        .filter(tc => tc.id && tc.name)
+        .map(tc => ({
+          id: tc.id,
+          type: 'function' as const,
+          function: { name: tc.name, arguments: tc.args },
+        }))
+
+      logger.info('[ChatGraph] LLM 请求调工具', {
+        conversationId: state.conversationId,
+        toolCount: toolCalls.length,
+        tools: toolCalls.map(t => t.function.name),
+      })
+    }
+
+    logger.info('[ChatGraph] streamLLM 完成', { userTokens, userTotalTokens, totalTokens, completionTokens, reasoningTokens, finishReason, toolCount: toolCalls?.length })
 
     return {
       fullContent,
@@ -197,6 +232,7 @@ export function createStreamLLMNode(deps: GraphDependencies) {
       completionTokens,
       reasoningTokens,
       finishReason,
+      toolCalls,
     }
   }
 }

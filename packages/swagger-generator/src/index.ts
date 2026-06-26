@@ -1,5 +1,6 @@
 import * as fs from 'fs'
 import * as path from 'path'
+import * as ts from 'typescript'
 import { parse as parseComments } from 'comment-parser'
 
 interface SSEEventType {
@@ -59,11 +60,6 @@ let swaggerConfig: {
   }
   tagMap?: Record<string, string>
   tags?: Record<string, { name: string; description: string }>
-  responseWrapper?: {
-    successField?: string
-    dataField?: string
-    properties?: Record<string, any>
-  }
   responseWrappers?: {
     success?: string
     error?: string
@@ -73,7 +69,6 @@ let swaggerConfig: {
     apiDir: string
     typesFile: string
     outputFile: string
-    llmYamlFile: string
     errorsFile: string
   }
 }
@@ -109,6 +104,321 @@ function generateTagMap(apiDir: string): { tagMap: Record<string, string>; tagDe
   }
 
   return { tagMap, tagDefs }
+}
+
+const HTTP_METHODS = new Set(['GET', 'POST', 'PUT', 'DELETE', 'PATCH'])
+
+function isHttpMethod(name: string): boolean {
+  return HTTP_METHODS.has(name.toUpperCase())
+}
+
+function hasExportModifier(node: ts.Node): boolean {
+  if (ts.canHaveModifiers(node)) {
+    const modifiers = ts.getModifiers(node)
+    if (modifiers) {
+      for (const m of modifiers) {
+        if (m.kind === ts.SyntaxKind.ExportKeyword) return true
+      }
+    }
+  }
+  return false
+}
+
+function extractHttpMethods(sourceFile: ts.SourceFile): string[] {
+  const methods = new Set<string>()
+
+  for (const stmt of sourceFile.statements) {
+    if (ts.isFunctionDeclaration(stmt) && stmt.name && isHttpMethod(stmt.name.text) && hasExportModifier(stmt)) {
+      methods.add(stmt.name.text)
+      continue
+    }
+    if (ts.isVariableStatement(stmt) && hasExportModifier(stmt)) {
+      for (const decl of stmt.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && isHttpMethod(decl.name.text)) {
+          methods.add(decl.name.text)
+        }
+      }
+      continue
+    }
+    if (ts.isExportAssignment(stmt)) {
+      const expr = stmt.expression
+      if (ts.isCallExpression(expr) && ts.isIdentifier(expr.expression)) {
+        const calleeName = expr.expression.text
+        if (calleeName === 'createApiHandler') {
+          const detected = extractMethodsFromCreateApiHandler(expr)
+          for (const m of detected) methods.add(m)
+        } else if (calleeName === 'withMiddleware') {
+          const detected = extractMethodsFromHandlerBody(expr)
+          for (const m of detected) methods.add(m)
+        }
+      }
+    }
+  }
+
+  return [...methods]
+}
+
+function extractMethodsFromCreateApiHandler(call: ts.CallExpression): string[] {
+  const methods: string[] = []
+  const objArg = call.arguments[0]
+  if (!objArg || !ts.isObjectLiteralExpression(objArg)) return methods
+
+  for (const prop of objArg.properties) {
+    if (!ts.isPropertyAssignment(prop)) continue
+    const nameNode = prop.name
+    if (!ts.isIdentifier(nameNode)) continue
+
+    if (nameNode.text === 'methods' && ts.isArrayLiteralExpression(prop.initializer)) {
+      for (const el of prop.initializer.elements) {
+        if (ts.isStringLiteral(el)) methods.push(el.text.toUpperCase())
+      }
+    }
+
+    if (nameNode.text === 'handler') {
+      const handlerMethods = extractMethodsFromHandlerBody(prop.initializer)
+      for (const m of handlerMethods) {
+        if (!methods.includes(m)) methods.push(m)
+      }
+    }
+  }
+
+  return methods
+}
+
+function extractMethodsFromHandlerBody(node: ts.Node): string[] {
+  const methods: string[] = []
+  const seen = new Set<string>()
+
+  function walk(n: ts.Node) {
+    if (ts.isCallExpression(n)) {
+      const callee = n.expression
+      if (ts.isIdentifier(callee) && callee.text === 'apiHandler' && n.arguments.length >= 4) {
+        const lastArg = n.arguments[n.arguments.length - 1]
+        if (ts.isObjectLiteralExpression(lastArg)) {
+          for (const prop of lastArg.properties) {
+            let propName: string | undefined
+            if (ts.isPropertyAssignment(prop) && ts.isIdentifier(prop.name)) propName = prop.name.text
+            else if (ts.isMethodDeclaration(prop) && ts.isIdentifier(prop.name)) propName = prop.name.text
+            else if (ts.isShorthandPropertyAssignment(prop) && ts.isIdentifier(prop.name)) propName = prop.name.text
+            if (propName && isHttpMethod(propName) && !seen.has(propName)) {
+              seen.add(propName)
+              methods.push(propName.toUpperCase())
+            }
+          }
+        }
+      }
+    }
+    if (ts.isBinaryExpression(n)) {
+      if (ts.isPropertyAccessExpression(n.left) &&
+          ts.isIdentifier(n.left.expression) && n.left.expression.text === 'req' &&
+          n.left.name.text === 'method' &&
+          ts.isStringLiteral(n.right) &&
+          isHttpMethod(n.right.text) &&
+          (n.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsToken ||
+           n.operatorToken.kind === ts.SyntaxKind.ExclamationEqualsEqualsToken) &&
+          !seen.has(n.right.text.toUpperCase())) {
+        seen.add(n.right.text.toUpperCase())
+        methods.push(n.right.text.toUpperCase())
+      }
+    }
+    ts.forEachChild(n, walk)
+  }
+
+  walk(node)
+  return methods
+}
+
+function findFirstMethodHandler(sourceFile: ts.SourceFile, method: string): ts.Node | undefined {
+  let result: ts.Node | undefined
+
+  function walk(n: ts.Node) {
+    if (result) return
+
+    if (ts.isFunctionDeclaration(n) && n.name && n.name.text === method && hasExportModifier(n)) {
+      result = n
+      return
+    }
+
+    if (ts.isVariableStatement(n) && hasExportModifier(n)) {
+      for (const decl of n.declarationList.declarations) {
+        if (ts.isIdentifier(decl.name) && decl.name.text === method) {
+          result = decl
+          return
+        }
+      }
+    }
+
+    if (ts.isExportAssignment(n) && ts.isCallExpression(n.expression) && ts.isIdentifier(n.expression.expression)) {
+      const calleeName = n.expression.expression.text
+      if (calleeName === 'createApiHandler') {
+        result = n.expression
+        return
+      }
+      if (calleeName === 'withMiddleware') {
+        result = n.expression
+        return
+      }
+    }
+
+    ts.forEachChild(n, walk)
+  }
+
+  walk(sourceFile)
+  return result
+}
+
+function collectQueryParamUsage(node: ts.Node): Set<string> {
+  const params = new Set<string>()
+
+  function walk(n: ts.Node) {
+    if (ts.isPropertyAccessExpression(n)) {
+      const nExpr = n.expression
+      if (ts.isPropertyAccessExpression(nExpr)) {
+        const obj = nExpr.expression
+        if (ts.isIdentifier(obj) && obj.text === 'req' && nExpr.name.text === 'query' && ts.isIdentifier(n.name)) {
+          if (n.name.text !== 'id') params.add(n.name.text)
+        }
+        return
+      }
+    }
+    if (ts.isCallExpression(n)) {
+      const nExpr = n.expression
+      if (ts.isPropertyAccessExpression(nExpr) && nExpr.name.text === 'get') {
+        const innerCall = nExpr.expression
+        if (ts.isCallExpression(innerCall) && n.arguments.length === 1 && ts.isStringLiteral(n.arguments[0])) {
+          const receiver = innerCall.expression
+          if (ts.isPropertyAccessExpression(receiver) && receiver.name.text === 'searchParams') {
+            const val = n.arguments[0].text
+            if (val !== 'id') params.add(val)
+          }
+        }
+      }
+    }
+    if (ts.isVariableDeclaration(n) && ts.isObjectBindingPattern(n.name) && n.initializer) {
+      let init = n.initializer
+      if (ts.isAwaitExpression(init)) init = init.expression
+      if (ts.isPropertyAccessExpression(init) &&
+          ts.isIdentifier(init.expression) && init.expression.text === 'req' &&
+          init.name.text === 'query') {
+        for (const element of n.name.elements) {
+          if (ts.isBindingElement(element) && ts.isIdentifier(element.name)) {
+            if (element.name.text !== 'id') params.add(element.name.text)
+          }
+        }
+      }
+    }
+    ts.forEachChild(n, walk)
+  }
+
+  walk(node)
+  return params
+}
+
+function extractTypeNamesFromTypeNode(type: ts.TypeNode): string[] {
+  if (ts.isTypeReferenceNode(type) && ts.isIdentifier(type.typeName)) {
+    return [type.typeName.text]
+  }
+  if (ts.isUnionTypeNode(type)) {
+    const names: string[] = []
+    for (const t of type.types) {
+      if (ts.isTypeReferenceNode(t) && ts.isIdentifier(t.typeName)) {
+        names.push(t.typeName.text)
+      }
+    }
+    return names
+  }
+  return []
+}
+
+function extractRequestBodyInfo(node: ts.Node): { type: string; requiredFields?: string[] } | undefined {
+  let typeName: string | undefined
+
+  function walk(n: ts.Node) {
+    if (typeName) return
+
+    if (ts.isAsExpression(n) &&
+        ts.isPropertyAccessExpression(n.expression) &&
+        ts.isIdentifier(n.expression.expression) && n.expression.expression.text === 'req' &&
+        n.expression.name.text === 'body') {
+      const names = extractTypeNamesFromTypeNode(n.type)
+      if (names.length > 0) {
+        typeName = names.join(' | ')
+        return
+      }
+    }
+
+    if (ts.isVariableDeclaration(n) && n.initializer) {
+      let init = n.initializer
+      if (ts.isAwaitExpression(init)) init = init.expression
+      let isBodySource = false
+      if (ts.isCallExpression(init) &&
+          ts.isPropertyAccessExpression(init.expression) &&
+          ts.isIdentifier(init.expression.expression) && init.expression.expression.text === 'req' &&
+          (init.expression.name.text === 'json' || init.expression.name.text === 'body')) {
+        isBodySource = true
+      }
+      if (ts.isIdentifier(init) && init.text === 'req') {
+        isBodySource = true
+      }
+      if (ts.isPropertyAccessExpression(init) &&
+          ts.isIdentifier(init.expression) && init.expression.text === 'req' &&
+          (init.name.text === 'body' || init.name.text === 'json')) {
+        isBodySource = true
+      }
+      if (isBodySource && n.type) {
+        const names = extractTypeNamesFromTypeNode(n.type)
+        if (names.length > 0) {
+          typeName = names.join(' | ')
+          return
+        }
+      }
+    }
+
+    ts.forEachChild(n, walk)
+  }
+
+  walk(node)
+
+  if (!typeName) {
+    return undefined
+  }
+
+  let requiredFields: string[] | undefined
+
+  function collectFields(n: ts.Node) {
+    if (requiredFields) return
+    if (ts.isVariableDeclaration(n) && n.initializer) {
+      let init = n.initializer
+      if (ts.isAwaitExpression(init)) init = init.expression
+      if (ts.isPropertyAccessExpression(init) &&
+          ts.isIdentifier(init.expression) && init.expression.text === 'req' &&
+          init.name.text === 'body' &&
+          ts.isObjectBindingPattern(n.name)) {
+        requiredFields = n.name.elements
+          .map(el => {
+            if (ts.isBindingElement(el) && ts.isIdentifier(el.name)) return el.name.text
+            return undefined
+          })
+          .filter((f): f is string => {
+            if (f === undefined) return false
+            if (f.startsWith('_')) return false
+            return true
+          })
+      }
+    }
+    ts.forEachChild(n, collectFields)
+  }
+
+  collectFields(node)
+
+  const result: { type: string; requiredFields?: string[] } = { type: typeName }
+  if (requiredFields) {
+    if (requiredFields.length > 0) {
+      result.requiredFields = requiredFields
+    }
+  }
+
+  return result
 }
 
 interface JSDocResponseEntry {
@@ -148,6 +458,9 @@ function parseJSDoc(content: string): ParsedJSDoc {
   }
   result.summary = descLines[0].trim()
   result.description = result.summary
+  if (result.summary.length > 150) {
+    throw new Error(`JSDoc 描述过长（${result.summary.length} 字符），超过最大限制 150 字符。JSDoc 描述应仅包含 API 摘要信息，禁止混入内部开发备注或警告`)
+  }
 
   function d(text: string): string {
     return text.startsWith('- ') ? text.slice(2) : text
@@ -229,6 +542,7 @@ function parseApiFile(filePath: string, apiDir: string, tagMap: Record<string, s
   const apiPath = ('/api/' + relativePath.replace(/\\/g, '/').replace(/\.ts$/, '').replace(/\[(\w+)\]/g, '{$1}')).replace(/\/route$/, '')
 
   const content = fs.readFileSync(filePath, 'utf-8')
+  const sourceFile = ts.createSourceFile(filePath, content, ts.ScriptTarget.Latest, true)
   const endpoints: ApiEndpoint[] = []
   const jsdoc = parseJSDoc(content)
 
@@ -241,54 +555,10 @@ function parseApiFile(filePath: string, apiDir: string, tagMap: Record<string, s
     throw new Error(`Tag key ${tagKey} 在 tagMap 中不存在`)
   }
 
-  const appRouterRe = /export\s+async\s+function\s+(GET|POST|PUT|DELETE)\s*\(/g
-  let appMatch
-  while ((appMatch = appRouterRe.exec(content)) !== null) {
-    endpoints.push(parseEndpoint(apiPath, appMatch[1], content, tag, jsdoc))
-  }
+  const methods = extractHttpMethods(sourceFile)
 
-  if (endpoints.length > 0) {
-    return endpoints
-  }
-
-  const createApiHandlerMatch = content.match(/createApiHandler<[^>]*>\(\{[^}]*methods:\s*\[([^\]]*)\]/)
-  if (createApiHandlerMatch) {
-    const methods = createApiHandlerMatch[1].split(',').map(m => m.trim().replace(/['"]/g, '')).filter(Boolean)
-
-    for (const method of methods) {
-      endpoints.push(parseEndpoint(apiPath, method.toUpperCase(), content, tag, jsdoc))
-    }
-  }
-
-  if (content.includes('apiHandler(') && !content.includes('methods:')) {
-    const handlerMethods = ['GET', 'POST', 'PUT', 'DELETE']
-    for (const m of handlerMethods) {
-      if (new RegExp(`\\b${m}:\\s*async`).test(content)) {
-        endpoints.push(parseEndpoint(apiPath, m, content, tag, jsdoc))
-      }
-    }
-  }
-
-  if (!createApiHandlerMatch && !content.includes('apiHandler(')) {
-    const methodMatches = content.match(/methods:\s*\[['"]?([\w'"\s,]+)['"]?\]/)
-    if (methodMatches) {
-      const methods = methodMatches[1].split(',').map(m => m.trim().replace(/['"]/g, '')).filter(Boolean)
-      for (const method of methods) {
-        endpoints.push(parseEndpoint(apiPath, method.toUpperCase(), content, tag, jsdoc))
-      }
-    } else if (content.match(/req\.method\s*!==?\s*['"](\w+)['"]/)) {
-      const methodMatch = content.match(/req\.method\s*!==?\s*['"](\w+)['"]/)
-      if (methodMatch) {
-        endpoints.push(parseEndpoint(apiPath, methodMatch[1], content, tag, jsdoc))
-      }
-    } else if (content.includes('export default async function handler')) {
-      const handlerMethods = ['GET', 'POST', 'PUT', 'DELETE']
-      for (const m of handlerMethods) {
-        if (new RegExp(`\\b${m}:\\s*async|if\\s*\\(req\\.method\\s*===?\\s*['"]${m}['"]\\)|req\\.method\\s*!==?\\s*['"]${m}['"]`).test(content)) {
-          endpoints.push(parseEndpoint(apiPath, m, content, tag, jsdoc))
-        }
-      }
-    }
+  for (const method of methods) {
+    endpoints.push(parseEndpoint(apiPath, method, sourceFile, content, tag, jsdoc))
   }
 
   return endpoints
@@ -297,6 +567,7 @@ function parseApiFile(filePath: string, apiDir: string, tagMap: Record<string, s
 function parseEndpoint(
   apiPath: string,
   method: string,
+  sourceFile: ts.SourceFile,
   content: string,
   tag: string,
   jsdoc: ParsedJSDoc
@@ -312,84 +583,34 @@ function parseEndpoint(
 
   const pathParams = apiPath.match(/\{(\w+)\}/g)
   if (pathParams) {
-    const paramNames = pathParams.map(p => p.slice(1, -1))
-    const pagesParamMatch = content.match(/req\.query\.(\w+)/)
-    const appRouterParams = content.match(/\{\s*params\s*\}:\s*\{([^}]+)\}/)
-    const resolvedNames = paramNames.map(name => {
-      if (appRouterParams) {
-        const matchedParam = appRouterParams[1].match(new RegExp(`\\b${name}\\b`))
-        if (matchedParam) return name
-      }
-      return name
-    })
-    endpoint.params = paramNames.map(name => ({ name, description: name, type: 'string' }))
+    endpoint.params = pathParams.map(p => ({ name: p.slice(1, -1), description: p.slice(1, -1), type: 'string' }))
   }
 
-  if (['POST', 'PUT'].includes(method)) {
-    const reqBodyMatches = content.match(/as (\w+Request)/g)
-    if (reqBodyMatches && reqBodyMatches.length > 1) {
-      const typeNames = reqBodyMatches.map(m => m.replace('as ', ''))
-      endpoint.requestBody = { type: typeNames.join(' | ') }
-    } else {
-      const reqBodyMatch = content.match(/as (\w+Request)/)
-      if (reqBodyMatch) {
-        endpoint.requestBody = { type: reqBodyMatch[1] }
-      }
+  if (['POST', 'PUT', 'PATCH'].includes(method)) {
+    const handlerNode = findFirstMethodHandler(sourceFile, method)
+    const searchNode = handlerNode || sourceFile
+    const bodyInfo = extractRequestBodyInfo(searchNode)
+    if (bodyInfo) {
+      endpoint.requestBody = bodyInfo
     }
-
-    if (endpoint.requestBody) {
-      const bodyDestructure = content.match(/const \{([^}]+)\}\s*=\s*req\.body/)
-      if (bodyDestructure) {
-        endpoint.requestBody.requiredFields = bodyDestructure[1]
-          .split(',')
-          .map(f => f.trim().split(':')[0]?.trim())
-          .filter(f => f && !f.startsWith('_'))
-      }
-    }
-
     if (!endpoint.requestBody) {
-      const appRouterBody = content.match(/\.json\(\)\s+as\s+(\w+Request)/)
-      if (appRouterBody) {
-        endpoint.requestBody = { type: appRouterBody[1] }
-      }
-    }
-
-    const inlineBodyMatch = content.match(/const \{([^}]+)\}\s*=\s*req\.body/)
-    if (inlineBodyMatch && !endpoint.requestBody) {
-      const fields = inlineBodyMatch[1]
-        .split(',')
-        .map(f => f.trim())
-        .filter(f => f && !f.startsWith('_'))
-      endpoint.requestBody = {
-        type: 'InlineRequestBody',
-        requiredFields: fields.map(f => f.split(/[=:]/)[0]?.trim()).filter(Boolean)
+      const hasBodyUsage = content.match(/req\.body/)
+      if (hasBodyUsage) {
+        throw new Error(`[${method} ${apiPath}] 使用了 req.body 但缺少类型标注。请在变量声明（如 \`const body: XxxRequest = req.body\`）或类型断言（如 \`req.body as XxxRequest\`）中标注请求体类型`)
       }
     }
   }
 
   const queryDescriptions: Record<string, { description: string; type: string; default?: unknown }> = {}
-
   const codeQueryParams = new Set<string>()
 
-  const queryParamRegex = /req\.query\.(\w+)\s*(?:[^,\n)]*)/g
-  let queryMatch
-  while ((queryMatch = queryParamRegex.exec(content)) !== null) {
-    const paramName = queryMatch[1]
-    if (paramName === 'id') continue
-    codeQueryParams.add(paramName)
-    if (jsdoc.queryParams[paramName]) {
-      queryDescriptions[paramName] = jsdoc.queryParams[paramName]
-    }
-  }
-
-  const appRouterQueryRe = /\.searchParams\.get\(['"](\w+)['"]\)/g
-  let appQueryMatch
-  while ((appQueryMatch = appRouterQueryRe.exec(content)) !== null) {
-    const paramName = appQueryMatch[1]
-    if (paramName === 'id') continue
-    codeQueryParams.add(paramName)
-    if (jsdoc.queryParams[paramName] && !queryDescriptions[paramName]) {
-      queryDescriptions[paramName] = jsdoc.queryParams[paramName]
+  const handlerNode = findFirstMethodHandler(sourceFile, method)
+  const searchNode = handlerNode || sourceFile
+  const usedQueries = collectQueryParamUsage(searchNode)
+  for (const q of usedQueries) {
+    codeQueryParams.add(q)
+    if (jsdoc.queryParams[q]) {
+      queryDescriptions[q] = jsdoc.queryParams[q]
     }
   }
 
@@ -429,126 +650,201 @@ function parseEndpoint(
   return endpoint
 }
 
-function parsePropertyExamples(body: string): Record<string, unknown> {
-  const result: Record<string, unknown> = {}
-  const lines = body.split('\n')
-  let commentBlock: string[] = []
-  let inComment = false
-
-  for (const rawLine of lines) {
-    const line = rawLine.trim()
-
-    if (line.startsWith('/**')) {
-      inComment = true
-      commentBlock = [line]
-      if (line.includes('*/')) {
-        inComment = false
-        const fullComment = commentBlock.join(' ')
-        const cleaned = fullComment.replace(/\/\*+/g, '').replace(/\*+\//g, '').trim()
-        const exampleMatch = cleaned.match(/@example\s+(\S[^*]*)/)
-        if (exampleMatch) {
-          result.__pending = exampleMatch[1].trim()
-        }
-        commentBlock = []
-      }
-      continue
-    }
-
-    if (inComment) {
-      commentBlock.push(line)
-      if (line.includes('*/')) {
-        inComment = false
-        const fullComment = commentBlock.join(' ')
-        const cleaned = fullComment.replace(/\/\*+/g, '').replace(/\*+\//g, '').trim()
-        const exampleMatch = cleaned.match(/@example\s+(\S[^*]*)/)
-        if (exampleMatch) {
-          result.__pending = exampleMatch[1].trim()
-        }
-        commentBlock = []
-      }
-      continue
-    }
-
-    const propMatch = line.match(/^(\w+)(\?)?\s*:/)
-    if (propMatch && result.__pending !== undefined) {
-      const propName = propMatch[1]
-      const raw = String(result.__pending)
-      delete result.__pending
-      try {
-        result[propName] = JSON.parse(raw)
-      } catch {
-        throw new Error(`@example 值无法解析为 JSON: ${raw}`)
-      }
-    } else if (result.__pending !== undefined) {
-      delete result.__pending
-    }
-  }
-
-  return result
-}
-
 function parseTypesFile(typesFilePath: string): { schemas: TypeSchema[]; aliases: TypeAliasSchema[] } {
   const content = fs.readFileSync(typesFilePath, 'utf-8')
+  const sourceFile = ts.createSourceFile(typesFilePath, content, ts.ScriptTarget.Latest, true)
   const schemas: TypeSchema[] = []
   const aliases: TypeAliasSchema[] = []
 
-  const interfaceRegex = /export\s+(interface|type)\s+(\w+)\s*\{([^}]*(?:\{[^}]*\}[^}]*)*)\}/g
+  for (const stmt of sourceFile.statements) {
+    if (!hasExportModifier(stmt)) continue
 
-  let match
-  while ((match = interfaceRegex.exec(content)) !== null) {
-    const name = match[2]
-    const body = match[3]
-
-    const propExamples = parsePropertyExamples(body)
-    const propRegex = /(\w+)(\?)?:\s*([^;\n]+)\s*;?(?:\s*\/\/.*)?$/gm
-    const properties: TypeSchema['properties'] = []
-
-    let propMatch
-    while ((propMatch = propRegex.exec(body)) !== null) {
-      const propName = propMatch[1]
-      const optional = !!propMatch[2]
-      let propType = propMatch[3].trim()
-
-      const arrayMatch = propType.match(/^Array<(.+)>$/)
-      if (arrayMatch) {
-        propType = `array[${arrayMatch[1]}]`
-      }
-
-      const recordMatch = propType.match(/^Record<[^,]+,\s*(.+)>$/)
-      if (recordMatch) {
-        propType = recordMatch[1]
-      }
-
-      const entry: TypeSchema['properties'][0] = {
-        name: propName,
-        type: propType,
-        required: !optional,
-        itemsType: arrayMatch?.[1]
-      }
-
-      if (propExamples[propName] !== undefined) {
-        entry.example = propExamples[propName]
-      }
-
-      properties.push(entry)
+    if (ts.isInterfaceDeclaration(stmt)) {
+      const schema = parseInterfaceDeclaration(stmt)
+      if (schema) schemas.push(schema)
     }
 
-    schemas.push({ name, properties })
-  }
-
-  const aliasRegex = /export\s+type\s+(\w+)\s*=\s*([^;{\n]+)/g
-  let aliasMatch
-  while ((aliasMatch = aliasRegex.exec(content)) !== null) {
-    const name = aliasMatch[1]
-    const valueStr = aliasMatch[2].trim()
-    const values = valueStr.split('|').map(v => v.trim().replace(/'/g, '')).filter(v => v.length > 0)
-    if (values.length === 0) {
-      throw new Error(`类型别名 ${name} 没有有效的枚举值`)
+    if (ts.isTypeAliasDeclaration(stmt)) {
+      const alias = parseTypeAlias(stmt)
+      if (alias) {
+        if (alias.values.length > 0) {
+          aliases.push({ name: alias.name, values: alias.values })
+        } else if (alias.properties) {
+          schemas.push({ name: alias.name, properties: alias.properties })
+        }
+      }
     }
-    aliases.push({ name, values })
+
+    if (ts.isEnumDeclaration(stmt)) {
+      const values: string[] = []
+      for (const member of stmt.members) {
+        if (member.initializer && ts.isStringLiteral(member.initializer)) {
+          values.push(member.initializer.text)
+        } else {
+          values.push(member.name.getText())
+        }
+      }
+      if (values.length > 0) {
+        aliases.push({ name: stmt.name.text, values })
+      }
+    }
   }
 
   return { schemas, aliases }
+}
+
+function parseInterfaceDeclaration(node: ts.InterfaceDeclaration): TypeSchema | undefined {
+  const name = node.name.text
+  const properties: TypeSchema['properties'] = []
+
+  for (const member of node.members) {
+    if (!ts.isPropertySignature(member) || !member.name) continue
+    const propName = member.name.getText()
+    if (!member.type) continue
+
+    const isOptional = !!member.questionToken
+    const typeStr = typeNodeToString(member.type)
+
+    const entry: TypeSchema['properties'][0] = {
+      name: propName,
+      type: typeStr,
+      required: !isOptional
+    }
+
+    const arrayMatch = typeStr.match(/^Array<(.+)>$/)
+    if (arrayMatch) {
+      entry.itemsType = arrayMatch[1]
+    }
+
+    const jsdocTags = ts.getJSDocTags(member)
+    for (const tag of jsdocTags) {
+      if (tag.tagName.text === 'example' && typeof tag.comment === 'string') {
+        const raw = tag.comment.trim()
+        try {
+          entry.example = JSON.parse(raw)
+        } catch {
+          throw new Error(`@example 值无法解析为 JSON: ${raw}`)
+        }
+      }
+    }
+
+    properties.push(entry)
+  }
+
+  return { name, properties }
+}
+
+function parseTypeAlias(node: ts.TypeAliasDeclaration): {
+  name: string; values: string[]; properties?: TypeSchema['properties']
+} | undefined {
+  const name = node.name.text
+
+  if (ts.isUnionTypeNode(node.type)) {
+    const hasEnumPattern = node.type.types.every(t => ts.isLiteralTypeNode(t) && (ts.isStringLiteral(t.literal) || ts.isNoSubstitutionTemplateLiteral(t.literal)))
+    if (hasEnumPattern) {
+      const values = node.type.types.map(t => {
+        const lit = (t as ts.LiteralTypeNode).literal
+        if (ts.isStringLiteral(lit)) return lit.text
+        if (ts.isNoSubstitutionTemplateLiteral(lit)) return lit.text
+        return ''
+      }).filter(v => v.length > 0)
+      if (values.length > 0) return { name, values }
+    }
+  }
+
+  if (ts.isTypeLiteralNode(node.type)) {
+    const properties: TypeSchema['properties'] = []
+    for (const member of node.type.members) {
+      if (!ts.isPropertySignature(member) || !member.name) continue
+      const propName = member.name.getText()
+      if (!member.type) continue
+      const isOptional = !!member.questionToken
+      const typeStr = typeNodeToString(member.type)
+      const entry: TypeSchema['properties'][0] = { name: propName, type: typeStr, required: !isOptional }
+      const arrayMatch = typeStr.match(/^Array<(.+)>$/)
+      if (arrayMatch) entry.itemsType = arrayMatch[1]
+      const jsdocTags = ts.getJSDocTags(member)
+      for (const tag of jsdocTags) {
+        if (tag.tagName.text === 'example' && typeof tag.comment === 'string') {
+          const raw = tag.comment.trim()
+          try {
+            entry.example = JSON.parse(raw)
+          } catch {
+            throw new Error(`@example 值无法解析为 JSON: ${raw}`)
+          }
+        }
+      }
+      properties.push(entry)
+    }
+    return { name, values: [], properties }
+  }
+
+  return { name: '', values: [] }
+}
+
+function typeNodeToString(type: ts.TypeNode): string {
+  const kind = type.kind
+
+  if (kind === ts.SyntaxKind.StringKeyword) return 'string'
+  if (kind === ts.SyntaxKind.NumberKeyword) return 'number'
+  if (kind === ts.SyntaxKind.BooleanKeyword) return 'boolean'
+  if (kind === ts.SyntaxKind.AnyKeyword) return 'unknown'
+  if (kind === ts.SyntaxKind.UnknownKeyword) return 'unknown'
+  if (kind === ts.SyntaxKind.NullKeyword) return 'null'
+  if (kind === ts.SyntaxKind.VoidKeyword) return 'void'
+
+  if (ts.isArrayTypeNode(type)) {
+    return `Array<${typeNodeToString(type.elementType)}>`
+  }
+
+  if (ts.isTypeReferenceNode(type)) {
+    const typeName = ts.isIdentifier(type.typeName) ? type.typeName.text : type.typeName.getText()
+    if (typeName === 'Record' && type.typeArguments && type.typeArguments.length === 2) {
+      return typeNodeToString(type.typeArguments[1])
+    }
+    if (type.typeArguments && type.typeArguments.length > 0) {
+      const args = type.typeArguments.map(t => typeNodeToString(t)).join(', ')
+      return `${typeName}<${args}>`
+    }
+    return typeName
+  }
+
+  if (ts.isUnionTypeNode(type)) {
+    const parts = type.types.map(t => typeNodeToString(t))
+    const allStrings = parts.every(p => p.startsWith("'") || p === 'string')
+    if (allStrings) {
+      const values = parts.map(p => p.replace(/'/g, ''))
+      return values.join(' | ')
+    }
+    return parts.join(' | ')
+  }
+
+  if (ts.isLiteralTypeNode(type)) {
+    if (ts.isStringLiteral(type.literal)) return `'${type.literal.text}'`
+    if (ts.isNumericLiteral(type.literal)) return type.literal.text
+    if (type.literal.kind === ts.SyntaxKind.TrueKeyword) return 'true'
+    if (type.literal.kind === ts.SyntaxKind.FalseKeyword) return 'false'
+    return type.literal.getText()
+  }
+
+  if (ts.isTupleTypeNode(type)) {
+    const parts = type.elements.map(t => typeNodeToString(t))
+    return `[${parts.join(', ')}]`
+  }
+
+  if (kind === ts.SyntaxKind.TypeLiteral) {
+    return 'object'
+  }
+
+  if (ts.isIntersectionTypeNode(type)) {
+    return type.types.map(t => typeNodeToString(t)).join(' & ')
+  }
+
+  if (ts.isParenthesizedTypeNode(type)) {
+    return typeNodeToString(type.type)
+  }
+
+  return type.getText()
 }
 
 function getUsedTypes(endpoints: ApiEndpoint[], allTypes: TypeSchema[]): TypeSchema[] {
@@ -556,14 +852,17 @@ function getUsedTypes(endpoints: ApiEndpoint[], allTypes: TypeSchema[]): TypeSch
 
   for (const ep of endpoints) {
     if (ep.requestBody?.type) {
-      for (const typeName of ep.requestBody.type.split(' | ').filter(Boolean)) {
+      const typeStr = ep.requestBody.type
+      const parts = typeStr.split(' | ').filter(Boolean)
+      for (const typeName of parts) {
         directRefs.add(typeName)
       }
     }
 
     for (const [, resp] of Object.entries(ep.responses)) {
       if (resp.type) {
-        for (const typeName of resp.type.split(' | ').filter(Boolean)) {
+        const parts = resp.type.split(' | ').filter(Boolean)
+        for (const typeName of parts) {
           const baseType = typeName.replace(/\[\]$/, '')
           directRefs.add(baseType)
         }
@@ -607,14 +906,20 @@ function isCustomType(typeName: string, allTypes: TypeSchema[]): boolean {
   return allTypes.some(t => t.name === typeName)
 }
 
-function typeToSwaggerType(typeStr: string, types?: TypeSchema[], aliases?: TypeAliasSchema[]): { type: string; items?: any; enum?: string[]; $ref?: string } {
+function typeToSwaggerType(typeStr: string, types?: TypeSchema[], aliases?: TypeAliasSchema[]): { type?: string; items?: any; enum?: string[]; $ref?: string; nullable?: boolean } {
   const baseMap: Record<string, string> = {
     'string': 'string',
     'number': 'number',
     'integer': 'integer',
     'boolean': 'boolean',
+    'object': 'object',
     'Date': 'string',
     'unknown': 'object'
+  }
+
+  const arrayAngleMatch = typeStr.match(/^Array<(.+)>$/)
+  if (arrayAngleMatch) {
+    return { type: 'array', items: typeToSwaggerType(arrayAngleMatch[1], types, aliases) }
   }
 
   if (typeStr.startsWith('array[')) {
@@ -628,8 +933,23 @@ function typeToSwaggerType(typeStr: string, types?: TypeSchema[], aliases?: Type
   }
 
   if (typeStr.includes('|')) {
-    const enumValues = typeStr.split('|').map(v => v.trim().replace(/'/g, ''))
-    return { type: 'string', enum: enumValues.filter(v => !v.match(/^[A-Z][a-z]/)) }
+    const parts = typeStr.split('|').map(v => v.trim().replace(/'/g, ''))
+    const filtered = parts.filter(v => {
+      if (!v) return false
+      if (v === 'null' || v === 'undefined') return false
+      if (/^[a-z]/.test(v) && ['string', 'number', 'boolean'].includes(v)) return false
+      if (/^[A-Z]/.test(v)) return false
+      return true
+    })
+    if (filtered.length > 0) {
+      return { type: 'string', enum: filtered }
+    }
+    // 处理 "string | null" / "number | null" / "boolean | null" 等可空类型
+    const nonNullParts = parts.filter(v => v !== 'null' && v !== 'undefined')
+    if (nonNullParts.length === 1) {
+      const base = typeToSwaggerType(nonNullParts[0], types, aliases)
+      return { ...base, nullable: true }
+    }
   }
 
   if (aliases) {
@@ -640,7 +960,7 @@ function typeToSwaggerType(typeStr: string, types?: TypeSchema[], aliases?: Type
   }
 
   if (types && isCustomType(typeStr, types)) {
-    return { type: 'string', $ref: `#/components/schemas/${typeStr}` }
+    return { $ref: `#/components/schemas/${typeStr}` }
   }
 
   const mapped = baseMap[typeStr]
@@ -673,7 +993,7 @@ function resolveErrorCodes(schema: any, errorCodes: string[]): any {
   return schema
 }
 
-function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases: TypeAliasSchema[], errorCodes: string[], wrapperConfig?: { successField?: string; dataField?: string; properties?: Record<string, any> }, responseWrappers?: { success?: string; error?: string }, responseWrapperSchemas?: Record<string, any>): object {
+function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases: TypeAliasSchema[], errorCodes: string[], responseWrappers?: { success?: string; error?: string }, responseWrapperSchemas?: Record<string, any>): object {
   const paths: Record<string, any> = {}
   const components: Record<string, any> = { schemas: {} }
 
@@ -685,6 +1005,14 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
   }
   if (responseWrappers && !errorWrapper) {
     throw new Error('responseWrappers.error 必须配置')
+  }
+  if (responseWrapperSchemas) {
+    if (successWrapper && !responseWrapperSchemas[successWrapper] && !isPrimitiveWrapper(successWrapper)) {
+      throw new Error(`responseWrappers.success 引用了 schema "${successWrapper}"，但 responseWrapperSchemas 中未定义`)
+    }
+    if (errorWrapper && !responseWrapperSchemas[errorWrapper] && !isPrimitiveWrapper(errorWrapper)) {
+      throw new Error(`responseWrappers.error 引用了 schema "${errorWrapper}"，但 responseWrapperSchemas 中未定义`)
+    }
   }
 
   const usedWrappers = new Set<string>()
@@ -733,9 +1061,13 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
       })))
     }
 
-    if (ep.requestBody && ['POST', 'PUT'].includes(ep.method)) {
+    if (ep.requestBody && ['POST', 'PUT', 'PATCH'].includes(ep.method)) {
       const typeNames = ep.requestBody.type.split(' | ').filter(Boolean)
       const matchedTypes = typeNames.map(name => types.find(t => t.name === name)).filter(Boolean) as TypeSchema[]
+
+      if (matchedTypes.length === 0) {
+        throw new Error(`[${ep.method} ${ep.path}] 请求体类型 "${typeNames.join(', ')}" 未在类型定义中找到，请在 JSDoc @response 或代码中标注正确的请求体类型`)
+      }
 
       let schema: any
       if (matchedTypes.length > 1) {
@@ -743,10 +1075,8 @@ function generateOpenAPI(endpoints: ApiEndpoint[], types: TypeSchema[], aliases:
           oneOf: matchedTypes.map(t => ({ $ref: `#/components/schemas/${t.name}` })),
           description: `支持多种请求体格式: ${typeNames.join(', ')}`
         }
-      } else if (matchedTypes.length === 1) {
-        schema = { $ref: `#/components/schemas/${matchedTypes[0].name}` }
       } else {
-        throw new Error(`[${ep.method} ${ep.path}] 请求体类型 "${typeNames.join(', ')}" 未在类型定义中找到`)
+        schema = { $ref: `#/components/schemas/${matchedTypes[0].name}` }
       }
 
       const reqExample = matchedTypes.length === 1
@@ -873,192 +1203,6 @@ function scanDir(dir: string): string[] {
   return files
 }
 
-function generateLLMYaml(endpoints: ApiEndpoint[], types: TypeSchema[], aliases: TypeAliasSchema[]): string {
-  const lines: string[] = []
-
-  const apiTitle = swaggerConfig?.openapi?.info?.title
-  if (!apiTitle) {
-    throw new Error('swagger.config.json 缺少 openapi.info.title 配置')
-  }
-  lines.push(`# ${apiTitle} Reference (for LLM)`)
-  lines.push('# 自动生成的精简文档，供大模型理解 API 结构')
-  lines.push('')
-  lines.push('---')
-  lines.push('')
-
-  const tagGroups = groupByTag(endpoints)
-
-  for (const [tag, eps] of Object.entries(tagGroups)) {
-    lines.push(`## ${tag}`)
-    lines.push('')
-
-    for (const ep of eps.sort((a, b) => a.path.localeCompare(b.path))) {
-      lines.push(`### ${ep.method} ${ep.path}`)
-
-      if (ep.summary && !ep.summary.startsWith(`${ep.method}`)) {
-        lines.push(`${ep.summary}`)
-      }
-      lines.push('')
-
-      const usedTypes: string[] = []
-      if (ep.requestBody?.type && types.find(t => t.name === ep.requestBody!.type)) {
-        usedTypes.push(`${ep.requestBody.type} (请求)`)
-      }
-
-      const respTypes = new Set<string>()
-      for (const [, resp] of Object.entries(ep.responses)) {
-        if (resp.type && !resp.type.startsWith('Error')) {
-          respTypes.add(resp.type)
-        }
-      }
-      for (const t of respTypes) {
-        usedTypes.push(`${t} (响应)`)
-      }
-
-      if (usedTypes.length) {
-        lines.push(`**Types:** ${usedTypes.join(', ')}`)
-        lines.push('')
-      }
-
-      if (ep.params?.length) {
-        lines.push('Path Parameters:')
-        for (const p of ep.params) {
-          lines.push(`  - \`${p.name}\`: ${p.type} (required) - ${p.description}`)
-        }
-        lines.push('')
-      }
-
-      if (ep.query?.length) {
-        lines.push('Query Parameters:')
-        for (const q of ep.query) {
-          const optional = q.default !== undefined
-          const defStr = q.default !== undefined ? ` (默认: ${q.default})` : ''
-          const enumStr = q.enum ? ` [${q.enum.join('|')}]` : ''
-          lines.push(`  - \`${q.name}\`: ${q.type}${optional ? '' : ' (required)'}${enumStr}${defStr} - ${q.description}`)
-        }
-        lines.push('')
-      }
-
-      if (ep.requestBody && ['POST', 'PUT'].includes(ep.method)) {
-        const typeNames = ep.requestBody.type.split(' | ').filter(Boolean)
-        const matchedTypes = typeNames.map(name => types.find(t => t.name === name)).filter(Boolean) as TypeSchema[]
-        lines.push('Request Body:')
-
-        if (matchedTypes.length > 1) {
-          lines.push(`  支持多种请求体格式 (oneOf):`)
-          for (const schemaType of matchedTypes) {
-            lines.push(`  - ${schemaType.name}:`)
-            for (const p of schemaType.properties) {
-              const req = p.required ? ' (required)' : ''
-              lines.push(`      - \`${p.name}\`: ${simplifyType(p.type, aliases)}${req}`)
-            }
-          }
-        } else if (matchedTypes.length === 1) {
-          lines.push(`  type: ${matchedTypes[0].name}`)
-          for (const p of matchedTypes[0].properties) {
-            const req = p.required ? ' (required)' : ''
-            lines.push(`  - \`${p.name}\`: ${simplifyType(p.type, aliases)}${req}`)
-          }
-        } else if (ep.requestBody.requiredFields?.length) {
-          for (const f of ep.requestBody.requiredFields) {
-            lines.push(`  - \`${f}\`: string (required)`)
-          }
-        }
-        lines.push('')
-      }
-
-      lines.push('Response Body:')
-      const respEntries = Object.entries(ep.responses)
-      for (const [code, resp] of respEntries) {
-        const refStr = resp.type ? ` (${resp.type})` : ''
-        if (ep.sse && (code === '200' || Number(code) === 200)) {
-          lines.push(`  ${code}: ${resp.description}（SSE 流式响应）`)
-          lines.push(`    Content-Type: text/event-stream`)
-          lines.push(`    事件格式: data: { type: string, message?: string, data?: object }`)
-          lines.push(`    事件类型:`)
-          for (const evt of ep.sse.eventTypes) {
-            const dataStr = evt.dataType ? ` → ${evt.dataType}` : ''
-            lines.push(`      - ${evt.name}: ${evt.description}${dataStr}`)
-          }
-        } else {
-          lines.push(`  ${code}: ${resp.description}${refStr}`)
-          if (resp.type && !resp.type.startsWith('Error')) {
-            lines.push(`    { success: boolean, data: ${resp.type} }`)
-          }
-        }
-      }
-      lines.push('')
-    }
-
-    lines.push('---')
-    lines.push('')
-  }
-
-  ;(lines as any).append = () => {}
-
-  lines.push('## Data Types')
-  lines.push('')
-
-  for (const t of types) {
-    lines.push(`### ${t.name}`)
-
-    if (t.properties.some(p => p.required)) {
-      lines.push('Required:', t.properties.filter(p => p.required).map(p => p.name).join(', '))
-    }
-
-    lines.push('')
-    for (const p of t.properties) {
-      const req = p.required ? '*' : '?'
-      lines.push(`- \`${p.name}\`${req}: ${simplifyType(p.type, aliases)}`)
-    }
-    lines.push('')
-  }
-
-  if (aliases.length > 0) {
-    lines.push('---')
-    lines.push('')
-    lines.push('## Type Aliases')
-    lines.push('')
-    for (const a of aliases) {
-      lines.push(`### ${a.name}`)
-      lines.push(`- ${a.values.join(' | ')}`)
-      lines.push('')
-    }
-  }
-
-  return lines.join('\n') + '\n'
-}
-
-function simplifyType(type: string, aliases?: TypeAliasSchema[]): string {
-  if (type.startsWith('array[')) {
-    const itemType = type.slice(6, -1)
-    const alias = aliases?.find(a => a.name === itemType)
-    if (alias) {
-      return `${itemType}[] [${alias.values.join('|')}]`
-    }
-    return `${itemType}[]`
-  }
-  if (type === 'Record<string, unknown>') return 'object'
-  const alias = aliases?.find(a => a.name === type)
-  if (alias) {
-    return `${type} [${alias.values.join('|')}]`
-  }
-  return type
-}
-
-function groupByTag(endpoints: ApiEndpoint[]): Record<string, ApiEndpoint[]> {
-  const groups: Record<string, ApiEndpoint[]> = {}
-  for (const ep of endpoints) {
-    const tag = ep.tags[0]
-    if (!tag) {
-      throw new Error(`Endpoint ${ep.method} ${ep.path} 没有 tag`)
-    }
-    if (!groups[tag]) groups[tag] = []
-    groups[tag].push(ep)
-  }
-  return groups
-}
-
 function loadConfig(configPath: string) {
   return JSON.parse(fs.readFileSync(configPath, 'utf-8'))
 }
@@ -1078,13 +1222,25 @@ export function generate(workspaceRoot: string, configPath: string) {
   const resolvedConfigPath = configPath
   swaggerConfig = loadConfig(resolvedConfigPath)
 
-  // paths 属于插件内部配置默认值，不受业务 Fallback 规则管控
-  const { paths = { apiDir: 'pages/api', typesFile: 'src/types/index.ts', outputFile: 'public/swagger.json', llmYamlFile: 'public/api-reference.yaml', errorsFile: 'src/config/api-errors.json' } } = swaggerConfig
+  if (!swaggerConfig.openapi || typeof swaggerConfig.openapi !== 'object') {
+    throw new Error('swagger.config.json 缺少 openapi 配置')
+  }
+  if (!swaggerConfig.openapi.info || typeof swaggerConfig.openapi.info !== 'object') {
+    throw new Error('swagger.config.json 缺少 openapi.info 配置')
+  }
+  if (!Array.isArray(swaggerConfig.openapi.tags)) {
+    throw new Error('swagger.config.json 缺少 openapi.tags 配置（需要数组）')
+  }
+
+  const { paths = { apiDir: 'pages/api', typesFile: 'src/types/index.ts', outputFile: 'public/swagger.json', errorsFile: 'src/config/api-errors.json' } } = swaggerConfig
+
+  if (!paths.apiDir || !paths.typesFile || !paths.outputFile) {
+    throw new Error('swagger.config.json 中 paths 配置不完整，需要 apiDir、typesFile、outputFile')
+  }
 
   const PAGES_API_DIR = path.resolve(root, paths.apiDir)
   const OUTPUT_FILE = path.resolve(root, paths.outputFile)
   const TYPES_FILE = path.resolve(root, paths.typesFile)
-  const LLM_YAML_FILE = paths.llmYamlFile
   const ERRORS_FILE = paths.errorsFile
 
   let errorCodes: string[] = []
@@ -1141,21 +1297,12 @@ export function generate(workspaceRoot: string, configPath: string) {
   console.log(`  筛选后: ${usedTypes.length} 个类型（已排除未使用的）`)
 
   console.log('正在生成 OpenAPI 规范...')
-  const wrapperConfig = swaggerConfig.responseWrapper
   const responseWrappers = swaggerConfig.responseWrappers
   const responseWrapperSchemas = swaggerConfig.responseWrapperSchemas
-  const spec = generateOpenAPI(allEndpoints, usedTypes, aliases, errorCodes, wrapperConfig, responseWrappers, responseWrapperSchemas)
+  const spec = generateOpenAPI(allEndpoints, usedTypes, aliases, errorCodes, responseWrappers, responseWrapperSchemas)
 
   fs.mkdirSync(path.dirname(OUTPUT_FILE), { recursive: true })
   fs.writeFileSync(OUTPUT_FILE, JSON.stringify(spec, null, 2) + '\n')
   console.log(`已生成: ${OUTPUT_FILE}`)
   console.log(`  大小: ${(fs.statSync(OUTPUT_FILE).size / 1024).toFixed(1)} KB`)
-
-  console.log('正在生成 LLM 友好的 YAML 文档...')
-  const yaml = generateLLMYaml(allEndpoints, usedTypes, aliases)
-  const llmOutputPath = path.resolve(root, LLM_YAML_FILE)
-  fs.mkdirSync(path.dirname(llmOutputPath), { recursive: true })
-  fs.writeFileSync(llmOutputPath, yaml)
-  console.log(`已生成: ${path.resolve(root, LLM_YAML_FILE)}`)
-  console.log(`  大小: ${(fs.statSync(path.resolve(root, LLM_YAML_FILE)).size / 1024).toFixed(1)} KB`)
 }

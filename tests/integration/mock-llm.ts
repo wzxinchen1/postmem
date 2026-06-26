@@ -376,7 +376,8 @@ class MockSearchService {
   async getCachedWebpages(keywords: string[]) {
     return this.prisma.webPage.findMany({
       where: { keywords: { hasSome: keywords } },
-      take: 5,
+      orderBy: { updatedAt: 'desc' },
+      take: 10,
     })
   }
 
@@ -389,7 +390,7 @@ class MockSearchService {
     return getStore().confirmSearchWebResult
   }
 
-  async searchWeb(keywords: string[]): Promise<MockWebpageResult[]> {
+  async searchWeb(keywords: string[], conversationId: string): Promise<MockWebpageResult[]> {
     const chatSetting = await this.chatSettingService.get()
     const linkCount = chatSetting.searchLinkCount
 
@@ -405,7 +406,7 @@ class MockSearchService {
     )
 
     for (const wp of mockWebpages) {
-      await this.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, url: wp.url })
+      await this.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, url: wp.url, conversationId })
     }
 
     await this.saveWebpages(mockWebpages)

@@ -7,11 +7,49 @@ export function createFinalizeNode(deps: GraphDependencies) {
   return async function finalizeNode(state: ChatState): Promise<Partial<ChatState>> {
     if (state.cancelled) {
       await deps.sseService.clearProcessing(state.conversationId)
-      await deps.sseService.emit({ type: 'done' })
+      await deps.sseService.emit({ type: 'done', conversationId: state.conversationId })
       await deps.sseService.clearCancelled(state.conversationId)
       return {}
     }
 
+    const isToolCall = state.finishReason === 'tool_calls' && state.toolCalls && state.toolCalls.length > 0
+
+    if (isToolCall) {
+      // tool_calls: 保存 assistant 消息（含 tool_calls 元数据），不计算 token 错误
+      await deps.conversationService.addMessage({
+        conversationId: state.conversationId,
+        role: 'assistant',
+        content: state.fullContent ? state.fullContent : JSON.stringify(state.toolCalls),
+        tokens: state.completionTokens,
+        totalTokens: state.totalTokens,
+        reasoningTokens: state.reasoningTokens,
+        memoried: false,
+        name: state.modelName,
+        urls: state.urls,
+        metadata: { toolCalls: state.toolCalls } as Record<string, unknown>,
+      })
+
+      await deps.sseService.emit({
+        type: 'done',
+        reason: DoneReason.ToolCalls,
+        toolCalls: state.toolCalls,
+        userTokens: state.userTokens ?? undefined,
+        userTotalTokens: state.userTotalTokens ?? undefined,
+        totalTokens: state.totalTokens ?? undefined,
+        completionTokens: state.completionTokens ?? undefined,
+        reasoningTokens: state.reasoningTokens ?? undefined,
+        conversationId: state.conversationId,
+      })
+
+      logger.info('[ChatGraph] finalize tool_calls', {
+        conversationId: state.conversationId,
+        toolCount: state.toolCalls.length,
+      })
+
+      return {}
+    }
+
+    // 正常文本回复
     await deps.conversationService.addMessage({
       conversationId: state.conversationId,
       role: 'assistant',
@@ -48,6 +86,7 @@ export function createFinalizeNode(deps: GraphDependencies) {
       totalTokens: state.totalTokens ?? undefined,
       completionTokens: state.completionTokens ?? undefined,
       reasoningTokens: state.reasoningTokens ?? undefined,
+      conversationId: state.conversationId,
     })
 
     logger.info('[ChatGraph] finalize 完成', { conversationId: state.conversationId })

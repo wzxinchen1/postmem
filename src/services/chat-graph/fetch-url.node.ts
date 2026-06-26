@@ -13,7 +13,7 @@ export function createFetchUrlNode(deps: GraphDependencies) {
       return { fetchedUrlContent: '' }
     }
 
-    await deps.sseService.emit({ type: 'status', status: StreamStatus.FetchingUrl })
+    await deps.sseService.emit({ type: 'status', status: StreamStatus.FetchingUrl, conversationId: state.conversationId })
 
     logger.info('[ChatGraph] fetchUrl 开始抓取', {
       conversationId: state.conversationId,
