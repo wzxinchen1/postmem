@@ -6,8 +6,8 @@
   "private": true,
   "scripts": {
     "predev": "prisma generate && prisma migrate deploy && prisma db seed",
-    "dev": "swagger-generator generate && next dev -p 3000",
-    "prebuild": "prisma generate && swagger-generator generate",
+    "dev": "node packages/swagger-generator/dist/cli.mjs generate && next dev -p 3000",
+    "prebuild": "prisma generate && node packages/swagger-generator/dist/cli.mjs generate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
@@ -24,7 +24,7 @@
     "test:mock": "pnpm tsx tests/integration/chat-completions.ts",
     "test:real": "pnpm tsx tests/integration/chat-completions-real-llm.ts --real-llm",
     "check-error": "pnpm tsx scripts/check-api-errors-usage.ts",
-    "swagger": "swagger-generator generate",
+    "swagger": "node packages/swagger-generator/dist/cli.mjs generate",
     "types:generate": "pnpm --filter postmem-types run generate",
     "types:build": "pnpm --filter postmem-types run build"
   },
@@ -58,8 +58,7 @@
     "typescript": "^5.6.3",
     "vm2": "^3.9.19",
     "winston": "^3.19.0",
-    "zod": "^3.23.8",
-    "my-swagger-generator": "workspace:*"
+    "zod": "^3.23.8"
   },
   "devDependencies": {
     "@types/node": "^22.9.0",
@@ -71,6 +70,7 @@
     "prisma": "^7.8.0",
     "sass": "^1.99.0",
     "supertest": "^7.2.2",
+    "my-swagger-generator": "workspace:*",
     "ts-node": "^10.9.2",
     "tsx": "^4.21.0",
     "vitest": "^4.1.6"
