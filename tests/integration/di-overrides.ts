@@ -15,7 +15,6 @@ function getStore(): ChatSettingInfo {
       searchSummaryConcurrency: 2,
       chunkCharRange: '200-500',
       userProfile: null,
-      memorySearchDisabled: false,
       webSearchDisabled: false,
       createdAt: new Date(),
       updatedAt: new Date(),
@@ -34,7 +33,7 @@ const mockChatSettingProvider: IChatSettingProvider = {
  * Real-LLM 模式下的 chatSettingProvider：
  * 从数据库读取真实设置，再叠加 mock store 中的测试控制字段。
  * 这样 searchSummaryConcurrency、searchLinkCount 等走真实数据库值，
- * 而 memorySearchDisabled、webSearchDisabled、memoryContextThreshold 等仍可由测试控制。
+ * 而 webSearchDisabled、memoryContextThreshold 等仍可由测试控制。
  */
 const realLLMChatSettingProvider: IChatSettingProvider = {
   async get() {
@@ -52,7 +51,6 @@ const realLLMChatSettingProvider: IChatSettingProvider = {
         // 以下字段由测试 mock 控制，不使用数据库值
         memoryContextThreshold: store.memoryContextThreshold,
         chunkCharRange: store.chunkCharRange,
-        memorySearchDisabled: store.memorySearchDisabled,
         webSearchDisabled: store.webSearchDisabled,
       } as ChatSettingInfo
     } finally {
@@ -63,14 +61,6 @@ const realLLMChatSettingProvider: IChatSettingProvider = {
 
 export function setMockChatSetting(settings: Partial<ChatSettingInfo>): void {
   Object.assign(getStore(), settings)
-}
-
-export function setSearchDisabled(disabled: boolean): void {
-  Object.assign(getStore(), { memorySearchDisabled: disabled })
-}
-
-export function getSearchDisabled(): boolean {
-  return getStore().memorySearchDisabled ?? false
 }
 
 export function setWebSearchDisabled(disabled: boolean): void {

@@ -2,6 +2,7 @@ import dotenv from 'dotenv'
 import { fileURLToPath } from 'url'
 import path from 'path'
 import fs from 'fs'
+import os from 'os'
 import http from 'http'
 import winston from 'winston'
 import { SeqTransport } from '@datalust/winston-seq'
@@ -69,7 +70,7 @@ interface RunState {
 }
 
 const DEFAULT_TIMEOUT = 60_000
-const STATE_FILE = path.resolve(__dirname, '.run-state.json')
+const STATE_FILE = path.resolve(os.tmpdir(), 'postmem-run-state.json')
 const results: TestResult[] = []
 const tests: TestCase[] = []
 
@@ -286,9 +287,7 @@ async function runTests(): Promise<void> {
     logInfo(`${label} 开始... (超时 ${tc.timeoutMs}ms)`)
     testLogger.info(`test_start`, { index: i + 1, total: tests.length, name: tc.name, memorySearch: tc.memorySearch, webSearch: tc.webSearch })
     try {
-      // 根据测试的 search 选项自动管理 searchDisabled / webSearchDisabled
-      const { setSearchDisabled: setMemorySearchDisabled, setWebSearchDisabled } = await import('./helpers')
-      setMemorySearchDisabled(!tc.memorySearch)
+      const { setWebSearchDisabled } = await import('./helpers')
       setWebSearchDisabled(!tc.webSearch)
 
       await runWithTimeout(tc.fn, ctx, tc.timeoutMs)

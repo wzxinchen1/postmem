@@ -7,12 +7,13 @@ import { Prompts } from '@/src/lib/prompts'
 import { logger } from '@/src/lib/logger'
 
 export function createSearchNode(deps: GraphDependencies) {
-  async function buildSystemContext(searchResult: string, memoryText: string, agent: unknown, userProfile?: string) {
+  async function buildSystemContext(searchResult: string, memoryText: string, agent: unknown, userProfile: string | null | undefined) {
+    const userProfileArg = userProfile as string | undefined
     const systemPrompt = Prompts.chatSystemRole(
       searchResult,
       memoryText,
       undefined,
-      userProfile,
+      userProfileArg,
     )
     const systemTokens = await deps.systemTokensService.getSystemTokens(systemPrompt, agent)
     return { systemPrompt, systemTokens }
@@ -25,7 +26,7 @@ export function createSearchNode(deps: GraphDependencies) {
 
     if (state.langchainMessages.length < 1) {
       const chatSetting = await deps.chatSettingService.get()
-      const { systemPrompt, systemTokens } = await buildSystemContext('', '', state.agent, chatSetting.userProfile ?? undefined)
+      const { systemPrompt, systemTokens } = await buildSystemContext('', '', state.agent, chatSetting.userProfile)
       return {
         searchResult: '',
         memoryText: '',
@@ -38,16 +39,13 @@ export function createSearchNode(deps: GraphDependencies) {
       return { cancelled: true }
     }
 
-    // 读取搜索启用状态，根据参数动态组合提示词
     const chatSetting = await deps.chatSettingService.get()
-    const memorySearchEnabled = !chatSetting.memorySearchDisabled
     const webSearchEnabled = !chatSetting.webSearchDisabled
-    const userProfile = chatSetting.userProfile ?? undefined
+    const shouldSearchMemory = state.searchMemory === true
 
-    // 如果两类搜索都被禁用，直接跳过分析
-    if (!memorySearchEnabled && !webSearchEnabled) {
+    if (!shouldSearchMemory && !webSearchEnabled) {
       logger.info('[ChatGraph] 两类搜索均已禁用，跳过分析')
-      const { systemPrompt, systemTokens } = await buildSystemContext('', '', state.agent, userProfile)
+      const { systemPrompt, systemTokens } = await buildSystemContext('', '', state.agent, chatSetting.userProfile)
       return {
         searchResult: '',
         memoryText: '',
@@ -57,31 +55,53 @@ export function createSearchNode(deps: GraphDependencies) {
     }
 
     const recentMessages = state.langchainMessages.slice(-6).map(msg => {
-      const content = typeof msg.content === 'string'
-        ? msg.content
-        : Array.isArray(msg.content)
-          ? msg.content.map(c => typeof c === 'string' ? c : ((c as any).text ?? '')).join('')
-          : ''
+      let content: string
+      if (typeof msg.content === 'string') {
+        content = msg.content
+      } else if (Array.isArray(msg.content)) {
+        const parts: string[] = []
+        for (const c of msg.content) {
+          if (typeof c === 'string') {
+            parts.push(c)
+          } else {
+            const textValue = (c as { text?: string }).text
+            if (textValue === null || textValue === undefined) {
+              throw new AppError('CHAT_MESSAGE_CONTENT_TEXT_MISSING')
+            }
+            parts.push(textValue)
+          }
+        }
+        content = parts.join('')
+      } else {
+        content = ''
+      }
       return {
         role: msg._getType() === 'human' ? 'user' as const : 'assistant' as const,
         content
       }
     })
 
-    let searchNeeds: { needSearchWeb: boolean; webKeywords: string[]; needSearchMemory: boolean; memoryQuery: string | null }
-    logger.info("判断是否需要搜索："+recentMessages[1].content);
-    searchNeeds = await deps.searchService.analyzeSearchNeeds(
-      state.agent as any,
-      recentMessages,
-      { includeWebSearch: webSearchEnabled, includeMemorySearch: memorySearchEnabled }
-    )
+    let searchNeeds: { needSearchWeb: boolean; webKeywords: string[] } | null = null
+    if (webSearchEnabled) {
+      const lastMsg = recentMessages[recentMessages.length - 1]
+      if (!lastMsg) {
+        throw new AppError('CHAT_SEARCH_MISSING_LAST_MESSAGE')
+      }
+      logger.info('[ChatGraph] 判断联网搜索', { lastContent: lastMsg.content })
+      const result = await deps.searchService.analyzeSearchNeeds(
+        state.agent as any,
+        recentMessages,
+        { includeWebSearch: true, includeMemorySearch: false }
+      )
+      searchNeeds = { needSearchWeb: result.needSearchWeb, webKeywords: result.webKeywords }
+      logger.info('[ChatGraph] 联网搜索判断结果', { searchNeeds })
+    }
 
-    logger.info("判断结果", { searchNeeds });
     let searchResult = ''
     let memoryText = ''
     let fetchedUrls: string[] = []
 
-    if (searchNeeds.needSearchWeb && searchNeeds.webKeywords.length > 0 && webSearchEnabled) {
+    if (searchNeeds && searchNeeds.needSearchWeb && searchNeeds.webKeywords.length > 0 && webSearchEnabled) {
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, conversationId: state.conversationId })
 
       logger.info('[ChatGraph] 缓存查询', {
@@ -131,16 +151,19 @@ export function createSearchNode(deps: GraphDependencies) {
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, conversationId: state.conversationId })
     }
 
-    if (searchNeeds.needSearchMemory && searchNeeds.memoryQuery) {
-      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
+    if (shouldSearchMemory) {
+      const lastUserMsg = [...recentMessages].reverse().find(m => m.role === 'user')
+      if (lastUserMsg && lastUserMsg.content) {
+        await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
 
-      const similarSummaries = await deps.chatMemoryService.searchSimilar(
-        state.kbId,
-        searchNeeds.memoryQuery
-      )
-      memoryText = similarSummaries.map(s => s.content).join('\n\n')
+        const similarSummaries = await deps.chatMemoryService.searchSimilar(
+          state.kbId,
+          lastUserMsg.content
+        )
+        memoryText = similarSummaries.map(s => s.content).join('\n\n')
 
-      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
+        await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
+      }
     }
 
     if (state.fetchedUrlContent) {
@@ -153,12 +176,12 @@ export function createSearchNode(deps: GraphDependencies) {
       searchResult,
       memoryText,
       state.agent,
-      userProfile,
+      chatSetting.userProfile,
     )
 
     logger.info('[ChatGraph] search 完成', {
-      needSearchWeb: searchNeeds.needSearchWeb,
-      needSearchMemory: searchNeeds.needSearchMemory,
+      webSearchEnabled,
+      shouldSearchMemory,
     })
 
     const mergedUrls = [...new Set([...state.urls, ...fetchedUrls])]

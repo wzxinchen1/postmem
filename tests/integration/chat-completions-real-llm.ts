@@ -420,6 +420,7 @@ class RealLLMChatTest extends ChatTestFixture {
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
+        searchMemory: true,
       })
 
       // 真实 LLM 判断搜索需求，"之前"类消息应触发记忆搜索

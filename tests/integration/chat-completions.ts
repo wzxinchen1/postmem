@@ -374,6 +374,7 @@ class MockChatTest extends ChatTestFixture {
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
+        searchMemory: true,
       })
 
       // 验证1: searchingMemory 状态事件出现（证明 search node 被执行且 needSearchMemory=true）

@@ -18,6 +18,7 @@ export const ChatGraphState = Annotation.Root({
   kbId: Annotation<string>,
   agent: Annotation<unknown>,
   modelName: Annotation<string>,
+  searchMemory: Annotation<boolean>,
   fullContent: Annotation<string>({ reducer: (a: string, b: string) => a + b, default: () => '' }),
   userTokens: Annotation<number>,
   userTotalTokens: Annotation<number>,

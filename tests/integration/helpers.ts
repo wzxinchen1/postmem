@@ -6,7 +6,7 @@ import winston from 'winston'
 import { SeqTransport } from '@datalust/winston-seq'
 import type { StreamEvent, ChatRequest } from '../../packages/postmem-sdk/dist/index.mjs'
 import { ThinkingEffort } from '../../packages/postmem-sdk/dist/index.mjs'
-import { getSearchDisabled as getMemorySearchDisabled, getWebSearchDisabled } from './di-overrides'
+import { getWebSearchDisabled } from './di-overrides'
 
 const BASE_URL = `http://localhost:${process.env.PORT || 3000}`
 const isDev = process.env.env === 'dev'
@@ -275,24 +275,12 @@ export async function startConsume(client: PostMemClient): Promise<void> {
 }
 
 /**
- * 框架层护栏：验证搜索事件是否符合 searchDisabled / webSearchDisabled 设置。
+ * 框架层护栏：验证搜索事件是否符合 webSearchDisabled 设置。
  * 直接从 result.events 中检查，不依赖任何全局收集。
+ * 记忆搜索由用户显式选项 searchMemory 控制，无需护栏。
  */
 function assertNoSearchWhenDisabled(result: ChatAndWaitResult): void {
-  const memorySearchDisabled = getMemorySearchDisabled()
   const webSearchDisabled = getWebSearchDisabled()
-
-  if (memorySearchDisabled) {
-    const memorySearchEvents = result.events.filter(
-      (e) => (e as Record<string, unknown>).status === 'searchingMemory',
-    )
-    if (memorySearchEvents.length > 0) {
-      throw new Error(
-        `记忆搜索护栏失效：searchDisabled=true 时出现了 searchingMemory 事件（${memorySearchEvents.length} 个）。` +
-        '请在 test() 选项中声明 { search: true } 或确保 memorySearchDisabled 正确设置。'
-      )
-    }
-  }
 
   if (webSearchDisabled) {
     const webSearchEvents = result.events.filter(
@@ -684,5 +672,5 @@ export async function checkMessageTokens(): Promise<void> {
   }
 }
 
-export { setMockChatSetting, setSearchDisabled, getSearchDisabled, setWebSearchDisabled, getWebSearchDisabled, setModelHasVision } from './di-overrides'
+export { setMockChatSetting, setWebSearchDisabled, getWebSearchDisabled, setModelHasVision } from './di-overrides'
 export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockSearchNeeds, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, resetMockLLMStore, getCalibrateCallCount, resetCalibrateCallCount } from './mock-llm'

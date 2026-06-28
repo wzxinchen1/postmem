@@ -27,7 +27,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const chatSettingService = scope.resolve<ChatSettingService>('chatSettingService')
 
   const body: ChatCompletionRequest = await request.json()
-  const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId, thinkingEffort } = body
+  const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId, thinkingEffort, searchMemory } = body
 
   if (!messages || !Array.isArray(messages) || (messages.length === 0 && !regenerateMessageId)) {
     return errorResponse('MISSING_MESSAGES')
@@ -125,6 +125,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         modelId,
         kbId,
         thinkingEffort,
+        searchMemory,
       })
       logger.info('[completions] chat completed')
     } catch (error) {
