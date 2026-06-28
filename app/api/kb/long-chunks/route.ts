@@ -71,7 +71,8 @@ export const POST = createApiHandler<Deps>({
       threshold,
       page: fetchPage,
       limit: fetchLimit,
-      kbId: body.kbId || undefined,
+      kbId: body.kbId,
+      topicIds: body.topicIds,
     })
 
     return successResponse(result)

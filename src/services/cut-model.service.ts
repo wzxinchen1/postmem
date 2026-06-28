@@ -4,7 +4,7 @@ import { AppError } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
 import { logger } from '@/src/lib/logger'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
-import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelCapability, TopicMatchResult, TopicCreateInfo, BatchTopicPlan, TitledChunk } from '@/src/types'
+import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelCapability, TopicCreateInfo, BatchTopicPlan, TitledChunk, ChunkTopicPlan } from '@/src/types'
 import { ThinkingEffort } from '@/src/types'
 import { SessionService } from '@/src/services/session.service'
 import { VendorService } from './vendor.service'
@@ -211,6 +211,11 @@ export class CutModelService {
         const parsed = this.llmResilienceService.parseJSON<unknown>(content)
         return validator(parsed)
       } catch (parseError) {
+        logger.error('[CutModelService] parseJSON 原始输入', {
+          contentLength: content.length,
+          contentPrefix: content.slice(0, 500),
+          contentSuffix: content.slice(-200),
+        })
         lastError = parseError instanceof Error ? parseError : new Error(String(parseError))
 
         logger.error('[CutModelService] 解析/校验失败，准备重试', {
@@ -218,6 +223,7 @@ export class CutModelService {
           maxRetries: CutModelService.MAX_RETRIES,
           errorMessage: lastError.message,
           stack: lastError.stack,
+          rawResponse: content.slice(0, 2000),
         })
       }
     }
@@ -411,140 +417,11 @@ export class CutModelService {
     })
   }
 
-  async shouldIngestChunk(
-    chunk: string,
-    existingMemories: Array<{ id: string; content: string; score: number }>,
-    kbId?: string
-  ): Promise<{
-    action: 'skip' | 'merge' | 'new'
-    reason: string
-    targetMemoryId: string | null
-    mergedContent: string | null
-  }> {
-    const { model, provider } = await this.getDefaultModel()
-
-    if (!provider.vendor) {
-      throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
-    }
-
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'chat',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: provider.vendor.id,
-        vendorName: provider.vendor.name,
-        task: 'deduplication',
-      },
-    })
-
-    const memoriesText = existingMemories
-      .map((m, i) => `[相似记忆${i + 1}, 相关度=${m.score.toFixed(2)}]\n${m.content}`)
-      .join('\n\n')
-
-    const systemPrompt = Prompts.deduplicationExpert()
-    const prompt = Prompts.deduplicateChunk(chunk, memoriesText)
-
-    const validActions = ['skip', 'merge', 'new']
-    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
-      if (!raw || typeof raw !== 'object') {
-        throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_ACTION')
-      }
-      const obj = raw as { action?: unknown; reason?: unknown; targetId?: unknown; mergedContent?: unknown }
-      if (!obj.action || !validActions.includes(obj.action as string)) {
-        throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_ACTION')
-      }
-      const action = obj.action as 'skip' | 'merge' | 'new'
-      if (action === 'merge') {
-        if (obj.targetId == null || typeof obj.targetId !== 'number' || obj.targetId < 1 || obj.targetId > existingMemories.length) {
-          throw new AppError('CUT_MODEL_INVALID_FORMAT_MERGE_MISSING_TARGET_ID')
-        }
-        if (!obj.mergedContent || typeof obj.mergedContent !== 'string' || obj.mergedContent.trim().length === 0) {
-          throw new AppError('CUT_MODEL_INVALID_FORMAT_MERGE_MISSING_CONTENT')
-        }
-      }
-      return obj as { action: string; reason?: string; targetId?: number | null; mergedContent?: string | null }
-    })
-
-    await this.sessionService.complete(session.id)
-
-    const action = parsed.action as 'skip' | 'merge' | 'new'
-    let targetMemoryId: string | null = null
-    let mergedContent: string | null = null
-
-    if (action === 'merge') {
-      targetMemoryId = existingMemories[parsed.targetId! - 1].id
-      mergedContent = parsed.mergedContent!.trim()
-    }
-
-    if (!parsed.reason) {
-      throw new AppError('CUT_MODEL_LLM_MISSING_REASON')
-    }
-
-    return { action, reason: parsed.reason, targetMemoryId, mergedContent }
-  }
-
   async getModelInfo(): Promise<{ provider: string; model: string }> {
     const { model, provider } = await this.getDefaultModel()
     return {
       provider: provider.name,
       model: model.displayName ?? model.name,
-    }
-  }
-
-  async matchTopic(
-    content: string,
-    existingTopics: Array<{ name: string; description: string }>,
-    kbId?: string
-  ): Promise<TopicMatchResult> {
-    const { model, provider } = await this.getDefaultModel()
-
-    if (!provider.vendor) {
-      throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
-    }
-
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'chat',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: provider.vendor.id,
-        vendorName: provider.vendor.name,
-        task: 'topic-match',
-      },
-    })
-
-    const systemPrompt = Prompts.topicMatchExpert()
-    const prompt = Prompts.topicMatch(content, existingTopics)
-
-    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
-      if (!raw || typeof raw !== 'object') {
-        throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_ACTION')
-      }
-      const obj = raw as { action?: unknown; topicName?: unknown; reason?: unknown }
-      if (!obj.action || !['select', 'create'].includes(obj.action as string)) {
-        throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_ACTION')
-      }
-      if (obj.action === 'select' && !obj.topicName) {
-        throw new AppError('CUT_MODEL_INVALID_FORMAT_SELECT_MISSING_TOPIC_NAME')
-      }
-      return obj as { action: string; topicName?: string; reason?: string }
-    })
-
-    await this.sessionService.complete(session.id)
-
-    if (!parsed.reason) {
-      throw new AppError('CUT_MODEL_LLM_MISSING_REASON')
-    }
-
-    return {
-      action: parsed.action as 'select' | 'create',
-      topicName: parsed.topicName,
-      reason: parsed.reason,
     }
   }
 
@@ -591,55 +468,6 @@ export class CutModelService {
       name: parsed.name.trim(),
       description: parsed.description.trim(),
     }
-  }
-
-  async batchCreateTopics(
-    proposedTopics: Array<{ name: string; sampleContent: string }>,
-    kbId?: string
-  ): Promise<TopicCreateInfo[]> {
-    if (proposedTopics.length === 0) return []
-
-    const { model, provider } = await this.getDefaultModel()
-
-    if (!provider.vendor) {
-      throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
-    }
-
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'chat',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: provider.vendor.id,
-        vendorName: provider.vendor.name,
-        task: 'batch-topic-create',
-      },
-    })
-
-    const systemPrompt = Prompts.topicMatchExpert()
-    const prompt = Prompts.batchTopicCreate(proposedTopics)
-
-    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
-      if (!raw || typeof raw !== 'object') {
-        throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_TOPICS')
-      }
-      const obj = raw as { topics?: unknown }
-      if (!obj.topics || !Array.isArray(obj.topics) || (obj.topics as any[]).length === 0) {
-        throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_TOPICS')
-      }
-      return obj as { topics: any[] }
-    })
-
-    await this.sessionService.complete(session.id)
-
-    return parsed.topics
-      .filter((t: any) => t.name && t.name.trim().length > 0)
-      .map((t: any) => ({
-        name: t.name.trim(),
-        description: t.description ? t.description.trim() : '',
-      }))
   }
 
   /**
@@ -696,38 +524,43 @@ export class CutModelService {
           if (p.index == null || p.index < 0) {
             throw new AppError('CUT_MODEL_PLAN_MISSING_INDEX', { index: i })
           }
-          if (!p.action || !['select', 'create'].includes(p.action)) {
+          if (!p.action || !['select', 'none'].includes(p.action)) {
             throw new AppError('CUT_MODEL_PLAN_INVALID_ACTION', { index: i })
           }
           if (p.action === 'select' && !p.topicName) {
             throw new AppError('CUT_MODEL_PLAN_SELECT_MISSING_TOPIC_NAME', { index: i })
-          }
-          if (p.action === 'create' && !p.newTopicName) {
-            throw new AppError('CUT_MODEL_PLAN_CREATE_MISSING_NEW_TOPIC_NAME', { index: i })
           }
           if (p.action === 'select' && !validTopicNames.has(p.topicName)) {
             throw new AppError('CUT_MODEL_PLAN_INVALID_TOPIC_NAME', { index: i, topicName: p.topicName, validTopics: Array.from(validTopicNames).slice(0, 3).join(',') })
           }
         }
 
-        return obj as { plans: Array<{ index: number; action: string; topicName?: string; newTopicName?: string; reason?: string }> }
+        return obj as { plans: Array<{ index: number; action: string; topicName?: string; reason?: string }> }
       }
     )
 
     await this.sessionService.complete(session.id)
 
-    const plans = parsed.plans.map((p) => {
+    const plans: ChunkTopicPlan[] = []
+    for (const p of parsed.plans) {
       if (!p.reason) {
         throw new AppError('CUT_MODEL_LLM_PLAN_MISSING_REASON')
       }
-      return {
-        index: p.index,
-        action: p.action as 'select' | 'create',
-        topicName: p.topicName,
-        newTopicName: p.newTopicName,
-        reason: p.reason,
+      if (p.action === 'select') {
+        plans.push({
+          index: p.index,
+          action: 'select',
+          topicName: p.topicName,
+          reason: p.reason,
+        })
+      } else {
+        plans.push({
+          index: p.index,
+          action: 'none',
+          reason: p.reason,
+        })
       }
-    })
+    }
 
     return { plans }
   }

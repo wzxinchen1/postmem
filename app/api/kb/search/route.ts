@@ -27,6 +27,10 @@ export const POST = createApiHandler<Deps>({
       return errorResponse('KB_QUERY_REQUIRED')
     }
 
+    if (!body.topicIds || !Array.isArray(body.topicIds) || body.topicIds.length === 0) {
+      return errorResponse('KB_SEARCH_TOPIC_IDS_REQUIRED')
+    }
+
     const settings = await deps.settingService.getAppSettings()
 
     if (body.top_k === undefined) return errorResponse('KB_TOP_K_REQUIRED')
@@ -43,7 +47,7 @@ export const POST = createApiHandler<Deps>({
       return errorResponse('KB_CONTEXT_WINDOW_INVALID', { min: 0, max: 5, actual: contextWindow })
     }
 
-    const results = await deps.kbService.search(body.kbId, body.query, topK, contextWindow)
+    const results = await deps.kbService.search(body.kbId, body.topicIds, body.query, topK, contextWindow)
     return successResponse({ results })
   },
 })

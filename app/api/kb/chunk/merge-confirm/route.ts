@@ -6,6 +6,11 @@ interface Deps {
   kbService: KBService
 }
 
+/**
+ * 确认合并
+ * @swagger
+ * @response 200 返回合并后的新片段 ID
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['kbService'],
   handler: async (deps, request) => {

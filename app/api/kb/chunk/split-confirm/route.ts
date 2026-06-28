@@ -6,6 +6,11 @@ interface Deps {
   kbService: KBService
 }
 
+/**
+ * 确认拆分
+ * @swagger
+ * @response 200 返回拆分后的新片段 ID 列表
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['kbService'],
   handler: async (deps, request) => {

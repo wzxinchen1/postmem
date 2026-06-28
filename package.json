@@ -21,7 +21,7 @@
     "db:setup": "prisma generate && prisma migrate deploy && prisma db seed",
     "test": "vitest run",
     "test:watch": "vitest",
-    "test:integration": "pnpm tsx tests/integration/chat-completions.ts",
+    "test:mock": "pnpm tsx tests/integration/chat-completions.ts",
     "test:real": "pnpm tsx tests/integration/chat-completions-real-llm.ts --real-llm",
     "check-error": "pnpm tsx scripts/check-api-errors-usage.ts",
     "swagger": "swagger-generator generate",

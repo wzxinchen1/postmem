@@ -161,7 +161,6 @@ export class KBService {
 
     const memoryIds: string[] = []
     const topicsInvolvedSet = new Set<string>()
-    const thisBatchIds = new Set<string>()
 
     const existingTopics = await this.prisma.topic.findMany({
       where: { kbId },
@@ -178,49 +177,6 @@ export class KBService {
       topicNameMap.set(t.name, t.id)
     }
 
-    const createPlans = plan.plans.filter(
-      (p) => p.action === 'create' && p.newTopicName && !topicNameMap.has(p.newTopicName)
-    )
-
-    if (createPlans.length > 0) {
-      onProgress({ type: 'status', message: `拟创建 ${createPlans.length} 个主题，正在合并去重...` })
-
-      const proposedTopics = createPlans.map((p) => {
-        const chunk = chunks[p.index]
-        if (!chunk?.content) throw new AppError('KB_CHUNK_MISSING_CONTENT', { index: p.index })
-        return {
-          name: p.newTopicName!,
-          sampleContent: chunk.content,
-        }
-      })
-
-      const mergedTopics = await this.cutModelService.batchCreateTopics(proposedTopics, kbId)
-
-      let createIndex = 0
-      for (const p of createPlans) {
-        const mergedTopic = mergedTopics[Math.min(createIndex, mergedTopics.length - 1)]
-
-        if (topicNameMap.has(mergedTopic.name)) {
-          topicNameMap.set(p.newTopicName!, topicNameMap.get(mergedTopic.name)!)
-        } else {
-          onProgress({ type: 'status', message: `创建主题：${mergedTopic.name}` })
-          const newTopic = await this.prisma.topic.create({
-            data: {
-              kbId,
-              name: mergedTopic.name,
-              description: mergedTopic.description,
-            },
-          })
-          topicNameMap.set(mergedTopic.name, newTopic.id)
-        }
-
-        topicNameMap.set(p.newTopicName!, topicNameMap.get(mergedTopic.name)!)
-        createIndex++
-      }
-
-      onProgress({ type: 'status', message: `已合并为 ${mergedTopics.length} 个主题` })
-    }
-
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i]
       onProgress({
@@ -235,22 +191,16 @@ export class KBService {
         throw new AppError('KB_CHUNK_MISSING_TOPIC_PLAN', { index: chunk.index })
       }
 
-      let topicId: string
+      let topicId: string | null = null
       if (planItem.action === 'select' && planItem.topicName) {
         const tid = topicNameMap.get(planItem.topicName)
         if (!tid) {
           throw new AppError('KB_TOPIC_NOT_FOUND', { topicName: planItem.topicName })
         }
         topicId = tid
-      } else {
-        const tid = planItem.newTopicName ? topicNameMap.get(planItem.newTopicName) : undefined
-        if (!tid) {
-          throw new AppError('KB_TOPIC_CREATE_FAILED', { index: chunk.index })
-        }
-        topicId = tid
       }
 
-      if (!topicsInvolvedSet.has(String(topicId))) {
+      if (topicId !== null && !topicsInvolvedSet.has(topicId)) {
         const topic = await this.prisma.topic.findUnique({
           where: { id: topicId },
           select: { name: true },
@@ -260,64 +210,15 @@ export class KBService {
         }
       }
 
-      onProgress({ type: 'chunk_detail', message: '检测相似内容...', data: { title: chunk.title } })
-      let similarMemories = await this.searchInTopic(kbId, chunk.content, 3)
-      similarMemories = similarMemories.filter((m) => !thisBatchIds.has(m.id))
-
-      if (similarMemories.length === 0) {
-        onProgress({ type: 'chunk_detail', message: '无相似记录，直接入库', data: { title: chunk.title, action: 'insert' } })
-        const embedding = await this.embeddingService.generateEmbedding(chunk.content)
-
-        const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
-          INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
-          VALUES (${createId()}, ${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
-                  ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
-          RETURNING id
-        `
-        memoryIds.push(inserted[0].id)
-        thisBatchIds.add(inserted[0].id)
-        continue
-      }
-
-      onProgress({ type: 'chunk_detail', message: `发现 ${similarMemories.length} 条相似记录，进行去重判断...`, data: { title: chunk.title } })
-      const result = await this.cutModelService.shouldIngestChunk(
-        chunk.content,
-        similarMemories.map((m) => ({ id: m.id, content: m.content, score: m.score })),
-        kbId
-      )
-
-      if (result.action === 'skip') {
-        onProgress({ type: 'chunk_detail', message: '跳过（与已有记录重复）', data: { title: chunk.title, action: 'skip' } })
-        continue
-      }
-
-      if (result.action === 'merge' && result.targetMemoryId && result.mergedContent) {
-        onProgress({ type: 'chunk_detail', message: '合并到已有记录', data: { title: chunk.title, action: 'merge' } })
-        const mergeEmbedding = await this.embeddingService.generateEmbedding(result.mergedContent)
-
-        await this.prisma.$executeRaw`
-          UPDATE memories SET
-            content = ${result.mergedContent},
-            embedding = ${`[${mergeEmbedding.join(',')}]`}::vector
-          WHERE id = ${result.targetMemoryId}
-        `
-
-        memoryIds.push(result.targetMemoryId)
-        thisBatchIds.add(result.targetMemoryId)
-        continue
-      }
-
-      onProgress({ type: 'chunk_detail', message: '作为新记录入库', data: { title: chunk.title, action: 'new' } })
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
       const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
-        INSERT INTO memories (kb_id, topic_id, title, content, embedding, metadata)
-        VALUES (${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
+        INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
+        VALUES (${createId()}, ${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
                 ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
         RETURNING id
       `
       memoryIds.push(inserted[0].id)
-      thisBatchIds.add(inserted[0].id)
     }
 
     return {
@@ -331,7 +232,6 @@ export class KBService {
  * 知识入库 - 纯文本方式
  *
  * 切分策略：LLM 切分+重写一步到位，每个片段语义完整连贯，完整存储
- * 去重策略：每个分块先搜索相似记忆，LLM 判断是否有增量价值
  */
   async ingestText(kbId: string, content: string): Promise<IngestTextResponse> {
     const settings = await this.settingService.getAppSettings()
@@ -363,21 +263,6 @@ export class KBService {
     for (const t of existingTopics) {
       topicNameMap.set(t.name, t.id)
     }
-    for (const p of plan.plans) {
-      if (p.action === 'create' && p.newTopicName && !topicNameMap.has(p.newTopicName)) {
-        const sampleChunk = chunks[p.index]
-        if (!sampleChunk?.content) throw new AppError('KB_CHUNK_MISSING_CONTENT', { index: p.index })
-        const createInfo = await this.cutModelService.createTopicInfo(sampleChunk.content, kbId)
-        const newTopic = await this.prisma.topic.create({
-          data: {
-            kbId,
-            name: p.newTopicName,
-            description: createInfo.description,
-          },
-        })
-        topicNameMap.set(p.newTopicName, newTopic.id)
-      }
-    }
 
     for (const chunk of chunks) {
       const planItem = plan.plans.find((p) => p.index === chunk.index)
@@ -386,22 +271,16 @@ export class KBService {
         throw new AppError('KB_CHUNK_MISSING_TOPIC_PLAN', { index: chunk.index })
       }
 
-      let topicId: string
+      let topicId: string | null = null
       if (planItem.action === 'select' && planItem.topicName) {
         const tid = topicNameMap.get(planItem.topicName)
         if (!tid) {
           throw new AppError('KB_TOPIC_NOT_FOUND', { topicName: planItem.topicName })
         }
         topicId = tid
-      } else {
-        const tid = planItem.newTopicName ? topicNameMap.get(planItem.newTopicName) : undefined
-        if (!tid) {
-          throw new AppError('KB_TOPIC_CREATE_FAILED', { index: chunk.index })
-        }
-        topicId = tid
       }
 
-      if (!topicsInvolvedSet.has(String(topicId))) {
+      if (topicId !== null && !topicsInvolvedSet.has(topicId)) {
         const topic = await this.prisma.topic.findUnique({
           where: { id: topicId },
           select: { name: true },
@@ -409,45 +288,6 @@ export class KBService {
         if (topic) {
           topicsInvolvedSet.add(topic.name)
         }
-      }
-
-      const similarMemories = await this.searchInTopic(kbId, chunk.content, 3)
-
-      if (similarMemories.length === 0) {
-        const embedding = await this.embeddingService.generateEmbedding(chunk.content)
-
-        const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
-          INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
-          VALUES (${createId()}, ${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
-                  ${JSON.stringify({ cutModel: 'cut-and-rewrite' })}::jsonb)
-          RETURNING id
-        `
-        memoryIds.push(inserted[0].id)
-        continue
-      }
-
-      const result = await this.cutModelService.shouldIngestChunk(
-        chunk.content,
-        similarMemories.map((m) => ({ id: m.id, content: m.content, score: m.score })),
-        kbId
-      )
-
-      if (result.action === 'skip') {
-        continue
-      }
-
-      if (result.action === 'merge' && result.targetMemoryId && result.mergedContent) {
-        const mergeEmbedding = await this.embeddingService.generateEmbedding(result.mergedContent)
-
-        await this.prisma.$executeRaw`
-          UPDATE memories SET
-            content = ${result.mergedContent},
-            embedding = ${`[${mergeEmbedding.join(',')}]`}::vector
-          WHERE id = ${result.targetMemoryId}
-        `
-
-        memoryIds.push(result.targetMemoryId)
-        continue
       }
 
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
@@ -473,7 +313,6 @@ export class KBService {
  *
  * 存储方式：将全部消息组合为完整对话文本，LLM切分+重写一步到位
  *           每个片段语义完整连贯，标题由LLM生成
- * 去重策略：每个分块先搜索相似记忆，LLM 判断是否有增量价值
  */
   async ingestMessages(kbId: string, messages: IngestMessage[], conversationId: string, isTest = false): Promise<IngestMessagesResponse> {
     const settings = await this.settingService.getAppSettings()
@@ -519,29 +358,8 @@ export class KBService {
     for (const t of existingTopics) {
       topicNameMap.set(t.name, t.id)
     }
-    for (const p of plan.plans) {
-      if (p.action === 'create' && p.newTopicName && !topicNameMap.has(p.newTopicName)) {
-        if (!isTest) {
-          await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `创建主题：${p.newTopicName}`, conversationId })
-        }
-
-        const sampleChunk = chunks[p.index]
-        if (!sampleChunk?.content) throw new AppError('KB_CHUNK_MISSING_CONTENT', { index: p.index })
-        const createInfo = await this.cutModelService.createTopicInfo(sampleChunk.content, kbId)
-        const newTopic = await this.prisma.topic.create({
-          data: {
-            kbId,
-            name: p.newTopicName,
-            description: createInfo.description,
-          },
-        })
-        topicNameMap.set(p.newTopicName, newTopic.id)
-      }
-    }
-
     const memoryIds: string[] = []
     const memorizedMessageIds = messages.map((m) => m.id)
-    const thisBatchIds = new Set<string>()
 
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i]
@@ -555,80 +373,17 @@ export class KBService {
         throw new AppError('KB_CHUNK_MISSING_TOPIC_PLAN', { index: chunk.index })
       }
 
-      let topicId: string
+      let topicId: string | null = null
       if (planItem.action === 'select' && planItem.topicName) {
         const tid = topicNameMap.get(planItem.topicName)
         if (!tid) {
           throw new AppError('KB_TOPIC_NOT_FOUND', { topicName: planItem.topicName })
         }
         topicId = tid
-      } else {
-        const tid = planItem.newTopicName ? topicNameMap.get(planItem.newTopicName) : undefined
-        if (!tid) {
-          throw new AppError('KB_TOPIC_CREATE_FAILED', { index: chunk.index })
-        }
-        topicId = tid
-      }
-
-      let similarMemories = await this.searchInTopic(kbId, chunk.content, 3)
-      similarMemories = similarMemories.filter((m) => !thisBatchIds.has(m.id))
-
-      if (similarMemories.length === 0) {
-        if (!isTest) {
-          await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `入库`, conversationId })
-        }
-
-        const embedding = await this.embeddingService.generateEmbedding(chunk.content)
-
-        const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
-          INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
-          VALUES (${createId()}, ${kbId}, ${topicId}, ${chunk.title}, ${chunk.content}, ${`[${embedding.join(',')}]`}::vector,
-                  ${JSON.stringify({ cutModel: 'cut-and-rewrite', source: 'chat-memory' })}::jsonb)
-          RETURNING id
-        `
-        memoryIds.push(inserted[0].id)
-        thisBatchIds.add(inserted[0].id)
-        continue
       }
 
       if (!isTest) {
-        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `去重判断`, conversationId })
-      }
-
-      const result = await this.cutModelService.shouldIngestChunk(
-        chunk.content,
-        similarMemories.map((m) => ({ id: m.id, content: m.content, score: m.score })),
-        kbId
-      )
-
-      if (result.action === 'skip') {
-        if (!isTest) {
-          await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `跳过重复`, conversationId })
-        }
-        continue
-      }
-
-      if (result.action === 'merge' && result.targetMemoryId && result.mergedContent) {
-        if (!isTest) {
-          await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `合并到已有记录`, conversationId })
-        }
-
-        const mergeEmbedding = await this.embeddingService.generateEmbedding(result.mergedContent)
-
-        await this.prisma.$executeRaw`
-          UPDATE memories SET
-            content = ${result.mergedContent},
-            embedding = ${`[${mergeEmbedding.join(',')}]`}::vector
-          WHERE id = ${result.targetMemoryId}
-        `
-
-        memoryIds.push(result.targetMemoryId)
-        thisBatchIds.add(result.targetMemoryId)
-        continue
-      }
-
-      if (!isTest) {
-        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `新记录入库`, conversationId })
+        await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `入库`, conversationId })
       }
 
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
@@ -640,7 +395,6 @@ export class KBService {
         RETURNING id
       `
       memoryIds.push(inserted[0].id)
-      thisBatchIds.add(inserted[0].id)
     }
 
     return {
@@ -655,6 +409,7 @@ export class KBService {
    */
   async search(
     kbId: string,
+    topicIds: string[],
     query: string,
     topK: number = 5,
     contextWindow: number = 1
@@ -663,10 +418,15 @@ export class KBService {
       throw new AppError('KB_SEARCH_QUERY_REQUIRED')
     }
 
+    if (!topicIds || topicIds.length === 0) {
+      throw new AppError('KB_SEARCH_TOPIC_IDS_REQUIRED')
+    }
+
     await this.getKnowledgeBaseById(kbId)
     const queryEmbedding = await this.embeddingService.generateEmbedding(query)
 
     const denseLimit = topK * 3
+    const topicFilter = Prisma.sql`AND topic_id = ANY(ARRAY[${Prisma.join(topicIds)}]::text[])`
 
     const [denseResults, sparseResults] = await Promise.all([
       this.prisma.$queryRaw<
@@ -686,6 +446,7 @@ export class KBService {
           (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) as cosine_distance
         FROM memories
         WHERE kb_id = ${kbId}
+          ${topicFilter}
         ORDER BY embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector
         LIMIT ${denseLimit}
       `,
@@ -705,7 +466,9 @@ export class KBService {
           metadata,
           pgroonga_score(memories.tableoid, memories.ctid) as ts_rank
         FROM memories
-        WHERE kb_id = ${kbId} AND content &@ ${query}
+        WHERE kb_id = ${kbId}
+          ${topicFilter}
+          AND content &@ ${query}
         ORDER BY pgroonga_score(memories.tableoid, memories.ctid) DESC
         LIMIT ${denseLimit}
       `
@@ -831,125 +594,7 @@ export class KBService {
     }
   }
 
-  async searchInTopic(
-    kbId: string,
-    query: string,
-    topK: number = 5,
-    topicId?: string
-  ): Promise<SearchResult[]> {
-    if (!query || query.trim().length === 0) {
-      throw new AppError('KB_SEARCH_IN_TOPIC_QUERY_REQUIRED')
-    }
 
-    const queryEmbedding = await this.embeddingService.generateEmbedding(query)
-    const denseLimit = topK * 3
-
-    const topicClause = topicId ? Prisma.sql`AND topic_id = ${topicId}` : Prisma.empty
-
-    const [denseResults, sparseResults] = await Promise.all([
-      this.prisma.$queryRaw<
-        Array<{
-          id: string
-          title: string
-          content: string
-          metadata: any
-          cosine_distance: number
-        }>
-      >`
-        SELECT
-          id, title, content,
-          metadata,
-          (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) as cosine_distance
-        FROM memories
-        WHERE kb_id = ${kbId}
-          ${topicClause}
-          AND (embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector) < 0.3
-        ORDER BY embedding <=> ${`[${queryEmbedding.join(',')}]`}::vector
-        LIMIT ${denseLimit}
-      `,
-      this.prisma.$queryRaw<
-        Array<{
-          id: string
-          title: string
-          content: string
-          metadata: any
-          ts_rank: number
-        }>
-      >`
-        SELECT
-          id, title, content,
-          metadata,
-          pgroonga_score(memories) as ts_rank
-        FROM memories
-        WHERE kb_id = ${kbId}
-          ${topicClause}
-          AND content &@ ${query}
-        ORDER BY pgroonga_score(memories) DESC
-        LIMIT ${denseLimit}
-      `
-    ])
-
-    const rrfK = 60
-
-    interface RrfItem {
-      id: string
-      title: string
-      content: string
-      metadata: any
-      ts_rank?: number
-    }
-
-    const rrfScores = new Map<string, { rrfScore: number; source: SearchSource; data: RrfItem; cosineSim: number; tsRank?: number }>()
-
-    for (let i = 0; i < denseResults.length; i++) {
-      const item = denseResults[i]
-      const existing = rrfScores.get(item.id)
-      const rrfContribution = 1 / (rrfK + i + 1)
-      if (existing) {
-        existing.rrfScore += rrfContribution
-        existing.source = 'hybrid'
-      } else {
-        rrfScores.set(item.id, { rrfScore: rrfContribution, source: 'dense', data: item, cosineSim: 1 - item.cosine_distance })
-      }
-    }
-
-    for (let i = 0; i < sparseResults.length; i++) {
-      const item = sparseResults[i]
-      const existing = rrfScores.get(item.id)
-      const rrfContribution = 1 / (rrfK + i + 1)
-      if (existing) {
-        existing.rrfScore += rrfContribution
-        existing.source = 'hybrid'
-        existing.tsRank = item.ts_rank
-      } else {
-        rrfScores.set(item.id, { rrfScore: rrfContribution, source: 'sparse', data: item, cosineSim: 0, tsRank: item.ts_rank })
-      }
-    }
-
-    const merged = [...rrfScores.values()]
-      .sort((a, b) => b.rrfScore - a.rrfScore)
-      .slice(0, topK)
-
-    return merged.map((item) => {
-      let score: number
-      if (item.cosineSim > 0) {
-        score = item.cosineSim
-      } else if (item.tsRank !== undefined) {
-        score = Math.min(1, item.tsRank)
-      } else {
-        throw new AppError('KB_SEARCH_RESULT_MISSING_FIELDS')
-      }
-      return {
-        id: item.data.id,
-        title: item.data.title,
-        content: item.data.content,
-      score,
-      topicId: topicId ?? null,
-        metadata: item.data.metadata,
-        source: item.source,
-      }
-    })
-  }
 
   /**
    * 创建主题
@@ -980,40 +625,57 @@ export class KBService {
     })
   }
 
-  async suggestTopic(kbId: string | undefined, content: string): Promise<{ name: string; description: string }> {
-    return this.cutModelService.createTopicInfo(content, kbId)
-  }
-
-  private async resolveTopic(kbId: string, content: string): Promise<string> {
+  async listTopicsWithStats(kbId: string): Promise<Array<{ id: string; name: string; description: string; memoryCount: number }>> {
     const topics = await this.prisma.topic.findMany({
       where: { kbId },
       select: { id: true, name: true, description: true },
     })
-
-    const matchResult = await this.cutModelService.matchTopic(
-      content,
-      topics.map((t) => ({ name: t.name, description: t.description })),
-      kbId
-    )
-
-    if (matchResult.action === 'select' && matchResult.topicName) {
-      const existing = topics.find((t) => t.name === matchResult.topicName)
-      if (existing) {
-        return existing.id
+    const rows = await this.prisma.$queryRaw<Array<{ topic_id: string; count: bigint }>>`
+      SELECT topic_id, COUNT(*)::bigint as count
+      FROM memories
+      WHERE kb_id = ${kbId} AND topic_id IS NOT NULL
+      GROUP BY topic_id
+    `
+    const countMap = new Map<string, number>()
+    for (const s of rows) {
+      countMap.set(s.topic_id, Number(s.count))
+    }
+    const result: Array<{ id: string; name: string; description: string; memoryCount: number }> = []
+    for (const t of topics) {
+      const count = countMap.get(t.id)
+      if (count === undefined) {
+        result.push({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          memoryCount: 0,
+        })
+      } else {
+        result.push({
+          id: t.id,
+          name: t.name,
+          description: t.description,
+          memoryCount: count,
+        })
       }
     }
+    return result
+  }
 
-    const createInfo = await this.cutModelService.createTopicInfo(content, kbId)
-
-    const newTopic = await this.prisma.topic.create({
-      data: {
-        kbId,
-        name: createInfo.name,
-        description: createInfo.description,
-      },
+  async deleteTopic(topicId: string): Promise<void> {
+    const memoriesCount = await this.prisma.memory.count({
+      where: { topicId },
     })
+    if (memoriesCount > 0) {
+      throw new AppError('KB_TOPIC_DELETE_HAS_MEMORIES', { count: memoriesCount })
+    }
+    await this.prisma.topic.delete({
+      where: { id: topicId },
+    })
+  }
 
-    return newTopic.id
+  async suggestTopic(kbId: string | undefined, content: string): Promise<{ name: string; description: string }> {
+    return this.cutModelService.createTopicInfo(content, kbId)
   }
 
   /**
@@ -1022,15 +684,19 @@ export class KBService {
   async list(
     kbId: string,
     page: number = 1,
-    limit: number = 20
+    limit: number = 20,
+    topicIds?: string[]
   ): Promise<{ items: ListItem[]; total: number; page: number; limit: number }> {
     await this.getKnowledgeBaseById(kbId)
 
     const skip = (page - 1) * limit
+    const whereTopic = topicIds && topicIds.length > 0
+      ? { kbId, topicId: { in: topicIds } }
+      : { kbId }
 
     const [items, total] = await Promise.all([
       this.prisma.memory.findMany({
-        where: { kbId },
+        where: whereTopic,
         orderBy: { createdAt: 'desc' },
         skip,
         take: limit,
@@ -1044,7 +710,7 @@ export class KBService {
         },
       }),
       this.prisma.memory.count({
-        where: { kbId },
+        where: whereTopic,
       }),
     ])
 
@@ -1169,9 +835,8 @@ export class KBService {
       ? await this.cutModelService.batchResolveTopics(chunks, existingTopics, memory.kbId)
       : { plans: chunks.map((_, i) => ({
           index: i,
-          action: 'create' as const,
-          newTopicName: undefined,
-          reason: '知识库暂无主题，需新建',
+          action: 'none' as const,
+          reason: '知识库暂无主题，待人工归类',
         })) }
 
     return { chunks, topicSuggestions: plan, existingTopics }
@@ -1278,12 +943,17 @@ export class KBService {
     page: number
     limit: number
     kbId?: string
+    topicIds?: string[]
   }): Promise<{ items: LongChunkItem[]; total: number; page: number; limit: number }> {
     const skip = (params.page - 1) * params.limit
 
-    const whereClause = params.kbId
+    let whereClause = params.kbId
       ? Prisma.sql`AND m.kb_id = ${params.kbId}`
       : Prisma.empty
+
+    if (params.topicIds && params.topicIds.length > 0) {
+      whereClause = Prisma.sql`${whereClause} AND m.topic_id = ANY(ARRAY[${Prisma.join(params.topicIds)}]::text[])`
+    }
 
     const [items, totalResult] = await Promise.all([
       this.prisma.$queryRaw<Array<{
@@ -1338,5 +1008,65 @@ export class KBService {
       page: params.page,
       limit: params.limit,
     }
+  }
+
+  /**
+   * 批量改分类：将一批 memory 片段移动到指定 topic
+   */
+  async reassignTopic(memoryIds: string[], topicId: string): Promise<{ count: number }> {
+    if (!memoryIds || memoryIds.length === 0) {
+      throw new AppError('KB_CHUNK_REASSIGN_MEMORY_IDS_REQUIRED')
+    }
+
+    const result = await this.prisma.memory.updateMany({
+      where: { id: { in: memoryIds } },
+      data: { topicId },
+    })
+
+    return { count: result.count }
+  }
+
+  /**
+   * 重命名分类
+   */
+  async renameTopic(topicId: string, name: string, description?: string): Promise<void> {
+    const topic = await this.prisma.topic.findUnique({
+      where: { id: topicId },
+      select: { id: true },
+    })
+
+    if (!topic) {
+      throw new AppError('KB_TOPIC_NOT_FOUND_BY_ID')
+    }
+
+    const data: Record<string, unknown> = { name: name.trim() }
+    if (description !== undefined) {
+      data.description = description.trim()
+    }
+
+    await this.prisma.topic.update({
+      where: { id: topicId },
+      data: data as any,
+    })
+  }
+
+  /**
+   * 合并分类：将 sourceTopicIds 下的所有 memory 移到 targetTopicId，然后删除 source topics
+   */
+  async mergeTopics(sourceTopicIds: string[], targetTopicId: string): Promise<{ movedCount: number; deletedCount: number }> {
+    if (!sourceTopicIds || sourceTopicIds.length === 0) {
+      throw new AppError('KB_TOPIC_MERGE_SOURCE_IDS_REQUIRED')
+    }
+
+    const moveResult = await this.prisma.memory.updateMany({
+      where: { topicId: { in: sourceTopicIds } },
+      data: { topicId: targetTopicId },
+    })
+
+    const deleteResult = await this.prisma.topic.deleteMany({
+      where: { id: { in: sourceTopicIds } },
+    })
+
+    return { movedCount: moveResult.count, deletedCount: deleteResult.count }
   }
 }

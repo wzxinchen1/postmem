@@ -37,7 +37,8 @@ export const POST = createApiHandler<Deps>({
       return errorResponse('KB_LIMIT_INVALID', { min: 1, max: 100, actual: limit })
     }
 
-    const result = await deps.kbService.list(body.kbId, page, limit)
+    const topicIds = body.topicIds as string[] | undefined
+    const result = await deps.kbService.list(body.kbId, page, limit, topicIds)
     return successResponse(result)
   },
 })

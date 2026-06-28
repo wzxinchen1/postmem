@@ -165,9 +165,8 @@ export interface SplitPreviewData {
   topicSuggestions: {
     plans: Array<{
       index: number
-      action: 'select' | 'create'
+      action: 'select' | 'none'
       topicName?: string
-      newTopicName?: string
       reason: string
     }>
   }

@@ -348,6 +348,111 @@
         }
       }
     },
+    "/api/kb/chunk/merge-confirm": {
+      "post": {
+        "summary": "确认合并",
+        "description": "确认合并",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回合并后的新片段 ID",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/chunk/merge-preview": {
+      "post": {
+        "summary": "AI 合并预览",
+        "description": "AI 合并预览",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回 AI 合并建议的标题和内容",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/chunk/reassign-topic": {
+      "post": {
+        "summary": "批量移动片段到指定分类",
+        "description": "批量移动片段到指定分类",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回移动数量",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/chunk/split-confirm": {
+      "post": {
+        "summary": "确认拆分",
+        "description": "确认拆分",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回拆分后的新片段 ID 列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/chunk/split-preview": {
+      "post": {
+        "summary": "AI 拆分预览",
+        "description": "AI 拆分预览",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回 AI 拆分的片段列表及主题建议",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/kb/create": {
       "post": {
         "summary": "创建知识库",
@@ -449,6 +554,27 @@
         }
       }
     },
+    "/api/kb/list-topics": {
+      "post": {
+        "summary": "获取主题列表",
+        "description": "获取主题列表",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回主题列表",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/kb/long-chunks": {
       "post": {
         "summary": "查询超长片段",
@@ -501,6 +627,132 @@
         "responses": {
           "200": {
             "description": "返回统计信息",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/topic/create": {
+      "post": {
+        "summary": "创建主题",
+        "description": "创建主题",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回新创建的主题信息",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/topic/delete": {
+      "post": {
+        "summary": "删除主题（仅允许空主题）",
+        "description": "删除主题（仅允许空主题）",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/topic/merge": {
+      "post": {
+        "summary": "合并分类",
+        "description": "合并分类",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回移动和删除的数量",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/topic/rename": {
+      "post": {
+        "summary": "重命名分类",
+        "description": "重命名分类",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "操作成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/topic/stats": {
+      "post": {
+        "summary": "获取主题列表（含记忆数量）",
+        "description": "获取主题列表（含记忆数量）",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回主题列表（含记忆计数）",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/topic/suggest": {
+      "post": {
+        "summary": "AI 辅助生成主题建议",
+        "description": "AI 辅助生成主题建议",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回建议的主题名称和描述",
             "content": {
               "application/json": {
                 "schema": {

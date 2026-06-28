@@ -403,26 +403,20 @@ class MockCutModelAgent {
     } else if (systemPrompt.includes('知识库去重专家')) {
       content = JSON.stringify({ action: 'new', reason: 'mock 无重复，直接入库', targetId: null, mergedContent: null })
     } else if (systemPrompt.includes('主题分类助手')) {
-      // matchTopic、createTopicInfo、batchResolveTopics 使用相同 system prompt，
+      // createTopicInfo 和 batchResolveTopics 使用相同 system prompt，
       // 通过 user prompt 内容区分
       if (userPrompt.includes('创建一个新主题')) {
         // createTopicInfo 期望 { name, description }
         content = JSON.stringify({ name: '测试', description: 'mock 创建的主题' })
-      } else if (userPrompt.includes('规划主题归属')) {
-        // batchResolveTopics 期望 { plans: [...] }
-        content = JSON.stringify({ plans: [{ index: 0, action: 'create', newTopicName: '测试主题', reason: 'mock 新建主题' }] })
       } else {
-        // matchTopic 期望 { action, topicName?, reason? }
-        content = JSON.stringify({ action: 'create', reason: 'mock 创建新主题' })
+        // batchResolveTopics 期望 { plans: [...] }
+        // 测试环境已在 setup 中创建了"默认"主题，全部归入该主题
+        content = JSON.stringify({ plans: [{ index: 0, action: 'select', topicName: '默认', reason: 'mock 分配到默认主题' }] })
       }
     } else if (systemPrompt.includes('对话分析专家')) {
       content = JSON.stringify({ groups: [{ messageIds: [], summary: 'mock 分组', isComplete: true }] })
     } else if (systemPrompt.includes('文本分析专家') || systemPrompt.includes('切割点')) {
       content = JSON.stringify({ cutPoints: [{ index: 0, reason: 'mock 切分点' }] })
-    } else if (systemPrompt.includes('批量创建主题')) {
-      content = JSON.stringify({ topics: [{ name: '测试', description: 'mock 批量创建的主题' }] })
-    } else if (systemPrompt.includes('主题规划')) {
-      content = JSON.stringify({ plans: [{ index: 0, action: 'create', newTopicName: '测试主题', reason: 'mock 新建主题' }] })
     } else {
       content = getStore().defaultChatResponse
     }

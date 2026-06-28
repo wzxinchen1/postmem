@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useCallback } from 'react'
+import { useState, useCallback, useEffect } from 'react'
 import {
   message as antMessage, Card, Table, Button, InputNumber, Space, Typography,
   Empty, Tag, Modal, Input, Select, Divider, Spin, Alert,
@@ -8,7 +8,7 @@ import {
 import {
   SearchOutlined, EyeOutlined, ColumnHeightOutlined,
   ScissorOutlined, MergeCellsOutlined, ThunderboltOutlined,
-  DeleteOutlined,
+  DeleteOutlined, TagOutlined,
 } from '@ant-design/icons'
 import type { LongChunkItem, LongChunksResponse, TopicInfo, SplitChunkItem } from '@/app/admin/types'
 import { post } from '@/app/admin/lib/request'
@@ -38,7 +38,7 @@ interface EditableChunk {
 
 function buildEditableChunk(
   chunk: SplitChunkItem,
-  plan: { action: string; topicName?: string; newTopicName?: string },
+  plan: { action: string; topicName?: string },
   existingTopics: TopicInfo[],
 ): EditableChunk {
   const topicId =
@@ -51,8 +51,8 @@ function buildEditableChunk(
     title: chunk.title,
     content: chunk.content,
     topicId,
-    topicAction: plan.action === 'create' ? 'create' : 'existing',
-    newTopicName: plan.action === 'create' ? (plan.newTopicName ?? '') : '',
+    topicAction: 'existing',
+    newTopicName: '',
     newTopicDescription: '',
     suggestLoading: false,
   }
@@ -152,7 +152,43 @@ export default function LongChunksPage() {
   const [selectedRowKeys, setSelectedRowKeys] = useState<React.Key[]>([])
   const [selectedRows, setSelectedRows] = useState<LongChunkItem[]>([])
 
+  const [topicList, setTopicList] = useState<TopicInfo[]>([])
+  const [filterTopicIds, setFilterTopicIds] = useState<string[]>([])
+  const [topicStats, setTopicStats] = useState<Array<{ id: string; name: string; description: string; memoryCount: number }>>([])
+  const [createOpen, setCreateOpen] = useState(false)
+  const [createName, setCreateName] = useState('')
+  const [createDesc, setCreateDesc] = useState('')
+  const [editingTopicId, setEditingTopicId] = useState<string | null>(null)
+  const [editName, setEditName] = useState('')
+  const [editDesc, setEditDesc] = useState('')
+  const [selectedMergeTopicIds, setSelectedMergeTopicIds] = useState<string[]>([])
+  const [mergeTargetTopicId, setMergeTargetTopicId] = useState<string | null>(null)
+  const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false)
+
   const [msg, contextHolder] = antMessage.useMessage()
+
+  const loadTopics = async () => {
+    if (kbId === null) {
+      setTopicList([])
+      setFilterTopicIds([])
+      setTopicStats([])
+    } else {
+      try {
+        const [listRes, statsRes] = await Promise.all([
+          post<{ success: boolean; data?: { items: TopicInfo[] } }>('/api/kb/list-topics', { kbId }),
+          post<{ success: boolean; data?: { items: Array<{ id: string; name: string; description: string; memoryCount: number }> } }>('/api/kb/topic/stats', { kbId }),
+        ])
+        if (listRes.success && listRes.data) {
+          setTopicList(listRes.data.items)
+        }
+        if (statsRes.success && statsRes.data) {
+          setTopicStats(statsRes.data.items)
+        }
+      } catch {
+        msg.error('加载分类列表失败')
+      }
+    }
+  }
 
   const doFetch = useCallback(async (fetchPage: number) => {
     if (!threshold || threshold < 1) {
@@ -166,7 +202,8 @@ export default function LongChunksPage() {
         threshold,
         page: fetchPage,
         limit,
-        kbId: kbId || undefined,
+        kbId,
+        topicIds: filterTopicIds,
       })
       setResults(data)
     } catch {
@@ -174,7 +211,122 @@ export default function LongChunksPage() {
     } finally {
       setLoading(false)
     }
-  }, [threshold, limit, kbId, msg])
+  }, [threshold, limit, kbId, filterTopicIds, msg])
+
+  useEffect(() => {
+    loadTopics()
+  }, [kbId])
+
+  const handleCreateTopic = async () => {
+    if (!createName.trim()) {
+      msg.warning('请输入主题名称')
+    } else if (kbId === null) {
+      msg.warning('请先选择知识库')
+    } else {
+      try {
+        const body: Record<string, unknown> = {
+          kbId,
+          name: createName.trim(),
+        }
+        if (createDesc.trim()) {
+          body.description = createDesc.trim()
+        }
+        await post('/api/kb/topic/create', body)
+        msg.success('主题创建成功')
+        setCreateOpen(false)
+        setCreateName('')
+        setCreateDesc('')
+        loadTopics()
+      } catch {
+        msg.error('创建主题失败')
+      }
+    }
+  }
+
+  const handleRenameTopic = async (topicId: string) => {
+    if (!editName.trim()) {
+      msg.warning('主题名称不能为空')
+    } else {
+      try {
+        const body: Record<string, unknown> = {
+          topicId,
+          name: editName.trim(),
+        }
+        if (editDesc.trim()) {
+          body.description = editDesc.trim()
+        }
+        await post('/api/kb/topic/rename', body)
+        msg.success('主题已重命名')
+        setEditingTopicId(null)
+        loadTopics()
+      } catch {
+        msg.error('重命名失败')
+      }
+    }
+  }
+
+  const handleDeleteTopic = async (topicId: string) => {
+    try {
+      await post('/api/kb/topic/delete', { topicId })
+      msg.success('主题已删除')
+      loadTopics()
+    } catch {
+      msg.error('删除失败')
+    }
+  }
+
+  const handleMergeTopics = async () => {
+    if (selectedMergeTopicIds.length < 2) {
+      msg.warning('请至少选择 2 个主题')
+    } else if (mergeTargetTopicId === null) {
+      msg.warning('请选择目标主题')
+    } else {
+      try {
+        const res = await post<{ success: boolean; data?: { movedCount: number; deletedCount: number } }>('/api/kb/topic/merge', {
+          sourceTopicIds: selectedMergeTopicIds.filter(id => id !== mergeTargetTopicId),
+          targetTopicId: mergeTargetTopicId,
+        })
+        if (res.success && res.data) {
+          msg.success(`已移动 ${res.data.movedCount} 条记忆，删除 ${res.data.deletedCount} 个主题`)
+        }
+        setMergeConfirmOpen(false)
+        setSelectedMergeTopicIds([])
+        setMergeTargetTopicId(null)
+        loadTopics()
+        refreshCurrentPage()
+      } catch {
+        msg.error('合并失败')
+      }
+    }
+  }
+
+  const startEditTopic = (t: { id: string; name: string; description: string }) => {
+    setEditingTopicId(t.id)
+    setEditName(t.name)
+    setEditDesc(t.description)
+  }
+
+  const [reassignOpen, setReassignOpen] = useState(false)
+  const [reassignTopicId, setReassignTopicId] = useState<string | null>(null)
+
+  const handleReassignConfirm = async () => {
+    if (reassignTopicId === null) {
+      msg.warning('请选择目标分类')
+    } else {
+      try {
+        await post('/api/kb/chunk/reassign-topic', {
+          memoryIds: selectedRows.map(r => r.id),
+          topicId: reassignTopicId,
+        })
+        msg.success(`已移动 ${selectedRows.length} 个片段`)
+        setReassignOpen(false)
+        setReassignTopicId(null)
+        refreshCurrentPage()
+      } catch {
+        msg.error('批量移分类失败')
+      }
+    }
+  }
 
   const handleSearch = () => {
     setPage(1)
@@ -569,11 +721,123 @@ export default function LongChunksPage() {
     </div>
   )
 
+  const topicPanelWidth = 300
+
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 16 }}>
+    <div style={{ display: 'flex', flex: 1, gap: 16, height: '100%', minHeight: 0 }}>
       {contextHolder}
 
-      <KBSelector kbId={kbId} setKbId={setKbId} />
+      {kbId !== null && (
+        <div style={{ width: topicPanelWidth, flexShrink: 0, display: 'flex', flexDirection: 'column', gap: 12, overflow: 'auto' }}>
+          <Card
+            size="small"
+            title={
+              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                <Text strong>主题管理</Text>
+                <Button size="small" type="primary" icon={<TagOutlined />} onClick={() => setCreateOpen(true)}>
+                  新建
+                </Button>
+              </Space>
+            }
+            styles={{ body: { padding: '8px 12px' } }}
+          >
+            <Space direction="vertical" size={2} style={{ width: '100%' }}>
+              {topicStats.map((t) => (
+                <div key={t.id} style={{
+                  padding: '6px 8px',
+                  borderRadius: 6,
+                  background: editingTopicId === t.id ? '#f6f8fa' : 'transparent',
+                  border: editingTopicId === t.id ? '1px solid #d9d9d9' : '1px solid transparent',
+                }}>
+                  {editingTopicId === t.id ? (
+                    <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                      <Input
+                        size="small"
+                        value={editName}
+                        onChange={(e) => setEditName(e.target.value)}
+                        maxLength={10}
+                        placeholder="主题名称"
+                      />
+                      <Input
+                        size="small"
+                        value={editDesc}
+                        onChange={(e) => setEditDesc(e.target.value)}
+                        placeholder="描述（可选）"
+                      />
+                      <Space size={4}>
+                        <Button size="small" type="primary" onClick={() => handleRenameTopic(t.id)}>
+                          保存
+                        </Button>
+                        <Button size="small" onClick={() => setEditingTopicId(null)}>
+                          取消
+                        </Button>
+                      </Space>
+                    </Space>
+                  ) : (
+                    <div
+                      style={{ cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}
+                      onClick={() => startEditTopic(t)}
+                    >
+                      <Space size={6}>
+                        <Text style={{ fontSize: 13 }}>{t.name}</Text>
+                        <Tag style={{ fontSize: 11, lineHeight: '16px', padding: '0 4px' }}>{t.memoryCount}</Tag>
+                      </Space>
+                      <Button
+                        type="link"
+                        size="small"
+                        danger
+                        icon={<DeleteOutlined />}
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleDeleteTopic(t.id)
+                        }}
+                      />
+                    </div>
+                  )}
+                </div>
+              ))}
+              {topicStats.length === 0 && (
+                <Text type="secondary" style={{ fontSize: 12, textAlign: 'center', display: 'block', padding: '16px 0' }}>
+                  暂无主题
+                </Text>
+              )}
+            </Space>
+          </Card>
+
+          <Card size="small" title="合并主题">
+            <Space direction="vertical" size={6} style={{ width: '100%' }}>
+              <Select
+                mode="multiple"
+                value={selectedMergeTopicIds}
+                onChange={setSelectedMergeTopicIds}
+                placeholder="选择源主题"
+                style={{ width: '100%' }}
+                size="small"
+                options={topicStats.map(t => ({ value: t.id, label: `${t.name} (${t.memoryCount})` }))}
+              />
+              <Select
+                value={mergeTargetTopicId}
+                onChange={setMergeTargetTopicId}
+                placeholder="选择目标主题"
+                style={{ width: '100%' }}
+                size="small"
+                options={topicStats.map(t => ({ value: t.id, label: t.name }))}
+              />
+              <Button
+                size="small"
+                block
+                onClick={() => setMergeConfirmOpen(true)}
+                disabled={selectedMergeTopicIds.length < 2 || mergeTargetTopicId === null}
+              >
+                执行合并
+              </Button>
+            </Space>
+          </Card>
+        </div>
+      )}
+
+      <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 16, minWidth: 0 }}>
+        <KBSelector kbId={kbId} setKbId={setKbId} />
 
       <Card title={<Title level={4} style={{ margin: 0 }}>超长片段查询</Title>}>
         <Space direction="vertical" size={16} style={{ width: '100%' }}>
@@ -590,6 +854,14 @@ export default function LongChunksPage() {
             <Text type="secondary" style={{ fontSize: 12 }}>
               查询 content 长度超过此值的 memory 片段
             </Text>
+            <Select
+              mode="multiple"
+              value={filterTopicIds}
+              onChange={setFilterTopicIds}
+              placeholder="筛选分类（可选）"
+              style={{ minWidth: 200 }}
+              options={topicList.map(t => ({ value: t.id, label: t.name }))}
+            />
             <Button
               type="primary"
               icon={<SearchOutlined />}
@@ -614,6 +886,14 @@ export default function LongChunksPage() {
                   )}
                 </Space>
                 <Space>
+                  {selectedRowKeys.length > 0 && (
+                    <Button
+                      icon={<TagOutlined />}
+                      onClick={() => setReassignOpen(true)}
+                    >
+                      批量移分类
+                    </Button>
+                  )}
                   {selectedRowKeys.length >= 2 && (
                     <Button
                       type="primary"
@@ -683,8 +963,8 @@ export default function LongChunksPage() {
           )}
         </Space>
       </Card>
+      </div>
 
-      {/* 内容详情弹窗 */}
       <Modal
         title="内容详情"
         open={!!viewContent}
@@ -702,7 +982,6 @@ export default function LongChunksPage() {
         </div>
       </Modal>
 
-      {/* 拆分弹窗 */}
       <Modal
         title={
           <Space>
@@ -796,7 +1075,6 @@ export default function LongChunksPage() {
         )}
       </Modal>
 
-      {/* 合并弹窗 */}
       <Modal
         title={
           <Space>
@@ -832,7 +1110,6 @@ export default function LongChunksPage() {
         }
       >
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
-          {/* 已选片段列表 */}
           <Card size="small" title="待合并的片段">
             <Space direction="vertical" size={4} style={{ width: '100%' }}>
               {selectedRows.map((r, i) => (
@@ -845,7 +1122,6 @@ export default function LongChunksPage() {
             </Space>
           </Card>
 
-          {/* 合并结果 */}
           <div>
             <Text strong>合并后标题：</Text>
             <Input

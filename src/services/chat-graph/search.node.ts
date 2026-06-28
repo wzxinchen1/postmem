@@ -149,6 +149,7 @@ export function createSearchNode(deps: GraphDependencies) {
 
         const similarSummaries = await deps.chatMemoryService.searchSimilar(
           state.kbId,
+          state.topicIds,
           lastUserMsg.content
         )
         memoryText = similarSummaries.map(s => s.content).join('\n\n')

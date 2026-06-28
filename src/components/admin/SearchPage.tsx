@@ -1,7 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { Card, Input, InputNumber, Button, Space, Typography, Tag, Empty, message } from 'antd'
+import { useState, useEffect } from 'react'
+import { Card, Input, InputNumber, Button, Space, Typography, Tag, Empty, message, Select } from 'antd'
 import { SearchOutlined } from '@ant-design/icons'
 import { SearchResponse } from '@/app/admin/types'
 import { KBSelector } from '@/src/components/admin/KBSelector'
@@ -18,10 +18,47 @@ export default function SearchPage() {
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null)
   
   const [msg, contextHolder] = message.useMessage()
+  const [topicList, setTopicList] = useState<Array<{ id: string; name: string }>>([])
+  const [selectedTopicIds, setSelectedTopicIds] = useState<string[]>([])
+  const [topicLoading, setTopicLoading] = useState(false)
+
+  useEffect(() => {
+    if (kbId === null) {
+      setTopicList([])
+      setSelectedTopicIds([])
+    } else {
+      setTopicLoading(true)
+      const doFetch = async () => {
+        try {
+          const res = await fetch('/api/kb/list-topics', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ kbId }),
+          })
+          if (res.ok) {
+            const data = await res.json()
+            if (data.success && data.data && Array.isArray(data.data.items)) {
+              setTopicList(data.data.items)
+            }
+          }
+        } catch {
+          msg.error('加载分类列表失败')
+        } finally {
+          setTopicLoading(false)
+        }
+      }
+      doFetch()
+    }
+  }, [kbId])
 
   const handleSearch = async () => {
     if (!kbId || !searchQuery) {
       msg.info('请选择知识库并填写查询内容')
+      return
+    }
+
+    if (selectedTopicIds.length === 0) {
+      msg.info('请至少选择一个分类')
       return
     }
 
@@ -32,6 +69,7 @@ export default function SearchPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           kbId,
+          topicIds: selectedTopicIds,
           query: searchQuery,
           top_k: searchTopK,
           context_window: searchContextWindow
@@ -75,6 +113,19 @@ export default function SearchPage() {
               onChange={(e) => setSearchQuery(e.target.value)}
               placeholder="输入查询内容..."
               size="large"
+            />
+          </div>
+
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>分类筛选（必选）</Text>
+            <Select
+              mode="multiple"
+              value={selectedTopicIds}
+              onChange={setSelectedTopicIds}
+              loading={topicLoading}
+              placeholder="请选择分类"
+              style={{ width: '100%' }}
+              options={topicList.map(t => ({ value: t.id, label: t.name }))}
             />
           </div>
           
@@ -164,7 +215,7 @@ export default function SearchPage() {
                       
                       {result.metadata && (
                         <Space size="large">
-                          <Text type="secondary" style={{ fontSize: 12 }}>主题ID: {result.topicId ?? 'N/A'}</Text>
+                          <Text type="secondary" style={{ fontSize: 12 }}>主题ID: {result.topicId === null ? 'N/A' : result.topicId}</Text>
                           <Text type="secondary" style={{ fontSize: 12 }}>切割模型: {result.metadata.cutModel || 'N/A'}</Text>
                         </Space>
                       )}

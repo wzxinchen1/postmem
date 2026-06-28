@@ -270,7 +270,7 @@ export class LLMResilienceService {
 
     jsonStr = jsonStr
       .replace(/,\s*([}\]])/g, '$1')
-      .replace(/\/\/.*$/gm, '')
+      .replace(/(?<!:)\/\/.*$/gm, '')
       .replace(/\/\*[\s\S]*?\*\//g, '')
 
     const firstResult = this.safeJsonParse(jsonStr)

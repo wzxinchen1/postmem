@@ -32,6 +32,8 @@ import {
 const CHAT_TIMEOUT = 30_000
 
 class MockChatTest extends ChatTestFixture {
+  private topicId!: string
+
   protected async doSetup(): Promise<void> {
     // 配置 mock LLM 响应规则：用户消息包含 keyword → 返回对应 response
     setMockChatResponseRules([
@@ -43,6 +45,37 @@ class MockChatTest extends ChatTestFixture {
       { keyword: '链接内容', response: '我查看了您提供的链接 https://example.com，这是一个关于示例网站的页面，用于测试链接抓取功能。' },
       { keyword: '测试图片', response: '这是您上传的图片，描述内容：这是一张测试图片的描述。' },
     ])
+  }
+
+  protected async doBefore(): Promise<void> {
+    // 先清空所有主题（此时 memories 已被父类 cleanupConversations 删除，主题为空可正常删除）
+    const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kbId: this.kbId }),
+    })
+    const listJson = await listRes.json()
+    const existingTopics: Array<{ id: string; name: string }> = listJson.data?.items ?? []
+    for (const topic of existingTopics) {
+      await fetch(`${getBaseUrl()}/api/kb/topic/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId: topic.id }),
+      })
+    }
+
+    // 新建测试用主题"默认"
+    const createRes = await fetch(`${getBaseUrl()}/api/kb/topic/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kbId: this.kbId, name: '默认', description: '默认分类，用于集成测试' }),
+    })
+    if (!createRes.ok) {
+      const text = await createRes.text()
+      throw new Error(`创建主题失败 (HTTP ${createRes.status}): ${text}`)
+    }
+    const createJson = await createRes.json()
+    this.topicId = createJson.data.id
   }
 
   runTests(): void {
@@ -375,6 +408,7 @@ class MockChatTest extends ChatTestFixture {
         kbId: this.kbId,
         conversationId: this.convId1,
         searchMemory: true,
+        topicIds: [this.topicId],
       })
 
       // 验证1: searchingMemory 状态事件出现（证明 search node 被执行且 needSearchMemory=true）
@@ -720,6 +754,113 @@ class MockChatTest extends ChatTestFixture {
       this.assertEqual(res.status, 400, 'status')
       const text = await res.text()
       this.assertContains(text, '知识库不存在', 'error message mentions kb not found')
+    }, CHAT_TIMEOUT)
+
+    // ════════════════════════════════════════════
+    // 主题管理 API 测试
+    // ════════════════════════════════════════════
+
+    test('searchMemory=true 但缺少 topicIds — 返回 KB_SEARCH_TOPIC_IDS_REQUIRED', async () => {
+      const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          messages: [{ id: 'no-topic-ids', content: '测试记忆搜索但无 topicIds' }],
+          modelId: this.modelId,
+          kbId: this.kbId,
+          conversationId: this.convId1,
+          searchMemory: true,
+        }),
+      })
+
+      await this.assertApiError(res, 'KB_SEARCH_TOPIC_IDS_REQUIRED')
+    }, CHAT_TIMEOUT)
+
+    test('searchMemory=false 时不传 topicIds — 正常通过', async () => {
+      const result = await this.chat({
+        messages: [{ id: 'no-topic-ids-ok', content: '不需要记忆搜索，不传 topicIds' }],
+        modelId: this.modelId,
+        kbId: this.kbId,
+        conversationId: this.convId1,
+        searchMemory: false,
+      })
+
+      this.assertTruthy(result.fullContent, 'fullContent without topicIds')
+    }, CHAT_TIMEOUT)
+
+    test('通过 API 列出主题 — 包含刚创建的"默认"', async () => {
+      const res = await fetch(`${getBaseUrl()}/api/kb/list-topics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kbId: this.kbId }),
+      })
+      const json = await res.json()
+
+      this.assertTruthy(json.success, 'list topics success')
+      this.assertTruthy(json.data?.items, 'has items')
+      const topics: Array<{ id: string; name: string }> = json.data.items
+      const defaultTopic = topics.find((t) => t.name === '默认')
+      this.assertTruthy(defaultTopic, '包含主题"默认"')
+      this.assertEqual(defaultTopic!.id, this.topicId, 'topic id 匹配')
+    }, CHAT_TIMEOUT)
+
+    test('通过 API 重命名主题', async () => {
+      const res = await fetch(`${getBaseUrl()}/api/kb/topic/rename`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId: this.topicId, name: '默认（已重命名）', description: '重命名测试' }),
+      })
+      const json = await res.json()
+
+      this.assertTruthy(json.success, 'rename success')
+
+      // 验证名称已更新
+      const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kbId: this.kbId }),
+      })
+      const listJson = await listRes.json()
+      const renamed = listJson.data.items.find((t: { id: string }) => t.id === this.topicId)
+      this.assertTruthy(renamed, 'renamed topic exists')
+      this.assertEqual(renamed.name, '默认（已重命名）', 'name updated')
+
+      // 改回原名，供后续测试使用
+      const revertRes = await fetch(`${getBaseUrl()}/api/kb/topic/rename`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId: this.topicId, name: '默认' }),
+      })
+      this.assertTruthy((await revertRes.json()).success, 'revert name success')
+    }, CHAT_TIMEOUT)
+
+    test('通过 API 删除主题（空主题） — 删除后列表中不再包含', async () => {
+      // 先创建一个临时主题用于删除测试
+      const createRes = await fetch(`${getBaseUrl()}/api/kb/topic/create`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kbId: this.kbId, name: '待删除', description: '临时主题，用于删除测试' }),
+      })
+      const createJson = await createRes.json()
+      const tempTopicId: string = createJson.data.id
+
+      // 执行删除
+      const deleteRes = await fetch(`${getBaseUrl()}/api/kb/topic/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId: tempTopicId }),
+      })
+      this.assertTruthy((await deleteRes.json()).success, 'delete success')
+
+      // 验证列表不再包含
+      const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ kbId: this.kbId }),
+      })
+      const listJson = await listRes.json()
+      const deletedTopic = listJson.data.items.find((t: { id: string }) => t.id === tempTopicId)
+      this.assertTruthy(!deletedTopic, 'deleted topic no longer in list')
     }, CHAT_TIMEOUT)
   }
 }

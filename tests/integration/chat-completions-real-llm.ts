@@ -23,9 +23,11 @@ import { test, run } from './runner'
 import { ChatTestFixture } from './test-base'
 import { getBaseUrl, setModelHasVision } from './helpers'
 
-const CHAT_TIMEOUT = 20_000
+const CHAT_TIMEOUT = 30_000
 
 class RealLLMChatTest extends ChatTestFixture {
+  private topicId!: string
+
   protected async doSetup(): Promise<void> {
     // 真实 LLM 模式不需要 mock 响应规则
     // 但记忆阈值、搜索等基础设施仍为 mock，通过 setMockChatSetting 控制
@@ -33,6 +35,36 @@ class RealLLMChatTest extends ChatTestFixture {
       memoryContextThreshold: 9999,
       chunkCharRange: '200-500',
     })
+  }
+
+  protected async doBefore(): Promise<void> {
+    // 清理旧主题 + 新建"默认"主题（此时 memories 已被父类 cleanupConversations 删除）
+    const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kbId: this.kbId }),
+    })
+    const listJson = await listRes.json()
+    const existingTopics: Array<{ id: string; name: string }> = listJson.data?.items ?? []
+    for (const topic of existingTopics) {
+      await fetch(`${getBaseUrl()}/api/kb/topic/delete`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ topicId: topic.id }),
+      })
+    }
+
+    const createRes = await fetch(`${getBaseUrl()}/api/kb/topic/create`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ kbId: this.kbId, name: '默认', description: '默认分类，用于集成测试' }),
+    })
+    if (!createRes.ok) {
+      const text = await createRes.text()
+      throw new Error(`创建主题失败 (HTTP ${createRes.status}): ${text}`)
+    }
+    const createJson = await createRes.json()
+    this.topicId = createJson.data.id
   }
 
   runTests(): void {
@@ -421,6 +453,7 @@ class RealLLMChatTest extends ChatTestFixture {
         kbId: this.kbId,
         conversationId: this.convId1,
         searchMemory: true,
+        topicIds: [this.topicId],
       })
 
       // 真实 LLM 判断搜索需求，"之前"类消息应触发记忆搜索

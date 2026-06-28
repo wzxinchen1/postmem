@@ -1,9 +1,3 @@
-export interface TopicMatchResult {
-  action: 'select' | 'create'
-  topicName?: string
-  reason: string
-}
-
 export interface TopicCreateInfo {
   name: string
   description: string
@@ -14,9 +8,8 @@ export interface TopicCreateInfo {
  */
 export interface ChunkTopicPlan {
   index: number
-  action: 'select' | 'create'
+  action: 'select' | 'none'
   topicName?: string
-  newTopicName?: string
   reason?: string
 }
 
@@ -182,6 +175,7 @@ export interface IngestMessagesResponse {
  */
 export interface SearchRequest {
   kbId: string
+  topicIds: string[]
   query: string
   top_k?: number
   context_window?: number
@@ -194,6 +188,7 @@ export interface ListRequest {
   kbId: string
   page?: number
   limit?: number
+  topicIds?: string[]
 }
 
 /**
@@ -522,6 +517,7 @@ export interface ChatCompletionRequest {
   regenerateMessageId?: string
   modelId: string
   kbId: string
+  topicIds: string[]
   thinkingEffort?: ThinkingEffort
   searchMemory?: boolean
   searchWeb?: boolean

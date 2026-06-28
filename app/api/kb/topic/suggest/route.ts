@@ -6,6 +6,11 @@ interface Deps {
   kbService: KBService
 }
 
+/**
+ * AI 辅助生成主题建议
+ * @swagger
+ * @response 200 返回建议的主题名称和描述
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['kbService'],
   handler: async (deps, request) => {

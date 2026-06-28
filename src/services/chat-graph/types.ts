@@ -16,6 +16,7 @@ export const ChatGraphState = Annotation.Root({
   conversationId: Annotation<string>,
   modelId: Annotation<string>,
   kbId: Annotation<string>,
+  topicIds: Annotation<string[]>,
   agent: Annotation<unknown>,
   modelName: Annotation<string>,
   searchMemory: Annotation<boolean>,

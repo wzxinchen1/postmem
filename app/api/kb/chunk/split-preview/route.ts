@@ -6,6 +6,11 @@ interface Deps {
   kbService: KBService
 }
 
+/**
+ * AI 拆分预览
+ * @swagger
+ * @response 200 返回 AI 拆分的片段列表及主题建议
+ */
 export const POST = createApiHandler<Deps>({
   dependencies: ['kbService'],
   handler: async (deps, request) => {

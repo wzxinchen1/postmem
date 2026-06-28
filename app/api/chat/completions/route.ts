@@ -27,7 +27,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const chatSettingService = scope.resolve<ChatSettingService>('chatSettingService')
 
   const body: ChatCompletionRequest = await request.json()
-  const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId, thinkingEffort, searchMemory, searchWeb } = body
+  const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId, topicIds, thinkingEffort, searchMemory, searchWeb } = body
 
   if (!messages || !Array.isArray(messages) || (messages.length === 0 && !regenerateMessageId)) {
     return errorResponse('MISSING_MESSAGES')
@@ -39,6 +39,10 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   if (!kbId) {
     return errorResponse('MISSING_KB_ID')
+  }
+
+  if (searchMemory && (!topicIds || !Array.isArray(topicIds) || topicIds.length === 0)) {
+    return errorResponse('KB_SEARCH_TOPIC_IDS_REQUIRED')
   }
 
   const model = await modelService.get(modelId)
@@ -124,6 +128,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
         regenerateMessageId,
         modelId,
         kbId,
+        topicIds,
         thinkingEffort,
         searchMemory,
         searchWeb,

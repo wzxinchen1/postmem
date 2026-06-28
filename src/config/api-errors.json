@@ -275,6 +275,10 @@
     "statusCode": 400,
     "message": "知识库名不能为空"
   },
+  "KB_CREATE_DESCRIPTION_REQUIRED": {
+    "statusCode": 400,
+    "message": "主题描述不能为空"
+  },
   "KB_CREATE_NAME_INVALID_FORMAT": {
     "statusCode": 400,
     "message": "名称只能包含字母、数字、中划线和下划线"
@@ -307,11 +311,11 @@
     "statusCode": 400,
     "message": "消息 {msgId} 内容长度超过限制 ({maxLength} 字符)"
   },
-  "KB_SEARCH_QUERY_REQUIRED": {
+  "KB_SEARCH_TOPIC_IDS_REQUIRED": {
     "statusCode": 400,
-    "message": "查询语句不能为空"
+    "message": "topicIds 不能为空"
   },
-  "KB_SEARCH_IN_TOPIC_QUERY_REQUIRED": {
+  "KB_SEARCH_QUERY_REQUIRED": {
     "statusCode": 400,
     "message": "查询语句不能为空"
   },
@@ -647,6 +651,22 @@
     "statusCode": 400,
     "message": "limit 必须在 {min}-{max} 之间的数字，实际: {actual}"
   },
+  "KB_CHUNK_REASSIGN_MEMORY_IDS_REQUIRED": {
+    "statusCode": 400,
+    "message": "memoryIds 不能为空"
+  },
+  "KB_TOPIC_NOT_FOUND_BY_ID": {
+    "statusCode": 400,
+    "message": "主题不存在"
+  },
+  "KB_TOPIC_MERGE_SOURCE_IDS_REQUIRED": {
+    "statusCode": 400,
+    "message": "sourceTopicIds 不能为空"
+  },
+  "KB_TOPIC_DELETE_HAS_MEMORIES": {
+    "statusCode": 400,
+    "message": "该分类下有 {count} 条记忆，无法删除，请先移走或合并"
+  },
   "KB_CHUNK_NOT_FOUND": {
     "statusCode": 400,
     "message": "片段不存在"
@@ -731,21 +751,9 @@
     "statusCode": 500,
     "message": "响应格式无效: 缺少 action 或 action 值不合法"
   },
-  "CUT_MODEL_INVALID_FORMAT_MERGE_MISSING_TARGET_ID": {
-    "statusCode": 500,
-    "message": "响应格式无效: merge 操作必须指定有效的 targetId"
-  },
-  "CUT_MODEL_INVALID_FORMAT_MERGE_MISSING_CONTENT": {
-    "statusCode": 500,
-    "message": "响应格式无效: merge 操作必须提供 mergedContent"
-  },
   "CUT_MODEL_LLM_MISSING_REASON": {
     "statusCode": 500,
     "message": "LLM 响应缺少 reason 字段"
-  },
-  "CUT_MODEL_INVALID_FORMAT_SELECT_MISSING_TOPIC_NAME": {
-    "statusCode": 500,
-    "message": "响应格式无效: select 操作必须指定 topicName"
   },
   "CUT_MODEL_INVALID_FORMAT_MISSING_NAME": {
     "statusCode": 500,
@@ -754,10 +762,6 @@
   "CUT_MODEL_INVALID_FORMAT_MISSING_DESCRIPTION": {
     "statusCode": 500,
     "message": "响应格式无效: 缺少 description"
-  },
-  "CUT_MODEL_INVALID_FORMAT_MISSING_TOPICS": {
-    "statusCode": 500,
-    "message": "响应格式无效: 缺少 topics 数组"
   },
   "CUT_MODEL_INVALID_FORMAT_MISSING_PLANS": {
     "statusCode": 500,

@@ -139,95 +139,8 @@ ${text.slice(0, 3000)}
 6. 确保所有文本内容都被分配到某个话题中`
   }
 
-  static deduplicationExpert(): string {
-    return `你是一位知识库去重专家。你需要判断一段新的文本片段应该如何处理。
-
-核心原则：
-1. 如果新片段与已有记忆高度重复或包含的信息已被完全覆盖 → skip（跳过）
-2. 如果新片段与某条记忆话题相关但提供了增量信息 → merge（合并到该条记忆中）
-3. 如果新片段与所有已有记忆都明显不同 → new（作为新记录入库）
-
-合并（merge）时：
-- 将新信息融入已有记忆的原文中，使合并后的文本连贯完整
-- 不能丢弃已有记忆中的任何有价值信息
-- 合并后的文本应该比原记忆更丰富，同时保留原文风格
-
-Always respond with valid JSON only.`
-  }
-
-  static deduplicateChunk(chunk: string, existingMemories: string): string {
-    return `判断以下新文本片段应如何处理。
-
-新文本片段：
----
-${chunk}
----
-
-已有的相似记忆（每条带有序号和 ID）：
----
-${existingMemories || '（无）'}
----
-
-请返回 JSON 格式：
-{
-  "action": "skip" 或 "merge" 或 "new",
-  "reason": "简要说明理由",
-  "targetId": 仅当 action 为 "merge" 时填写要合并的目标记忆序号（如 1、2、3），其他情况省略或为 null,
-  "mergedContent": 仅当 action 为 "merge" 时填写合并后的完整文本，其他情况省略或为 null
-}
-
-要求：
-1. action 为 "skip" 表示无需处理（已完全覆盖或无价值）
-2. action 为 "merge" 表示将新信息合并到已有的某条记忆中，必须指定 targetId 和 mergedContent
-3. action 为 "new" 表示作为全新的独立记录入库
-4. targetId 是上方相似记忆列表中的序号（从 1 开始），不是数据库 ID
-5. mergedContent 必须是合并后的完整连贯文本，不能是摘要
-6. 只返回 JSON，不要有其他说明文字`
-  }
-
   static topicMatchExpert(): string {
     return `你是知识库的主题分类助手。Always respond with valid JSON only.`
-  }
-
-  static topicMatch(
-    content: string,
-    existingTopics: Array<{ name: string; description: string }>
-  ): string {
-    const topicsText =
-      existingTopics.length === 0
-        ? '暂无主题'
-        : existingTopics.map((t) => `- ${t.name}: ${t.description}`).join('\n')
-
-    return `## 任务
-判断当前内容应该归入已有主题还是需要创建新主题。
-
-## 当前内容
-${content}
-
-## 已有主题列表
-${topicsText}
-
-## 判断规则
-1. 优先归入已有主题。只要当前内容与某个已有主题**大致相关**（属于同一领域、同一项目、或讨论方向一致），就选择该主题
-2. 只有当所有已有主题都与当前内容**明显无关**时，才创建新主题
-3. **宁可归到一个不太精确的主题，也不要频繁创建碎片化的小主题**
-4. 同一批次入库的内容通常属于同一个大主题，优先复用最近创建的主题
-
-## 返回格式（严格 JSON）
-
-如果选择已有主题：
-{
-  "action": "select",
-  "topicName": "选中的主题名（必须与已有主题名完全一致）",
-  "reason": "简短理由"
-}
-
-如果需要创建新主题：
-{
-  "action": "create",
-  "reason": "为什么需要创建新主题"
-
-注意：只返回 JSON，不要包含其他内容。`
   }
 
   static topicCreate(content: string): string {
@@ -246,34 +159,6 @@ ${content}
 {
   "name": "主题名称（不超过5个字）",
   "description": "主题摘要"
-}
-
-只返回 JSON。`
-  }
-
-  static batchTopicCreate(
-    proposedTopics: Array<{ name: string; sampleContent: string }>
-  ): string {
-    const topicsText = proposedTopics
-      .map((t, i) => `## 拟建主题${i + 1}: ${t.name}\n${t.sampleContent.slice(0, 300)}`)
-      .join('\n\n')
-
-    return `以下是为同一批内容拟创建的多个新主题。你的任务是**合并去重**，将语义相近的主题归为一个。
-
-## 拟建主题列表（含示例内容）
-${topicsText}
-
-## 要求
-1. **大幅合并**：这些内容通常只属于 1-2 个大主题，不要保留细碎的小分类
-2. **名称不超过5个字**：用大类名（如"NLR"、"部署"、"认证"）
-3. 如果多个拟建主题明显属于同一领域，直接用该领域最通用的名字作为唯一主题名
-4. 为每个最终主题撰写摘要
-
-返回 JSON：
-{
-  "topics": [
-    { "name": "合并后的主题名（不超过5个字）", "description": "摘要" }
-  ]
 }
 
 只返回 JSON。`
@@ -361,11 +246,10 @@ ${topicsText}
 ${chunksText}
 
 ## 规则
-1. **优先复用已有主题**：只要片段标题与某个已有主题大致相关就选它
-2. **控制新主题数量**：只有当所有已有主题都与某片段明显无关时才创建新主题
-3. **同源片段倾向归一**：来自同一篇文档通常属于 **1-2 个大主题**，绝不要给每个片段都建新主题
-4. 新主题名称**不超过5个字**，使用大类名（如"NLR"、"部署"、"认证"），不要用细碎描述
-5. 如果所有新片段明显都在描述同一个大领域，只建一个主题，直接用该领域名
+1. **只能从已有主题中选择**，禁止创建新主题
+2. 只要片段标题与某个已有主题大致相关就归入该主题
+3. 如果所有已有主题都与某片段**明显无关**，则标记为"none"（未分类）
+4. **同源片段倾向归一**：来自同一篇文档的片段应尽量归入**相同的 1-2 个主题**
 
 ## 返回格式（严格 JSON）
 {
@@ -378,9 +262,8 @@ ${chunksText}
     },
     {
       "index": 2,
-      "action": "create",
-      "newTopicName": "新建主题名",
-      "reason": "为什么需要新主题"
+      "action": "none",
+      "reason": "为什么现有主题都不匹配"
     }
   ]
 }
@@ -388,7 +271,7 @@ ${chunksText}
 注意：
 - index 必须与上方片段编号一致
 - action 为 select 时，topicName **必须是已有主题列表中的短名称**（如"NLR"、"部署"），**绝不是描述文字**
-- action 为 create 时必须提供 newTopicName
+- action 为 none 时，不需要提供 topicName
 - 只返回 JSON，不要包含其他内容`
   }
 

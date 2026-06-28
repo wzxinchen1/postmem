@@ -7,21 +7,21 @@ interface Deps {
 }
 
 /**
- * 获取主题列表
+ * 删除主题（仅允许空主题）
  * @swagger
- * @response 200 返回主题列表
+ * @response 200 删除成功
  */
 export const POST = createApiHandler<Deps>({
   dependencies: ['kbService'],
   handler: async (deps, request) => {
     const body = await request.json()
-    const kbId = body.kbId as string | undefined
+    const topicId = body.topicId as string | undefined
 
-    if (!kbId || typeof kbId !== 'string') {
-      return errorResponse('KB_ID_REQUIRED')
+    if (!topicId || typeof topicId !== 'string') {
+      return errorResponse('KB_TOPIC_NOT_FOUND_BY_ID')
     }
 
-    const items = await deps.kbService.listTopics(kbId)
-    return successResponse({ items })
+    await deps.kbService.deleteTopic(topicId)
+    return successResponse({ success: true })
   },
 })

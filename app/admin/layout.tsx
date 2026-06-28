@@ -27,6 +27,8 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     item.key === pathname || (item.key !== '/admin' && (pathname ?? '').startsWith(item.key))
   )?.key || '/admin'
 
+  const isLongChunks = pathname === '/admin/long-chunks'
+
   return (
     <Layout style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
       <Header style={{ 
@@ -57,7 +59,11 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
           返回首页
         </Button>
       </Header>
-      <Content style={{ display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', maxWidth: '1400px', margin: '0 auto', width: '100%' }}>
+      <Content style={{
+        display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', width: '100%',
+        maxWidth: isLongChunks ? '100%' : '1400px',
+        margin: '0 auto',
+      }}>
         {children}
       </Content>
     </Layout>

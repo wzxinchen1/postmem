@@ -7,9 +7,9 @@ interface Deps {
 }
 
 /**
- * 获取主题列表
+ * 获取主题列表（含记忆数量）
  * @swagger
- * @response 200 返回主题列表
+ * @response 200 返回主题列表（含记忆计数）
  */
 export const POST = createApiHandler<Deps>({
   dependencies: ['kbService'],
@@ -21,7 +21,7 @@ export const POST = createApiHandler<Deps>({
       return errorResponse('KB_ID_REQUIRED')
     }
 
-    const items = await deps.kbService.listTopics(kbId)
+    const items = await deps.kbService.listTopicsWithStats(kbId)
     return successResponse({ items })
   },
 })
