@@ -747,6 +747,19 @@ export class KBService {
   }
 
   /**
+   * 批量删除
+   */
+  async batchDelete(memoryIds: string[]): Promise<{ count: number }> {
+    if (memoryIds.length === 0) {
+      throw new AppError('KB_CHUNK_BATCH_DELETE_MEMORY_IDS_REQUIRED')
+    }
+    const result = await this.prisma.memory.deleteMany({
+      where: { id: { in: memoryIds } },
+    })
+    return { count: result.count }
+  }
+
+  /**
    * 统计概览
    */
   async stats(kbId?: string): Promise<Stats | { kbNames: Stats[] }> {

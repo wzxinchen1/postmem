@@ -408,6 +408,48 @@
         }
       }
     },
+    "/api/kb/chunk/batch-delete": {
+      "post": {
+        "summary": "批量删除 memory 片段",
+        "description": "批量删除 memory 片段",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "返回删除数量",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
+    "/api/kb/chunk/delete": {
+      "post": {
+        "summary": "删除单个 memory 片段",
+        "description": "删除单个 memory 片段",
+        "tags": [
+          "Knowledge Base"
+        ],
+        "responses": {
+          "200": {
+            "description": "删除成功",
+            "content": {
+              "application/json": {
+                "schema": {
+                  "$ref": "#/components/schemas/ApiResponse"
+                }
+              }
+            }
+          }
+        }
+      }
+    },
     "/api/kb/chunk/merge-confirm": {
       "post": {
         "summary": "确认合并",

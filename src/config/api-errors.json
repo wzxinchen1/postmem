@@ -699,6 +699,14 @@
     "statusCode": 400,
     "message": "缺少必需字段: merged.title 或 merged.content"
   },
+  "KB_CHUNK_DELETE_MEMORY_ID_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需参数: memoryId"
+  },
+  "KB_CHUNK_BATCH_DELETE_MEMORY_IDS_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需参数: memoryIds"
+  },
   "KB_STATS_COUNT_EMPTY": {
     "statusCode": 500,
     "message": "知识库 \"{name}\" 的记录计数字段为空"

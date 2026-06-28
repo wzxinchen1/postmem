@@ -34,6 +34,7 @@ interface EditableChunk {
   newTopicName: string
   newTopicDescription: string
   suggestLoading: boolean
+  deleted: boolean
 }
 
 interface MergeConfirmSnapshot {
@@ -65,6 +66,7 @@ function buildEditableChunk(
     newTopicName: '',
     newTopicDescription: '',
     suggestLoading: false,
+    deleted: false,
   }
 }
 
@@ -345,6 +347,27 @@ export default function LongChunksPage() {
     }
   }
 
+  const handleBatchDelete = () => {
+    const count = selectedRows.length
+    if (count === 0) return
+    Modal.confirm({
+      title: '批量删除确认',
+      content: `确定要删除选中的 ${count} 个片段吗？此操作不可撤销。`,
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await post('/api/kb/chunk/batch-delete', { memoryIds: selectedRows.map(r => r.id) })
+          msg.success(`已删除 ${count} 个片段`)
+          refreshCurrentPage()
+        } catch {
+          msg.error('批量删除失败')
+        }
+      },
+    })
+  }
+
   const handleSearch = () => {
     setPage(1)
     doFetch(1)
@@ -361,7 +384,25 @@ export default function LongChunksPage() {
     doFetch(page)
   }
 
-  /* ---- Split state ---- */
+  const handleDelete = (record: LongChunkItem) => {
+    Modal.confirm({
+      title: '确认删除',
+      content: `确定要删除片段「${record.title}」吗？（${record.charLength.toLocaleString()} 字符）此操作不可撤销。`,
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await post('/api/kb/chunk/delete', { memoryId: record.id })
+          msg.success('已删除')
+          refreshCurrentPage()
+        } catch {
+          msg.error('删除失败')
+        }
+      },
+    })
+  }
+
   const [splitOpen, setSplitOpen] = useState(false)
   const [splitMemory, setSplitMemory] = useState<LongChunkItem | null>(null)
   const [splitPreviewLoading, setSplitPreviewLoading] = useState(false)
@@ -413,7 +454,12 @@ export default function LongChunksPage() {
   const handleSplitConfirm = async () => {
     if (!splitMemory) return
 
-    if (splitChunks.some((c) => !c.title.trim() || !c.content.trim())) {
+    const activeChunks = splitChunks.filter((c) => !c.deleted)
+    if (activeChunks.length === 0) {
+      msg.warning('至少保留一个片段')
+      return
+    }
+    if (activeChunks.some((c) => !c.title.trim() || !c.content.trim())) {
       msg.warning('每个片段必须包含标题和内容')
       return
     }
@@ -426,32 +472,40 @@ export default function LongChunksPage() {
         topicIdMap.set(t.id, t.id)
       }
 
-      for (const chunk of splitChunks) {
-        if (chunk.topicAction === 'create' && chunk.newTopicName.trim()) {
-          if (!topicIdMap.has(chunk.newTopicName.trim())) {
-            const createRes = await post<{ success: boolean; data?: { id: string } }>(
-              '/api/kb/topic/create',
-              {
-                kbId: splitMemory.kbId,
-                name: chunk.newTopicName.trim(),
-                description: chunk.newTopicDescription.trim() || undefined,
-              },
-            )
-            if (createRes.success && createRes.data) {
-              topicIdMap.set(chunk.newTopicName.trim(), createRes.data.id)
-            }
-          }
+      for (const chunk of activeChunks) {
+        if (chunk.topicAction !== 'create' || !chunk.newTopicName.trim()) {
+          continue
+        }
+        if (topicIdMap.has(chunk.newTopicName.trim())) {
+          continue
+        }
+        const createBody: Record<string, unknown> = {
+          kbId: splitMemory.kbId,
+          name: chunk.newTopicName.trim(),
+        }
+        const desc = chunk.newTopicDescription.trim()
+        if (desc.length > 0) {
+          createBody.description = desc
+        }
+        const createRes = await post<{ success: boolean; data?: { id: string } }>(
+          '/api/kb/topic/create',
+          createBody,
+        )
+        if (createRes.success && createRes.data) {
+          topicIdMap.set(chunk.newTopicName.trim(), createRes.data.id)
         }
       }
 
-      const chunksPayload = splitChunks.map((c) => ({
-        title: c.title.trim(),
-        content: c.content.trim(),
-        topicId:
-          c.topicAction === 'create' && c.newTopicName.trim()
-            ? (topicIdMap.get(c.newTopicName.trim()) ?? null)
-            : c.topicId,
-      }))
+      const chunksPayload = activeChunks.map((c) => {
+        if (c.topicAction === 'create' && c.newTopicName.trim()) {
+          const mappedId = topicIdMap.get(c.newTopicName.trim())
+          if (mappedId === undefined) {
+            throw new Error(`主题 "${c.newTopicName.trim()}" 创建失败，无法关联`)
+          }
+          return { title: c.title.trim(), content: c.content.trim(), topicId: mappedId }
+        }
+        return { title: c.title.trim(), content: c.content.trim(), topicId: c.topicId }
+      })
 
       await post('/api/kb/chunk/split-confirm', {
         memoryId: splitMemory.id,
@@ -637,7 +691,7 @@ export default function LongChunksPage() {
     {
       title: '操作',
       key: 'action',
-      width: 130,
+      width: 200,
       render: (_: unknown, record: LongChunkItem) => (
         <Space size={0}>
           <Button
@@ -655,6 +709,15 @@ export default function LongChunksPage() {
             onClick={() => openSplitModal(record)}
           >
             拆分
+          </Button>
+          <Button
+            type="link"
+            size="small"
+            danger
+            icon={<DeleteOutlined />}
+            onClick={() => handleDelete(record)}
+          >
+            删除
           </Button>
         </Space>
       ),
@@ -934,7 +997,15 @@ export default function LongChunksPage() {
                   )}
                   {selectedRowKeys.length > 0 && (
                     <Button
+                      danger
                       icon={<DeleteOutlined />}
+                      onClick={handleBatchDelete}
+                    >
+                      批量删除（{selectedRowKeys.length}）
+                    </Button>
+                  )}
+                  {selectedRowKeys.length > 0 && (
+                    <Button
                       onClick={() => {
                         setSelectedRowKeys([])
                         setSelectedRows([])
@@ -1060,12 +1131,24 @@ export default function LongChunksPage() {
                 <Card
                   key={chunk.key}
                   size="small"
+                  style={chunk.deleted ? { background: '#f5f5f5', borderColor: '#e8e8e8' } : undefined}
                   title={
-                    <Space>
-                      <Tag color="blue">片段 {idx + 1}</Tag>
-                      <Text style={{ fontWeight: 400 }}>
-                        ~{chunk.content.length.toLocaleString()} 字符
-                      </Text>
+                    <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                      <Space>
+                        <Tag color={chunk.deleted ? 'default' : 'blue'}>片段 {idx + 1}</Tag>
+                        <Text style={{ fontWeight: 400 }}>
+                          ~{chunk.content.length.toLocaleString()} 字符
+                        </Text>
+                      </Space>
+                      <Button
+                        size="small"
+                        type={chunk.deleted ? 'primary' : 'default'}
+                        danger={!chunk.deleted}
+                        icon={chunk.deleted ? undefined : <DeleteOutlined />}
+                        onClick={() => updateChunk(chunk.key, { deleted: !chunk.deleted })}
+                      >
+                        {chunk.deleted ? '撤销删除' : '删除'}
+                      </Button>
                     </Space>
                   }
                 >
@@ -1077,6 +1160,7 @@ export default function LongChunksPage() {
                         value={chunk.title}
                         onChange={(e) => updateChunk(chunk.key, { title: e.target.value })}
                         maxLength={20}
+                        disabled={chunk.deleted}
                       />
                     </div>
                     <div>
@@ -1086,6 +1170,7 @@ export default function LongChunksPage() {
                         rows={4}
                         value={chunk.content}
                         onChange={(e) => updateChunk(chunk.key, { content: e.target.value })}
+                        disabled={chunk.deleted}
                       />
                     </div>
                     <div>
