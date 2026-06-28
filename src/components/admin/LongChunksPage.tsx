@@ -186,14 +186,14 @@ export default function LongChunksPage() {
     } else {
       try {
         const [listRes, statsRes] = await Promise.all([
-          get<{ success: boolean; data?: { items: TopicInfo[] } }>(`/api/kb/list-topics?kbId=${encodeURIComponent(kbId)}`),
-          get<{ success: boolean; data?: { items: Array<{ id: string; name: string; description: string; memoryCount: number }> } }>(`/api/kb/topic/stats?kbId=${encodeURIComponent(kbId)}`),
+          get<{ success: boolean; data?: TopicInfo[] }>(`/api/kb/list-topics?kbId=${encodeURIComponent(kbId)}`),
+          get<{ success: boolean; data?: Array<{ id: string; name: string; description: string; memoryCount: number }> }>(`/api/kb/topic/stats?kbId=${encodeURIComponent(kbId)}`),
         ])
         if (listRes.success && listRes.data) {
-          setTopicList(listRes.data as TopicInfo[])
+          setTopicList(listRes.data)
         }
         if (statsRes.success && statsRes.data) {
-          setTopicStats(statsRes.data as Array<{ id: string; name: string; description: string; memoryCount: number }>)
+          setTopicStats(statsRes.data)
         }
       } catch {
         msg.error('加载分类列表失败')
@@ -497,11 +497,11 @@ export default function LongChunksPage() {
     const kbIdVal = selectedRows[0]?.kbId
     if (kbIdVal) {
       try {
-        const res = await get<{ success: boolean; data?: { items: Array<{ id: string; name: string; description: string }> } }>(
+        const res = await get<{ success: boolean; data?: Array<{ id: string; name: string; description: string }> }>(
           `/api/kb/list-topics?kbId=${encodeURIComponent(kbIdVal)}`,
         )
         if (res.success && res.data) {
-          setMergeExistingTopics(res.data as Array<{ id: string; name: string; description: string }>)
+          setMergeExistingTopics(res.data)
         }
       } catch {
         msg.error('获取主题列表失败')
