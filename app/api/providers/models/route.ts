@@ -3,6 +3,8 @@ import type { FetchModelsRequest } from '@/src/types'
 import { ProviderValidateService } from '@/src/services/provider-validate.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   providerValidateService: ProviderValidateService
 }

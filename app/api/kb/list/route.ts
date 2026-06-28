@@ -3,6 +3,8 @@ import { KBService } from '@/src/services/kb.service'
 import { SettingService } from '@/src/services/setting.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   kbService: KBService
   settingService: SettingService

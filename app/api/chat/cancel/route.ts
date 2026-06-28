@@ -3,6 +3,8 @@ import { ChatService } from '@/src/services/chat.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 import type { CancelRequest } from '@/src/types'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   chatService: ChatService
 }

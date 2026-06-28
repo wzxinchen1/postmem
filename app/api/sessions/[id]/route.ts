@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { SessionService } from '@/src/services/session.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   sessionService: SessionService
 }

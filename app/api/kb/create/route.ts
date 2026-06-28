@@ -3,6 +3,8 @@ import { KBService } from '@/src/services/kb.service'
 import { createApiHandler, successResponse } from '@/src/lib/api-utils'
 import type { CreateKBRequest } from '@/src/types'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   kbService: KBService
 }

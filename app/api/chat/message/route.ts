@@ -3,6 +3,8 @@ import { ConversationService } from '@/src/services/conversation.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 import { logger } from '@/src/lib/logger'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   conversationService: ConversationService
 }

@@ -6,6 +6,8 @@ import { successResponse, errorResponse } from '@/src/lib/api-utils'
 import container from '@/src/lib/container'
 import type { IngestTextRequest, IngestMessagesRequest } from '@/src/types'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 知识入库（文本或消息列表）
  * @swagger

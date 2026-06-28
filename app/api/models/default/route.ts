@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { ModelService } from '@/src/services/model.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   modelService: ModelService
 }

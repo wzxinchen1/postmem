@@ -3,6 +3,8 @@ import { VendorService } from '@/src/services/vendor.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 import type { CreateVendorRequest } from '@/src/types'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   vendorService: VendorService
 }

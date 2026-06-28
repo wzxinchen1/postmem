@@ -1,6 +1,9 @@
 import { NextRequest } from 'next/server'
 import { KBService } from '@/src/services/kb.service'
 import { createApiHandler, successResponse } from '@/src/lib/api-utils'
+
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   kbService: KBService
 }

@@ -12,6 +12,8 @@ import { logger } from '@/src/lib/logger'
 import { AppError, formatErrorChain } from '@/src/lib/errors'
 import { ThinkingEffort, type ChatCompletionRequest } from '@/src/types'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * 聊天补全（异步触发，结果通过 SSE 推送）
  * @swagger

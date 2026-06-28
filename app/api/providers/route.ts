@@ -3,6 +3,8 @@ import { ProviderService } from '@/src/services/provider.service'
 import { createApiHandler, successResponse, errorResponse } from '@/src/lib/api-utils'
 import type { CreateProviderRequest } from '@/src/types'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   providerService: ProviderService
 }

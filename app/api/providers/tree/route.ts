@@ -2,6 +2,8 @@ import { NextRequest } from 'next/server'
 import { ProviderService } from '@/src/services/provider.service'
 import { createApiHandler, successResponse } from '@/src/lib/api-utils'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   providerService: ProviderService
 }

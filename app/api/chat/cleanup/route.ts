@@ -3,6 +3,8 @@ import { SSEService } from '@/src/services/sse.service'
 import { createApiHandler, successResponse } from '@/src/lib/api-utils'
 import type { CleanupRequest } from '@/src/types'
 
+export const dynamic = 'force-dynamic'
+
 interface Deps {
   sseService: SSEService
 }

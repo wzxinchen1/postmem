@@ -4,6 +4,8 @@ import { redis } from '@/src/lib/redis'
 import { logger } from '@/src/lib/logger'
 import { SSEService } from '@/src/services/sse.service'
 
+export const dynamic = 'force-dynamic'
+
 /**
  * ⚠️⚠️⚠️ 永久SSE长连接 - 绝对禁止添加任何关闭逻辑 ⚠️⚠️⚠️
  * @swagger
