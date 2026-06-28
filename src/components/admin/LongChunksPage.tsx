@@ -14,7 +14,7 @@ import type { LongChunkItem, LongChunksResponse, TopicInfo, SplitChunkItem } fro
 import { post } from '@/app/admin/lib/request'
 import { KBSelector } from '@/src/components/admin/KBSelector'
 
-const { Title, Text } = Typography
+const { Title, Text, Paragraph } = Typography
 const { TextArea } = Input
 
 function charLengthColor(len: number, threshold: number): string {
@@ -1237,12 +1237,27 @@ export default function LongChunksPage() {
       >
         <Space direction="vertical" size={12} style={{ width: '100%' }}>
           <Card size="small" title="待合并的片段">
-            <Space direction="vertical" size={4} style={{ width: '100%' }}>
+            <Space direction="vertical" size={8} style={{ width: '100%' }}>
               {selectedRows.map((r, i) => (
-                <div key={r.id} style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                  <Tag>{i + 1}</Tag>
-                  <Text ellipsis style={{ maxWidth: 200 }}>{r.title}</Text>
-                  <Tag color="default" style={{ flexShrink: 0 }}>{r.charLength.toLocaleString()} 字符</Tag>
+                <div key={r.id} style={{
+                  padding: '8px 10px',
+                  borderRadius: 6,
+                  background: '#fafafa',
+                  border: '1px solid #f0f0f0',
+                }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
+                    <Tag>{i + 1}</Tag>
+                    <Text strong ellipsis style={{ maxWidth: 180 }}>{r.title}</Text>
+                    <Tag color="default" style={{ flexShrink: 0 }}>{r.charLength.toLocaleString()} 字符</Tag>
+                    {r.topicName && <Tag color="blue" style={{ flexShrink: 0 }}>{r.topicName}</Tag>}
+                  </div>
+                  <Paragraph
+                    ellipsis={{ rows: 2, expandable: 'collapsible', symbol: (expanded) => expanded ? '收起' : '展开全文' }}
+                    style={{ margin: 0, fontSize: 13, color: '#595959', lineHeight: 1.6 }}
+                    copyable={false}
+                  >
+                    {r.content}
+                  </Paragraph>
                 </div>
               ))}
             </Space>
