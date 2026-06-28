@@ -1,7 +1,6 @@
 import { ChatOpenAI } from '@langchain/openai'
 import { HumanMessage } from '@langchain/core/messages'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
-import { tavily } from '@tavily/core'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 import { AgentService } from '@/src/services/agent.service'
 import type { IChatSettingProvider } from '@/src/interfaces/chat-setting-provider'
@@ -10,7 +9,8 @@ import { Prompts } from '@/src/lib/prompts'
 import { AppError } from '@/src/lib/errors'
 import { logger } from '@/src/lib/logger'
 import { StreamStatus } from '@/src/types'
-import type { SearchNeedsResult } from '@/src/types'
+import { searchWithTavily } from '@/src/services/thirdparty/tavily-client'
+import { fetchUrlWithTimeout, checkAndParsePdf, extractHtmlContent } from '@/src/services/thirdparty/web-fetcher'
 
 interface WebpageResult {
   url: string
@@ -51,31 +51,6 @@ export class SearchService {
     this.tavilyApiKey = process.env.TAVILY_API_KEY
   }
 
-  async analyzeSearchNeeds(
-    agent: ChatOpenAI,
-    recentMessages: { role: 'user' | 'assistant'; content: string }[],
-    options?: { includeWebSearch?: boolean; includeMemorySearch?: boolean }
-  ): Promise<SearchNeedsResult> {
-    const historyText = this.buildHistoryText(recentMessages)
-    const currentQuery = this.getCurrentQuery(recentMessages)
-
-    const prompt = Prompts.searchNeedsAnalysis(historyText, currentQuery, options)
-
-    const validateFn = (parsed: unknown) => this.validateSearchNeedsResult(parsed, options)
-
-    const result = await this.llmResilienceService.invokeWithValidation<SearchNeedsResult>(
-      {
-        agent,
-        messages: [new HumanMessage(prompt)],
-        maxRetries: 3,
-        timeoutMs: 120_000,
-      },
-      validateFn
-    )
-
-    return result.data
-  }
-
   async getCachedWebpages(keywords: string[]) {
     const results = await this.prisma.webPage.findMany({
       where: {
@@ -98,8 +73,7 @@ export class SearchService {
     agent: ChatOpenAI,
     cachedWebpages: any[]
   ): Promise<boolean> {
-    logger.info("二次判断缓存是否足够回答:" + cachedWebpages?.length);
-    if (!cachedWebpages || cachedWebpages.length === 0) {
+    if (cachedWebpages.length === 0) {
       logger.info('[SearchService] confirmNeedSearchWeb: 缓存为空，需要重新搜索')
       return true
     }
@@ -112,7 +86,12 @@ export class SearchService {
       : ''
 
     const lastMessage = recentMessages[recentMessages.length - 1]
-    if (!lastMessage?.content) throw new AppError('CHAT_SEARCH_CONFIRM_MISSING_LAST_MESSAGE')
+    if (!lastMessage) {
+      throw new AppError('CHAT_SEARCH_CONFIRM_MISSING_LAST_MESSAGE')
+    }
+    if (!lastMessage.content) {
+      throw new AppError('CHAT_SEARCH_CONFIRM_MISSING_LAST_MESSAGE')
+    }
     const currentQuery = lastMessage.content
     const webpagesText = cachedWebpages.map(w => {
       if (!w.title) throw new AppError('CHAT_SEARCH_WEBPAGE_MISSING_TITLE', { url: w.url })
@@ -133,7 +112,8 @@ export class SearchService {
     })
 
     const rawContent = result.content.trim().toLowerCase()
-    const decision = rawContent === 'true' || rawContent.includes('true')
+    const matchedTrue = rawContent === 'true'
+    const decision = matchedTrue ? true : rawContent.includes('true')
     logger.info('[SearchService] confirmNeedSearchWeb 结果', {
       cachedCount: cachedWebpages.length,
       llmRawResponse: result.content.trim(),
@@ -143,7 +123,10 @@ export class SearchService {
   }
 
   async searchWeb(keywords: string[], conversationId: string): Promise<WebpageResult[]> {
-    if (!keywords || keywords.length === 0) {
+    if (!keywords) {
+      throw new AppError('CHAT_SEARCH_KEYWORD_REQUIRED')
+    }
+    if (keywords.length === 0) {
       throw new AppError('CHAT_SEARCH_KEYWORD_REQUIRED')
     }
 
@@ -152,22 +135,7 @@ export class SearchService {
     const chatSetting = await this.chatSettingService.get()
     const linkCount = chatSetting.searchLinkCount
 
-    let tavilyResults: Array<{ url: string; title: string; content: string; raw_content?: string | null }>
-    try {
-      const client = tavily({ apiKey: this.tavilyApiKey })
-      const response = await client.search(keywords.join(' '), {
-        maxResults: linkCount,
-        search_depth: 'advanced',
-        include_raw_content: 'text',
-      } as any)
-      tavilyResults = response.results
-      if (!tavilyResults || tavilyResults.length === 0) {
-        throw new AppError('CHAT_SEARCH_TAVILY_NO_RESULTS', { keywords: keywords.join(', ') })
-      }
-    } catch (e) {
-      const originalError = e instanceof Error ? e : new Error(String(e))
-      throw new AppError('CHAT_SEARCH_TAVILY_FAILED', undefined, originalError)
-    }
+    const tavilyResults = await searchWithTavily(this.tavilyApiKey, keywords.join(' '), linkCount)
 
     const searchItems = tavilyResults.slice(0, linkCount)
 
@@ -178,7 +146,9 @@ export class SearchService {
         skippedReasons.push(`缺少标题: ${item.url}`)
         continue
       }
-      const sourceContent = item.raw_content ?? item.content
+      const sourceContent = item.rawContent !== null && item.rawContent !== undefined
+        ? item.rawContent
+        : item.content
       if (!sourceContent) {
         skippedReasons.push(`无正文: ${item.url}`)
         continue
@@ -261,54 +231,24 @@ export class SearchService {
   }
 
   async fetchUrlContent(url: string): Promise<string> {
-    try {
-      const response = await fetch(url, {
-        signal: AbortSignal.timeout(10000),
-      })
+    const response = await fetchUrlWithTimeout(url, 10000)
 
-      if (!response.ok) {
-        throw new AppError('CHAT_SEARCH_URL_REQUEST_FAILED', { url, status: response.status, statusText: response.statusText })
-      }
-
-      const contentType = response.headers.get('content-type')
-      const isPdf = contentType ? (contentType.includes('application/pdf') || url.endsWith('.pdf')) : url.endsWith('.pdf')
-
-      if (isPdf) {
-        try {
-          const arrayBuffer = await response.arrayBuffer()
-          const buffer = Buffer.from(arrayBuffer)
-          const pdfParse = await import('pdf-parse' as any)
-          const pdfData = await (pdfParse as any).default(buffer)
-          const content = pdfData.text.replace(/\s+/g, ' ').trim().slice(0, 5000)
-          if (content.length <= 100) {
-            throw new AppError('CHAT_SEARCH_PDF_CONTENT_TOO_SHORT', { url })
-          }
-          return content
-        } catch (err) {
-          if (err instanceof AppError) throw err
-          const pdfErr = err instanceof Error ? err : new Error(String(err))
-          throw new AppError('CHAT_SEARCH_PDF_PARSE_FAILED', { url }, pdfErr)
-        }
-      }
-
-      const html = await response.text()
-      const content = html
-        .replace(/<script[^>]*>[\s\S]*?<\/script>/gi, '')
-        .replace(/<style[^>]*>[\s\S]*?<\/style>/gi, '')
-        .replace(/<[^>]+>/g, ' ')
-        .replace(/\s+/g, ' ')
-        .trim()
-        .slice(0, 5000)
-
-      if (content.length <= 100) {
-        throw new AppError('CHAT_SEARCH_URL_CONTENT_TOO_SHORT', { url })
-      }
-      return content
-    } catch (err) {
-      if (err instanceof AppError) throw err
-      const fetchErr = err instanceof Error ? err : new Error(String(err))
-      throw new AppError('CHAT_SEARCH_URL_FETCH_FAILED', { url }, fetchErr)
+    if (!response.ok) {
+      throw new AppError('CHAT_SEARCH_URL_REQUEST_FAILED', { url, status: response.status, statusText: response.statusText })
     }
+
+    const pdfContent = await checkAndParsePdf(response, url)
+    if (pdfContent !== null) {
+      return pdfContent
+    }
+
+    const html = await response.text()
+    const content = extractHtmlContent(html, 5000)
+
+    if (content.length <= 100) {
+      throw new AppError('CHAT_SEARCH_URL_CONTENT_TOO_SHORT', { url })
+    }
+    return content
   }
 
   private async summarizeOne(agent: ChatOpenAI, webpage: { title: string; url: string; content: string }): Promise<SummaryItem> {
@@ -321,76 +261,13 @@ export class SearchService {
       timeoutMs: 120_000,
     })
 
-    if (!result.content || result.content.trim().length === 0) {
+    if (!result.content) {
+      throw new AppError('CHAT_SEARCH_SUMMARY_EMPTY', { url: webpage.url })
+    }
+    if (result.content.trim().length === 0) {
       throw new AppError('CHAT_SEARCH_SUMMARY_EMPTY', { url: webpage.url })
     }
 
     return { url: webpage.url, summary: result.content.trim() }
-  }
-
-  private validateSearchNeedsResult(
-    parsed: unknown,
-    options?: { includeWebSearch?: boolean; includeMemorySearch?: boolean }
-  ): SearchNeedsResult {
-    if (typeof parsed !== 'object' || parsed === null) {
-      throw new AppError('CHAT_SEARCH_PARSE_RESULT_INVALID')
-    }
-
-    const obj = parsed as Record<string, unknown>
-
-    const includeWeb = options?.includeWebSearch !== false
-    const includeMemory = options?.includeMemorySearch !== false
-
-    if (includeWeb) {
-      if (typeof obj.searchWebReason !== 'string') {
-        throw new AppError('CHAT_SEARCH_WEB_REASON_MISSING')
-      }
-      if (typeof obj.needSearchWeb !== 'boolean') {
-        throw new AppError('CHAT_SEARCH_NEED_SEARCH_WEB_MISSING')
-      }
-      if (!Array.isArray(obj.webKeywords) || !obj.webKeywords.every((k: unknown) => typeof k === 'string')) {
-        throw new AppError('CHAT_SEARCH_WEB_KEYWORDS_MISSING')
-      }
-    }
-
-    if (includeMemory) {
-      if (typeof obj.searchMemoryReason !== 'string') {
-        throw new AppError('CHAT_SEARCH_MEMORY_REASON_MISSING')
-      }
-      if (typeof obj.needSearchMemory !== 'boolean') {
-        throw new AppError('CHAT_SEARCH_NEED_SEARCH_MEMORY_MISSING')
-      }
-      if (typeof obj.memoryQuery !== 'string' && obj.memoryQuery !== null) {
-        throw new AppError('CHAT_SEARCH_MEMORY_QUERY_TYPE_INVALID')
-      }
-    }
-
-    return {
-      searchWebReason: includeWeb ? (obj.searchWebReason as string) : '',
-      searchMemoryReason: includeMemory ? (obj.searchMemoryReason as string) : '',
-      needSearchWeb: includeWeb ? (obj.needSearchWeb as boolean) : false,
-      webKeywords: includeWeb ? (obj.webKeywords as string[]) : [],
-      needSearchMemory: includeMemory ? (obj.needSearchMemory as boolean) : false,
-      memoryQuery: includeMemory ? (obj.memoryQuery as string | null) : null,
-    }
-  }
-
-  private buildHistoryText(recentMessages: { role: string; content: string }[]): string {
-    const historyMessages = recentMessages.slice(0, -1)
-    return historyMessages.length > 0
-      ? `| 角色 | 内容 |\n|------|------|\n${historyMessages.map(m =>
-        `| ${m.role === 'user' ? '用户' : 'AI'} | ${m.content.replace(/\n/g, ' ')} |`
-      ).join('\n')}`
-      : ''
-  }
-
-  private getCurrentQuery(recentMessages: { role: string; content: string }[]): string {
-    const lastMessage = recentMessages[recentMessages.length - 1]
-    if (!lastMessage?.content) throw new AppError('CHAT_SEARCH_GET_CURRENT_QUERY_MISSING')
-    const currentQuery = lastMessage.content
-    if (!currentQuery) {
-      throw new AppError('CHAT_SEARCH_CURRENT_QUERY_EMPTY')
-    }
-    return currentQuery
   }
 }

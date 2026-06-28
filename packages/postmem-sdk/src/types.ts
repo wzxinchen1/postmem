@@ -93,6 +93,7 @@ export interface ChatRequest {
   kbId: string
   thinkingEffort?: ThinkingEffort
   searchMemory?: boolean
+  searchWeb?: boolean
 }
 
 export interface ChatMessage {

@@ -87,6 +87,7 @@ export class ChatService {
       kbId,
       thinkingEffort,
       searchMemory,
+      searchWeb,
     } = params
 
     logger.info('[ChatService] chat 参数', { conversationId, newConversation, kbId, modelId })
@@ -198,6 +199,7 @@ export class ChatService {
         cancelled: false,
         thinkingEffort,
         searchMemory: searchMemory === true,
+        searchWeb: searchWeb === true,
         langchainMessages: [],
         finalMessages: [],
         images,

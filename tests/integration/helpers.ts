@@ -6,7 +6,7 @@ import winston from 'winston'
 import { SeqTransport } from '@datalust/winston-seq'
 import type { StreamEvent, ChatRequest } from '../../packages/postmem-sdk/dist/index.mjs'
 import { ThinkingEffort } from '../../packages/postmem-sdk/dist/index.mjs'
-import { getWebSearchDisabled } from './di-overrides'
+
 
 const BASE_URL = `http://localhost:${process.env.PORT || 3000}`
 const isDev = process.env.env === 'dev'
@@ -274,27 +274,6 @@ export async function startConsume(client: PostMemClient): Promise<void> {
   }).catch(() => {})
 }
 
-/**
- * 框架层护栏：验证搜索事件是否符合 webSearchDisabled 设置。
- * 直接从 result.events 中检查，不依赖任何全局收集。
- * 记忆搜索由用户显式选项 searchMemory 控制，无需护栏。
- */
-function assertNoSearchWhenDisabled(result: ChatAndWaitResult): void {
-  const webSearchDisabled = getWebSearchDisabled()
-
-  if (webSearchDisabled) {
-    const webSearchEvents = result.events.filter(
-      (e) => (e as Record<string, unknown>).status === 'searchingWeb',
-    )
-    if (webSearchEvents.length > 0) {
-      throw new Error(
-        `互联网搜索护栏失效：webSearchDisabled=true 时出现了 searchingWeb 事件（${webSearchEvents.length} 个）。` +
-        '请在 test() 选项中声明 { webSearch: true } 或确保 webSearchDisabled 正确设置。'
-      )
-    }
-  }
-}
-
 export interface ChatAndWaitResult {
   conversationId: string
   fullContent: string
@@ -431,8 +410,7 @@ export async function chatAndWait(
     }
   }
 
-  // 框架层护栏：检查搜索事件是否符合 searchDisabled / webSearchDisabled 设置
-  assertNoSearchWhenDisabled(result)
+
 
   await waitForProcessingCleared(conversationId)
 
@@ -672,5 +650,5 @@ export async function checkMessageTokens(): Promise<void> {
   }
 }
 
-export { setMockChatSetting, setWebSearchDisabled, getWebSearchDisabled, setModelHasVision } from './di-overrides'
-export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockSearchNeeds, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, resetMockLLMStore, getCalibrateCallCount, resetCalibrateCallCount } from './mock-llm'
+export { setMockChatSetting, setModelHasVision } from './di-overrides'
+export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, resetMockLLMStore, getCalibrateCallCount, resetCalibrateCallCount } from './mock-llm'

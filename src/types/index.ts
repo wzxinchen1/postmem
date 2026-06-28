@@ -524,6 +524,7 @@ export interface ChatCompletionRequest {
   kbId: string
   thinkingEffort?: ThinkingEffort
   searchMemory?: boolean
+  searchWeb?: boolean
 }
 
 /**
@@ -658,8 +659,6 @@ export interface ChatSettingInfo {
   searchSummaryConcurrency: number
   chunkCharRange: string
   userProfile?: string | null
-  /** @internal 测试专用：禁用互联网搜索（不存数据库，仅 DI mock 生效） */
-  webSearchDisabled?: boolean
   createdAt: Date
   updatedAt: Date
 }

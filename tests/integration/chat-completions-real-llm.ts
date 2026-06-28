@@ -437,6 +437,7 @@ class RealLLMChatTest extends ChatTestFixture {
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
+        searchWeb: true,
       })
 
       // 验证1: searchingWeb 状态事件出现
@@ -454,7 +455,7 @@ class RealLLMChatTest extends ChatTestFixture {
       // 验证3: web_pages 表有数据写入
       const countAfter = await this.getWebpageCount()
       this.assertGreaterThan(countAfter, 0, 'web_pages count after first search')
-    }, { memorySearch: true, webSearch: true, timeoutMs: 3_600_000 })
+    }, { memorySearch: true, timeoutMs: 3_600_000 })
 
     test('互联网搜索: 相同消息命中缓存，web_pages 表数据不增加', async () => {
       const countBefore = await this.getWebpageCount()
@@ -464,6 +465,7 @@ class RealLLMChatTest extends ChatTestFixture {
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
+        searchWeb: true,
       })
 
       // 验证1: searchingWeb 状态事件出现
@@ -475,7 +477,7 @@ class RealLLMChatTest extends ChatTestFixture {
       // 验证2: web_pages 表数据不增加
       const countAfter = await this.getWebpageCount()
       this.assertEqual(countAfter, countBefore, 'web_pages count unchanged after cached search')
-    }, { memorySearch: false, webSearch: true, timeoutMs: 3_600_000 })
+    }, { memorySearch: false, timeoutMs: 3_600_000 })
   }
 }
 

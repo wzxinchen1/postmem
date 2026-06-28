@@ -403,6 +403,7 @@ class MockChatTest extends ChatTestFixture {
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
+        searchWeb: true,
       })
 
       // 验证1: searchingWeb 状态事件出现
@@ -423,7 +424,7 @@ class MockChatTest extends ChatTestFixture {
 
       // 搜索结果注入 system prompt，prompt 变化触发校准
       this.assertGreaterThan(getCalibrateCallCount(), 0, 'calibrate invoked (web search results injected into system prompt)')
-    }, { memorySearch: true, webSearch: true, timeoutMs: 90_000 })
+    }, { memorySearch: true, timeoutMs: 90_000 })
 
     test('互联网搜索: 第二次搜索 — 相同消息命中缓存，web_pages 表数据不增加', async () => {
       const countBefore = await this.getWebpageCount()
@@ -433,6 +434,7 @@ class MockChatTest extends ChatTestFixture {
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
+        searchWeb: true,
       })
 
       // 验证1: searchingWeb 状态事件出现（缓存命中也会发射 searchingWeb）
@@ -444,7 +446,7 @@ class MockChatTest extends ChatTestFixture {
       // 验证2: web_pages 表数据不增加（相同消息产生相同 keywords，upsert 不新增行）
       const countAfter = await this.getWebpageCount()
       this.assertEqual(countAfter, countBefore, 'web_pages count unchanged after cached search')
-    }, { memorySearch: false, webSearch: true, timeoutMs: 30_000 })
+    }, { memorySearch: false, timeoutMs: 30_000 })
 
     // ════════════════════════════════════════════
     // 链接测试

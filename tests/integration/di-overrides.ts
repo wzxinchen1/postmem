@@ -15,7 +15,6 @@ function getStore(): ChatSettingInfo {
       searchSummaryConcurrency: 2,
       chunkCharRange: '200-500',
       userProfile: null,
-      webSearchDisabled: false,
       createdAt: new Date(),
       updatedAt: new Date(),
     }
@@ -51,7 +50,6 @@ const realLLMChatSettingProvider: IChatSettingProvider = {
         // 以下字段由测试 mock 控制，不使用数据库值
         memoryContextThreshold: store.memoryContextThreshold,
         chunkCharRange: store.chunkCharRange,
-        webSearchDisabled: store.webSearchDisabled,
       } as ChatSettingInfo
     } finally {
       await prisma.$disconnect()
@@ -61,14 +59,6 @@ const realLLMChatSettingProvider: IChatSettingProvider = {
 
 export function setMockChatSetting(settings: Partial<ChatSettingInfo>): void {
   Object.assign(getStore(), settings)
-}
-
-export function setWebSearchDisabled(disabled: boolean): void {
-  Object.assign(getStore(), { webSearchDisabled: disabled })
-}
-
-export function getWebSearchDisabled(): boolean {
-  return getStore().webSearchDisabled ?? false
 }
 
 // ─── Mock ModelService（控制 hasVisionCapability） ───────────

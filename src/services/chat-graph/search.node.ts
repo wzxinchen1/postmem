@@ -19,6 +19,17 @@ export function createSearchNode(deps: GraphDependencies) {
     return { systemPrompt, systemTokens }
   }
 
+  function getLastUserQuery(recentMessages: { role: string; content: string }[]): string {
+    const lastMsg = recentMessages[recentMessages.length - 1]
+    if (!lastMsg) {
+      throw new AppError('CHAT_SEARCH_MISSING_LAST_MESSAGE')
+    }
+    if (!lastMsg.content) {
+      throw new AppError('CHAT_SEARCH_MISSING_LAST_MESSAGE')
+    }
+    return lastMsg.content
+  }
+
   return async function searchNode(state: ChatState): Promise<Partial<ChatState>> {
     if (state.cancelled) {
       return {}
@@ -40,18 +51,11 @@ export function createSearchNode(deps: GraphDependencies) {
     }
 
     const chatSetting = await deps.chatSettingService.get()
-    const webSearchEnabled = !chatSetting.webSearchDisabled
     const shouldSearchMemory = state.searchMemory === true
+    const shouldSearchWeb = state.searchWeb === true
 
-    if (!shouldSearchMemory && !webSearchEnabled) {
-      logger.info('[ChatGraph] 两类搜索均已禁用，跳过分析')
-      const { systemPrompt, systemTokens } = await buildSystemContext('', '', state.agent, chatSetting.userProfile)
-      return {
-        searchResult: '',
-        memoryText: '',
-        systemTokens,
-        finalMessages: [new SystemMessage(Prompts.fillCurrentTime(systemPrompt)), ...state.langchainMessages],
-      }
+    if (!shouldSearchMemory && !shouldSearchWeb) {
+      logger.info('[ChatGraph] 两类搜索均未触发，跳过')
     }
 
     const recentMessages = state.langchainMessages.slice(-6).map(msg => {
@@ -81,33 +85,20 @@ export function createSearchNode(deps: GraphDependencies) {
       }
     })
 
-    let searchNeeds: { needSearchWeb: boolean; webKeywords: string[] } | null = null
-    if (webSearchEnabled) {
-      const lastMsg = recentMessages[recentMessages.length - 1]
-      if (!lastMsg) {
-        throw new AppError('CHAT_SEARCH_MISSING_LAST_MESSAGE')
-      }
-      logger.info('[ChatGraph] 判断联网搜索', { lastContent: lastMsg.content })
-      const result = await deps.searchService.analyzeSearchNeeds(
-        state.agent as any,
-        recentMessages,
-        { includeWebSearch: true, includeMemorySearch: false }
-      )
-      searchNeeds = { needSearchWeb: result.needSearchWeb, webKeywords: result.webKeywords }
-      logger.info('[ChatGraph] 联网搜索判断结果', { searchNeeds })
-    }
-
     let searchResult = ''
     let memoryText = ''
     let fetchedUrls: string[] = []
 
-    if (searchNeeds && searchNeeds.needSearchWeb && searchNeeds.webKeywords.length > 0 && webSearchEnabled) {
+    if (shouldSearchWeb) {
+      const query = getLastUserQuery(recentMessages)
+      const webKeywords = [query]
+
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, conversationId: state.conversationId })
 
       logger.info('[ChatGraph] 缓存查询', {
-        webKeywords: searchNeeds.webKeywords,
+        webKeywords,
       })
-      const cachedWebpages = await deps.searchService.getCachedWebpages(searchNeeds.webKeywords)
+      const cachedWebpages = await deps.searchService.getCachedWebpages(webKeywords)
       logger.info('[ChatGraph] 缓存查询结果', {
         cachedCount: cachedWebpages.length,
         cachedTitles: cachedWebpages.map(w => w.title),
@@ -126,7 +117,7 @@ export function createSearchNode(deps: GraphDependencies) {
       })
 
       if (confirm) {
-        const webpages = await deps.searchService.searchWeb(searchNeeds.webKeywords, state.conversationId)
+        const webpages = await deps.searchService.searchWeb(webKeywords, state.conversationId)
         fetchedUrls = webpages.map(w => w.url)
         searchResult = webpages.map(w =>
           `链接：${w.url}\n标题：${w.title}\n摘要：${w.summary}`
@@ -180,8 +171,8 @@ export function createSearchNode(deps: GraphDependencies) {
     )
 
     logger.info('[ChatGraph] search 完成', {
-      webSearchEnabled,
       shouldSearchMemory,
+      shouldSearchWeb,
     })
 
     const mergedUrls = [...new Set([...state.urls, ...fetchedUrls])]

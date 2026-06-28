@@ -1,10 +1,8 @@
-import type { SearchNeedsResult } from '../../src/types'
 import type {
   LLMInvokeOptions,
   LLMInvokeResult,
   LLMStreamOptions,
   LLMStreamResult,
-  ValidateResult,
 } from '../../src/services/llm-resilience.service'
 
 // ─── 响应映射表 ─────────────────────────────────────────────
@@ -29,8 +27,6 @@ interface LLMStore {
   defaultChatResponse: string
   /** 识图回复 */
   visionResponse: string
-  /** 搜索判断覆盖（null 时用自动判断） */
-  searchNeedsOverride: SearchNeedsResult | null
   /** 联网搜索二次确认结果 */
   confirmSearchWebResult: boolean
   /** 网页摘要回复 */
@@ -47,7 +43,6 @@ function getStore(): LLMStore {
       chatResponseRules: [],
       defaultChatResponse: '这是 mock 的 LLM 回复，用于测试。',
       visionResponse: '这是一张测试图片的描述。',
-      searchNeedsOverride: null,
       confirmSearchWebResult: true,
       summaryResponse: '这是 mock 的网页摘要。',
       streamChunkDelayMs: 50,
@@ -76,11 +71,6 @@ export function setMockChatResponse(content: string): void {
 /** 设置 stream() 每个 chunk 的延迟（ms），0 = 无延迟 */
 export function setMockStreamChunkDelay(ms: number): void {
   getStore().streamChunkDelayMs = ms
-}
-
-/** 动态覆盖搜索判断结果（设为 null 恢复自动判断） */
-export function setMockSearchNeeds(override: SearchNeedsResult | null): void {
-  getStore().searchNeedsOverride = override
 }
 
 /** 动态设置联网搜索二次确认结果 */
@@ -138,20 +128,6 @@ function joinMessagesText(messages: unknown[]): string {
       return ''
     })
     .join('')
-}
-
-function autoDetectSearchNeeds(lastMsg: string): SearchNeedsResult {
-  const needMemory = /之前|回忆|刚才|前面|提过|说过/.test(lastMsg)
-  const needWeb = /搜索|查一下|最新|新闻|今天/.test(lastMsg)
-
-  return {
-    searchWebReason: needWeb ? '用户要求搜索' : '',
-    needSearchWeb: needWeb,
-    webKeywords: needWeb ? [lastMsg.slice(0, 10)] : [],
-    searchMemoryReason: needMemory ? '用户询问之前内容' : '',
-    needSearchMemory: needMemory,
-    memoryQuery: needMemory ? lastMsg : null,
-  }
 }
 
 // ─── Mock Chat Agent ────────────────────────────────────────
@@ -258,25 +234,6 @@ class MockLLMResilienceService {
     return { content, usage: { promptTokens, completionTokens: content.length } }
   }
 
-  async invokeWithValidation<T>(
-    options: LLMInvokeOptions,
-    validator: (parsed: unknown) => T
-  ): Promise<ValidateResult<T>> {
-    const store = getStore()
-
-    // 优先使用手动覆盖
-    let searchNeeds: SearchNeedsResult
-    if (store.searchNeedsOverride) {
-      searchNeeds = store.searchNeedsOverride
-    } else {
-      const lastMsg = extractLastUserMessage(options.messages)
-      searchNeeds = autoDetectSearchNeeds(lastMsg)
-    }
-
-    const validated = validator(searchNeeds)
-    return { data: validated }
-  }
-
   async streamWithRetry(options: LLMStreamOptions): Promise<LLMStreamResult> {
     const content = getStore().defaultChatResponse
     const promptTokens = (typeof options.messages === 'string' ? options.messages : JSON.stringify(options.messages)).length || 100
@@ -343,34 +300,6 @@ class MockSearchService {
     this.prisma = prisma
     this.chatSettingService = chatSettingService
     this.sseService = sseService
-  }
-
-  async analyzeSearchNeeds(
-    agent: unknown,
-    recentMessages: { role: 'user' | 'assistant'; content: string }[],
-    options?: { includeWebSearch?: boolean; includeMemorySearch?: boolean }
-  ) {
-    const store = getStore()
-
-    let searchNeeds: SearchNeedsResult
-    if (store.searchNeedsOverride) {
-      searchNeeds = store.searchNeedsOverride
-    } else {
-      const lastMsg = recentMessages[recentMessages.length - 1]?.content ?? ''
-      searchNeeds = autoDetectSearchNeeds(lastMsg)
-    }
-
-    const includeWeb = options?.includeWebSearch !== false
-    const includeMemory = options?.includeMemorySearch !== false
-
-    return {
-      searchWebReason: includeWeb ? searchNeeds.searchWebReason : '',
-      searchMemoryReason: includeMemory ? searchNeeds.searchMemoryReason : '',
-      needSearchWeb: includeWeb ? searchNeeds.needSearchWeb : false,
-      webKeywords: includeWeb ? searchNeeds.webKeywords : [],
-      needSearchMemory: includeMemory ? searchNeeds.needSearchMemory : false,
-      memoryQuery: includeMemory ? searchNeeds.memoryQuery : null,
-    }
   }
 
   async getCachedWebpages(keywords: string[]) {
