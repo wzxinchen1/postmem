@@ -480,6 +480,38 @@ ${chunksText}
 - 只返回 JSON，不要包含其他内容`
   }
 
+  static mergeExpert(): string {
+    return '你是一位文本合并专家。Always respond with valid JSON only.'
+  }
+
+  static mergeTexts(chunks: Array<{ title: string; content: string }>): string {
+    const chunksText = chunks
+      .map((c, i) => `[片段${i + 1}] ${c.title}\n${c.content}`)
+      .join('\n\n')
+
+    return `请将以下多个文本片段合并为一段连贯完整的文本。这些片段来自同一份文档或话题，需要将它们合为一个整体。
+
+## 待合并的片段
+${chunksText}
+
+## 要求
+1. 合并后的文本必须保留所有片段中的所有信息、细节、论据和推理过程，不得丢失任何内容
+2. 消除重复内容，将语义相近的部分自然融合
+3. 调整语序使文本逻辑连贯、层次清晰
+4. 修复片段间的断裂感，补充必要的衔接语
+5. 保持原文的语气和风格
+6. 绝对不要压缩、省略或概括——每个细节都必须保留
+7. 为合并后的文本生成一个总括性标题（10字以内）
+
+## 返回格式（严格 JSON）
+{
+  "title": "合并后标题（10字以内）",
+  "content": "合并后的完整文本"
+}
+
+只返回 JSON，不要有其他说明文字`
+  }
+
   static webpageSummary(webpage: { title: string; url: string; content: string }): string {
     return `请阅读以下网页内容，并生成一个精简摘要（500字以内），提炼核心信息和关键要点。
 

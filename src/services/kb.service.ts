@@ -7,6 +7,8 @@ import type {
   SearchSource,
   ListItem,
   LongChunkItem,
+  TitledChunk,
+  BatchTopicPlan,
   Stats,
   KnowledgeBaseInfo,
   IngestMessage,
@@ -949,6 +951,39 @@ export class KBService {
     })
   }
 
+  /**
+   * 创建主题
+   */
+  async createTopic(kbId: string, name: string, description?: string): Promise<{ id: string; name: string; description: string }> {
+    if (!name || name.trim().length === 0) {
+      throw new AppError('KB_CREATE_NAME_REQUIRED')
+    }
+    const desc = description?.trim()
+    const data: Record<string, unknown> = { kbId, name: name.trim() }
+    if (desc) {
+      data.description = desc
+    }
+    const topic = await this.prisma.topic.create({
+      data: data as any,
+      select: { id: true, name: true, description: true },
+    })
+    return topic
+  }
+
+  /**
+   * AI 辅助生成主题信息
+   */
+  async listTopics(kbId: string): Promise<Array<{ id: string; name: string; description: string }>> {
+    return this.prisma.topic.findMany({
+      where: { kbId },
+      select: { id: true, name: true, description: true },
+    })
+  }
+
+  async suggestTopic(kbId: string | undefined, content: string): Promise<{ name: string; description: string }> {
+    return this.cutModelService.createTopicInfo(content, kbId)
+  }
+
   private async resolveTopic(kbId: string, content: string): Promise<string> {
     const topics = await this.prisma.topic.findMany({
       where: { kbId },
@@ -1104,6 +1139,138 @@ export class KBService {
 
       return { kbNames }
     }
+  }
+
+  /**
+   * 拆分预览：AI 切分建议 + 主题归属建议
+   */
+  async splitPreview(memoryId: string): Promise<{
+    chunks: TitledChunk[]
+    topicSuggestions: BatchTopicPlan
+    existingTopics: Array<{ id: string; name: string; description: string }>
+  }> {
+    const memory = await this.prisma.memory.findUnique({
+      where: { id: memoryId },
+      select: { id: true, content: true, kbId: true },
+    })
+
+    if (!memory) {
+      throw new AppError('KB_CHUNK_NOT_FOUND', { id: memoryId })
+    }
+
+    const chunks = await this.cutModelService.cutAndRewrite(memory.content, memory.kbId)
+
+    const existingTopics = await this.prisma.topic.findMany({
+      where: { kbId: memory.kbId },
+      select: { id: true, name: true, description: true },
+    })
+
+    const plan = existingTopics.length > 0
+      ? await this.cutModelService.batchResolveTopics(chunks, existingTopics, memory.kbId)
+      : { plans: chunks.map((_, i) => ({
+          index: i,
+          action: 'create' as const,
+          newTopicName: undefined,
+          reason: '知识库暂无主题，需新建',
+        })) }
+
+    return { chunks, topicSuggestions: plan, existingTopics }
+  }
+
+  /**
+   * 确认拆分：删除原片段，插入拆分后的新片段
+   */
+  async splitConfirm(
+    memoryId: string,
+    chunks: Array<{ title: string; content: string; topicId: string | null }>
+  ): Promise<{ memoryIds: string[] }> {
+    const memory = await this.prisma.memory.findUnique({
+      where: { id: memoryId },
+      select: { id: true, kbId: true },
+    })
+
+    if (!memory) {
+      throw new AppError('KB_CHUNK_NOT_FOUND', { id: memoryId })
+    }
+
+    const embeddings = await this.embeddingService.generateEmbeddings(chunks.map((c) => c.content))
+
+    const newIds = chunks.map(() => createId())
+
+    for (let i = 0; i < chunks.length; i++) {
+      const chunk = chunks[i]
+      await this.prisma.$queryRaw<{ id: string }[]>`
+        INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
+        VALUES (${newIds[i]}, ${memory.kbId}, ${chunk.topicId}, ${chunk.title}, ${chunk.content},
+                ${`[${embeddings[i].join(',')}]`}::vector,
+                ${JSON.stringify({ cutModel: 'manual-split' })}::jsonb)
+        RETURNING id
+      `
+    }
+
+    await this.prisma.memory.delete({ where: { id: memoryId } })
+
+    return { memoryIds: newIds }
+  }
+
+  /**
+   * 合并预览：AI 合并建议
+   */
+  async mergePreview(memoryIds: string[]): Promise<{
+    mergedTitle: string
+    mergedContent: string
+  }> {
+    const memories = await this.prisma.memory.findMany({
+      where: { id: { in: memoryIds } },
+      select: { id: true, title: true, content: true, kbId: true },
+    })
+
+    if (memories.length === 0) {
+      throw new AppError('KB_CHUNK_NOT_FOUND', { id: memoryIds.join(',') })
+    }
+
+    const kbId = memories[0].kbId
+    const result = await this.cutModelService.mergeTexts(
+      memories.map((m) => ({ title: m.title, content: m.content })),
+      kbId,
+    )
+
+    return { mergedTitle: result.title, mergedContent: result.content }
+  }
+
+  /**
+   * 确认合并：删除原片段，插入合并后的新片段
+   */
+  async mergeConfirm(
+    memoryIds: string[],
+    merged: { title: string; content: string; topicId: string | null }
+  ): Promise<{ memoryId: string }> {
+    const memories = await this.prisma.memory.findMany({
+      where: { id: { in: memoryIds } },
+      select: { id: true, kbId: true },
+    })
+
+    if (memories.length === 0) {
+      throw new AppError('KB_CHUNK_NOT_FOUND', { id: memoryIds.join(',') })
+    }
+
+    const kbId = memories[0].kbId
+    const embedding = await this.embeddingService.generateEmbedding(merged.content)
+    const newId = createId()
+
+    const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
+      INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
+      VALUES (${newId}, ${kbId}, ${merged.topicId}, ${merged.title}, ${merged.content},
+              ${`[${embedding.join(',')}]`}::vector,
+              ${JSON.stringify({ cutModel: 'manual-merge' })}::jsonb)
+      RETURNING id
+    `
+
+    await this.prisma.memory.deleteMany({
+      where: { id: { in: memoryIds } },
+    })
+
+    return { memoryId: inserted[0].id }
   }
 
   async findLongChunks(params: {

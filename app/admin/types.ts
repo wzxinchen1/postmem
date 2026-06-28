@@ -147,3 +147,64 @@ export interface LongChunksResponse {
     message: string
   }
 }
+
+export interface SplitChunkItem {
+  index: number
+  title: string
+  content: string
+}
+
+export interface TopicInfo {
+  id: string
+  name: string
+  description: string
+}
+
+export interface SplitPreviewData {
+  chunks: SplitChunkItem[]
+  topicSuggestions: {
+    plans: Array<{
+      index: number
+      action: 'select' | 'create'
+      topicName?: string
+      newTopicName?: string
+      reason: string
+    }>
+  }
+  existingTopics: TopicInfo[]
+}
+
+export interface SplitPreviewResponse {
+  success: boolean
+  data?: SplitPreviewData
+  error?: { code: string; message: string }
+}
+
+export interface MergePreviewData {
+  mergedTitle: string
+  mergedContent: string
+}
+
+export interface MergePreviewResponse {
+  success: boolean
+  data?: MergePreviewData
+  error?: { code: string; message: string }
+}
+
+export interface TopicCreateData {
+  id: string
+  name: string
+  description: string
+}
+
+export interface TopicCreateResponse {
+  success: boolean
+  data?: TopicCreateData
+  error?: { code: string; message: string }
+}
+
+export interface TopicSuggestResponse {
+  success: boolean
+  data?: { name: string; description: string }
+  error?: { code: string; message: string }
+}

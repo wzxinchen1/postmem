@@ -732,6 +732,55 @@ export class CutModelService {
     return { plans }
   }
 
+  async mergeTexts(
+    chunks: Array<{ title: string; content: string }>,
+    kbId?: string
+  ): Promise<{ title: string; content: string }> {
+    const { model, provider } = await this.getDefaultModel()
+
+    if (!provider.vendor) {
+      throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
+    }
+
+    const session = await this.sessionService.create({
+      kbId,
+      modelType: 'chat',
+      modelName: model.name,
+      provider: provider.name,
+      metadata: {
+        displayName: model.displayName,
+        vendorId: provider.vendor.id,
+        vendorName: provider.vendor.name,
+        task: 'merge',
+      },
+    })
+
+    const systemPrompt = Prompts.mergeExpert()
+    const prompt = Prompts.mergeTexts(chunks)
+
+    const parsed = await this.callLLMAndValidate(
+      prompt, systemPrompt, model, provider, session.id,
+      (raw) => {
+        if (!raw || typeof raw !== 'object') {
+          throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS')
+        }
+        const obj = raw as { title?: unknown; content?: unknown }
+        if (!obj.title || typeof obj.title !== 'string' || obj.title.trim().length === 0) {
+          throw new AppError('CUT_MODEL_CHUNK_MISSING_TITLE', { index: 0 })
+        }
+        if (!obj.content || typeof obj.content !== 'string' || obj.content.trim().length === 0) {
+          throw new AppError('CUT_MODEL_CHUNK_MISSING_CONTENT', { index: 0 })
+        }
+        return { title: obj.title.trim(), content: obj.content.trim() }
+      },
+      ThinkingEffort.XHigh
+    )
+
+    await this.sessionService.complete(session.id)
+
+    return parsed
+  }
+
   clearCache(): void {
     this.modelCache.clear()
   }

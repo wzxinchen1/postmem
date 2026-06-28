@@ -70,12 +70,25 @@ export class EmbeddingService {
   }
 
   async generateEmbeddings(texts: string[]): Promise<number[][]> {
-    const embeddings: number[][] = []
-    for (const text of texts) {
-      const embedding = await this.generateEmbedding(text)
-      embeddings.push(embedding)
+    if (texts.length === 0) return []
+
+    const { model, provider } = await this.getDefaultModel()
+
+    if (!provider.vendor) {
+      throw new AppError('EMBEDDING_PROVIDER_MISSING_VENDOR')
     }
-    return embeddings
+
+    const vendor = provider.vendor
+
+    const embeddingModel = this.vendorService.createModel(vendor, {
+      model: model.name,
+      modelType: 'embedding',
+      apiKey: provider.apiKey || undefined,
+      baseUrl: provider.baseUrl || undefined,
+      config: model.config,
+    }) as Embeddings
+
+    return Promise.all(texts.map((text) => embeddingModel.embedQuery(text)))
   }
 
   async healthCheck(): Promise<boolean> {
