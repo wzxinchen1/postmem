@@ -5,7 +5,7 @@ import { message, Card, Row, Col, Button, Empty, Space, Typography, Tag } from '
 import { PlusOutlined, ReloadOutlined, BookOutlined, ImportOutlined } from '@ant-design/icons'
 import { StatsResponse } from '@/app/admin/types'
 import type { IngestProgressEvent } from '@/app/admin/types'
-import { post, streamPost, RequestError } from '@/app/admin/lib/request'
+import { get, post, streamPost, RequestError } from '@/app/admin/lib/request'
 import { CreateKBModal } from '@/src/components/admin/modals/CreateKBModal'
 import { IngestModal } from '@/src/components/admin/modals/IngestModal'
 
@@ -40,7 +40,7 @@ export default function KBManagePage() {
   const handleStats = async () => {
     setLoading(true)
     try {
-      const data = await post<StatsResponse>('/api/kb/stats', {})
+      const data = await get<StatsResponse>('/api/kb/stats')
       setStatsResults(data)
     } catch (err) {
       msg.error('加载知识库列表失败')

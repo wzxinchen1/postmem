@@ -9,19 +9,19 @@ interface Deps {
 /**
  * 获取主题列表
  * @swagger
+ * @query {string} kbId 知识库 ID
  * @response 200 返回主题列表
  */
-export const POST = createApiHandler<Deps>({
+export const GET = createApiHandler<Deps>({
   dependencies: ['kbService'],
-  handler: async (deps, request) => {
-    const body = await request.json()
-    const kbId = body.kbId as string | undefined
+  handler: async (deps, request, { params }) => {
+    const kbId = request.nextUrl.searchParams.get('kbId')
 
     if (!kbId || typeof kbId !== 'string') {
       return errorResponse('KB_ID_REQUIRED')
     }
 
     const items = await deps.kbService.listTopics(kbId)
-    return successResponse({ items })
+    return successResponse(items)
   },
 })

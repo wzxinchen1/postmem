@@ -91,6 +91,7 @@ export interface ChatRequest {
   regenerateMessageId?: string
   modelId: string
   kbId: string
+  topicIds?: string[]
   thinkingEffort?: ThinkingEffort
   searchMemory?: boolean
   searchWeb?: boolean
@@ -332,8 +333,7 @@ export interface ChatSettingInfo {
   maxOutputTokens?: number | null
   searchLinkCount: number
   chunkCharRange: string
-  /** @internal 测试专用：禁用搜索 */
-  searchDisabled?: boolean
+  userProfile?: string | null
   createdAt: string
   updatedAt: string
 }

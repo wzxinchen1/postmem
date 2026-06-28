@@ -91,7 +91,12 @@ export function createSearchNode(deps: GraphDependencies) {
 
     if (shouldSearchWeb) {
       const query = getLastUserQuery(recentMessages)
-      const webKeywords = [query]
+      const needsResult = await deps.searchService.analyzeSearchNeeds(
+        state.agent as any,
+        recentMessages,
+        { includeWebSearch: true, includeMemorySearch: false }
+      )
+      const webKeywords = needsResult.webKeywords.length > 0 ? needsResult.webKeywords : [query]
 
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, conversationId: state.conversationId })
 

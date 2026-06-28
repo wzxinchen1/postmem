@@ -9,6 +9,7 @@ import { Prompts } from '@/src/lib/prompts'
 import { AppError } from '@/src/lib/errors'
 import { logger } from '@/src/lib/logger'
 import { StreamStatus } from '@/src/types'
+import type { SearchNeedsResult } from '@/src/types'
 import { searchWithTavily } from '@/src/services/thirdparty/tavily-client'
 import { fetchUrlWithTimeout, checkAndParsePdf, extractHtmlContent } from '@/src/services/thirdparty/web-fetcher'
 
@@ -49,6 +50,31 @@ export class SearchService {
     this.sseService = sseService
     if (!process.env.TAVILY_API_KEY) throw new AppError('CHAT_SEARCH_TAVILY_API_KEY_MISSING')
     this.tavilyApiKey = process.env.TAVILY_API_KEY
+  }
+
+  async analyzeSearchNeeds(
+    agent: ChatOpenAI,
+    recentMessages: { role: 'user' | 'assistant'; content: string }[],
+    options?: { includeWebSearch?: boolean; includeMemorySearch?: boolean }
+  ): Promise<SearchNeedsResult> {
+    const historyText = this.buildHistoryText(recentMessages)
+    const currentQuery = this.getCurrentQuery(recentMessages)
+
+    const prompt = Prompts.searchNeedsAnalysis(historyText, currentQuery, options)
+
+    const validateFn = (parsed: unknown) => this.validateSearchNeedsResult(parsed, options)
+
+    const result = await this.llmResilienceService.invokeWithValidation<SearchNeedsResult>(
+      {
+        agent,
+        messages: [new HumanMessage(prompt)],
+        maxRetries: 3,
+        timeoutMs: 120_000,
+      },
+      validateFn
+    )
+
+    return result.data
   }
 
   async getCachedWebpages(keywords: string[]) {
@@ -249,6 +275,128 @@ export class SearchService {
       throw new AppError('CHAT_SEARCH_URL_CONTENT_TOO_SHORT', { url })
     }
     return content
+  }
+
+  private validateSearchNeedsResult(
+    parsed: unknown,
+    options?: { includeWebSearch?: boolean; includeMemorySearch?: boolean }
+  ): SearchNeedsResult {
+    if (typeof parsed !== 'object' || parsed === null) {
+      throw new AppError('CHAT_SEARCH_PARSE_RESULT_INVALID')
+    }
+
+    const obj = parsed as Record<string, unknown>
+
+    let includeWeb = true
+    let includeMemory = true
+    if (options !== undefined && options !== null) {
+      if (options.includeWebSearch === false) {
+        includeWeb = false
+      }
+      if (options.includeMemorySearch === false) {
+        includeMemory = false
+      }
+    }
+
+    if (includeWeb) {
+      if (typeof obj.searchWebReason !== 'string') {
+        throw new AppError('CHAT_SEARCH_WEB_REASON_MISSING')
+      }
+      if (typeof obj.needSearchWeb !== 'boolean') {
+        throw new AppError('CHAT_SEARCH_NEED_SEARCH_WEB_MISSING')
+      }
+      if (!Array.isArray(obj.webKeywords) || !obj.webKeywords.every((k: unknown) => typeof k === 'string')) {
+        throw new AppError('CHAT_SEARCH_WEB_KEYWORDS_MISSING')
+      }
+    }
+
+    if (includeMemory) {
+      if (typeof obj.searchMemoryReason !== 'string') {
+        throw new AppError('CHAT_SEARCH_MEMORY_REASON_MISSING')
+      }
+      if (typeof obj.needSearchMemory !== 'boolean') {
+        throw new AppError('CHAT_SEARCH_NEED_SEARCH_MEMORY_MISSING')
+      }
+      if (typeof obj.memoryQuery !== 'string' && obj.memoryQuery !== null) {
+        throw new AppError('CHAT_SEARCH_MEMORY_QUERY_TYPE_INVALID')
+      }
+    }
+
+    let searchWebReason: string
+    if (includeWeb) {
+      searchWebReason = obj.searchWebReason as string
+    } else {
+      searchWebReason = ''
+    }
+
+    let searchMemoryReason: string
+    if (includeMemory) {
+      searchMemoryReason = obj.searchMemoryReason as string
+    } else {
+      searchMemoryReason = ''
+    }
+
+    let needSearchWeb: boolean
+    if (includeWeb) {
+      needSearchWeb = obj.needSearchWeb as boolean
+    } else {
+      needSearchWeb = false
+    }
+
+    let webKeywords: string[]
+    if (includeWeb) {
+      webKeywords = obj.webKeywords as string[]
+    } else {
+      webKeywords = []
+    }
+
+    let needSearchMemory: boolean
+    if (includeMemory) {
+      needSearchMemory = obj.needSearchMemory as boolean
+    } else {
+      needSearchMemory = false
+    }
+
+    let memoryQueryVal: string | null
+    if (includeMemory) {
+      memoryQueryVal = obj.memoryQuery as string | null
+    } else {
+      memoryQueryVal = null
+    }
+
+    return {
+      searchWebReason,
+      searchMemoryReason,
+      needSearchWeb,
+      webKeywords,
+      needSearchMemory,
+      memoryQuery: memoryQueryVal,
+    }
+  }
+
+  private buildHistoryText(recentMessages: { role: string; content: string }[]): string {
+    const historyMessages = recentMessages.slice(0, -1)
+    if (historyMessages.length > 0) {
+      return `| 角色 | 内容 |\n|------|------|\n${historyMessages.map(m =>
+        `| ${m.role === 'user' ? '用户' : 'AI'} | ${m.content.replace(/\n/g, ' ')} |`
+      ).join('\n')}`
+    }
+    return ''
+  }
+
+  private getCurrentQuery(recentMessages: { role: string; content: string }[]): string {
+    const lastMessage = recentMessages[recentMessages.length - 1]
+    if (!lastMessage) {
+      throw new AppError('CHAT_SEARCH_GET_CURRENT_QUERY_MISSING')
+    }
+    if (!lastMessage.content) {
+      throw new AppError('CHAT_SEARCH_GET_CURRENT_QUERY_MISSING')
+    }
+    const currentQuery = lastMessage.content
+    if (!currentQuery) {
+      throw new AppError('CHAT_SEARCH_CURRENT_QUERY_EMPTY')
+    }
+    return currentQuery
   }
 
   private async summarizeOne(agent: ChatOpenAI, webpage: { title: string; url: string; content: string }): Promise<SummaryItem> {

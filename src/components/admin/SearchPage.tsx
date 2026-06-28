@@ -30,15 +30,11 @@ export default function SearchPage() {
       setTopicLoading(true)
       const doFetch = async () => {
         try {
-          const res = await fetch('/api/kb/list-topics', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ kbId }),
-          })
+          const res = await fetch(`/api/kb/list-topics?kbId=${encodeURIComponent(kbId)}`)
           if (res.ok) {
             const data = await res.json()
-            if (data.success && data.data && Array.isArray(data.data.items)) {
-              setTopicList(data.data.items)
+            if (data.success && Array.isArray(data.data)) {
+              setTopicList(data.data)
             }
           }
         } catch {
@@ -64,17 +60,14 @@ export default function SearchPage() {
 
     setLoading(true)
     try {
-      const res = await fetch('/api/kb/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          kbId,
-          topicIds: selectedTopicIds,
-          query: searchQuery,
-          top_k: searchTopK,
-          context_window: searchContextWindow
-        })
-      })
+      const queryParts: string[] = [
+        `kbId=${encodeURIComponent(kbId)}`,
+        `topicIds=${encodeURIComponent(selectedTopicIds.join(','))}`,
+        `query=${encodeURIComponent(searchQuery)}`,
+        `top_k=${searchTopK}`,
+        `context_window=${searchContextWindow}`,
+      ]
+      const res = await fetch(`/api/kb/search?${queryParts.join('&')}`)
       
       if (!res.ok) {
         const errorMessage = await res.text()

@@ -11,7 +11,7 @@ import {
   DeleteOutlined, TagOutlined,
 } from '@ant-design/icons'
 import type { LongChunkItem, LongChunksResponse, TopicInfo, SplitChunkItem } from '@/app/admin/types'
-import { post } from '@/app/admin/lib/request'
+import { get, post } from '@/app/admin/lib/request'
 import { KBSelector } from '@/src/components/admin/KBSelector'
 
 const { Title, Text, Paragraph } = Typography
@@ -186,14 +186,14 @@ export default function LongChunksPage() {
     } else {
       try {
         const [listRes, statsRes] = await Promise.all([
-          post<{ success: boolean; data?: { items: TopicInfo[] } }>('/api/kb/list-topics', { kbId }),
-          post<{ success: boolean; data?: { items: Array<{ id: string; name: string; description: string; memoryCount: number }> } }>('/api/kb/topic/stats', { kbId }),
+          get<{ success: boolean; data?: { items: TopicInfo[] } }>(`/api/kb/list-topics?kbId=${encodeURIComponent(kbId)}`),
+          get<{ success: boolean; data?: { items: Array<{ id: string; name: string; description: string; memoryCount: number }> } }>(`/api/kb/topic/stats?kbId=${encodeURIComponent(kbId)}`),
         ])
         if (listRes.success && listRes.data) {
-          setTopicList(listRes.data.items)
+          setTopicList(listRes.data as TopicInfo[])
         }
         if (statsRes.success && statsRes.data) {
-          setTopicStats(statsRes.data.items)
+          setTopicStats(statsRes.data as Array<{ id: string; name: string; description: string; memoryCount: number }>)
         }
       } catch {
         msg.error('加载分类列表失败')
@@ -209,13 +209,18 @@ export default function LongChunksPage() {
 
     setLoading(true)
     try {
-      const data = await post<LongChunksResponse>('/api/kb/long-chunks', {
-        threshold,
-        page: fetchPage,
-        limit,
-        kbId,
-        topicIds: filterTopicIds,
-      })
+      const lcQueryParts: string[] = [
+        `threshold=${threshold}`,
+        `page=${fetchPage}`,
+        `limit=${limit}`,
+      ]
+      if (kbId) {
+        lcQueryParts.push(`kbId=${encodeURIComponent(kbId)}`)
+      }
+      if (filterTopicIds && filterTopicIds.length > 0) {
+        lcQueryParts.push(`topicIds=${encodeURIComponent(filterTopicIds.join(','))}`)
+      }
+      const data = await get<LongChunksResponse>(`/api/kb/long-chunks?${lcQueryParts.join('&')}`)
       setResults(data)
     } catch {
       msg.error('查询失败')
@@ -492,12 +497,11 @@ export default function LongChunksPage() {
     const kbIdVal = selectedRows[0]?.kbId
     if (kbIdVal) {
       try {
-        const res = await post<{ success: boolean; data?: { items: Array<{ id: string; name: string; description: string }> } }>(
-          '/api/kb/list-topics',
-          { kbId: kbIdVal },
+        const res = await get<{ success: boolean; data?: { items: Array<{ id: string; name: string; description: string }> } }>(
+          `/api/kb/list-topics?kbId=${encodeURIComponent(kbIdVal)}`,
         )
         if (res.success && res.data) {
-          setMergeExistingTopics(res.data.items)
+          setMergeExistingTopics(res.data as Array<{ id: string; name: string; description: string }>)
         }
       } catch {
         msg.error('获取主题列表失败')

@@ -39,13 +39,14 @@ class RealLLMChatTest extends ChatTestFixture {
 
   protected async doBefore(): Promise<void> {
     // 清理旧主题 + 新建"默认"主题（此时 memories 已被父类 cleanupConversations 删除）
-    const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kbId: this.kbId }),
-    })
+    const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics?kbId=${this.kbId}`)
     const listJson = await listRes.json()
-    const existingTopics: Array<{ id: string; name: string }> = listJson.data?.items ?? []
+    let existingTopics: Array<{ id: string; name: string }>
+    if (Array.isArray(listJson.data)) {
+      existingTopics = listJson.data
+    } else {
+      existingTopics = []
+    }
     for (const topic of existingTopics) {
       await fetch(`${getBaseUrl()}/api/kb/topic/delete`, {
         method: 'POST',

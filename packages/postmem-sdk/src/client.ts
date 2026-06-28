@@ -297,8 +297,9 @@ export class PostMemClient {
       return this.http.post<KnowledgeBaseInfo>('/api/kb/create', { name, description })
     },
 
-    list: (kbId: string, page?: number, limit?: number): Promise<KnowledgeBaseInfo[]> => {
-      return this.http.post<KnowledgeBaseInfo[]>('/api/kb/list', { kbId, page, limit })
+    list: (kbId: string, page?: number, limit?: number, topicIds?: string[]): Promise<KnowledgeBaseInfo[]> => {
+      const query: Record<string, string | number | boolean | undefined> = { kbId, page, limit }
+      return this.http.get<KnowledgeBaseInfo[]>(`/api/kb/list${buildQuery(query)}`)
     },
 
     delete: (id: string): Promise<void> => {
@@ -306,7 +307,11 @@ export class PostMemClient {
     },
 
     stats: (kbId?: string): Promise<KnowledgeBaseStats> => {
-      return this.http.post<KnowledgeBaseStats>('/api/kb/stats', { kbId })
+      const query: Record<string, string | number | boolean | undefined> = {}
+      if (kbId !== undefined && kbId !== null) {
+        query.kbId = kbId
+      }
+      return this.http.get<KnowledgeBaseStats>(`/api/kb/stats${buildQuery(query)}`)
     },
 
     search: (
@@ -315,12 +320,13 @@ export class PostMemClient {
       topK?: number,
       contextWindow?: number,
     ): Promise<{ results: SearchSourceInfo[] }> => {
-      return this.http.post<{ results: SearchSourceInfo[] }>('/api/kb/search', {
+      const qs: Record<string, string | number | boolean | undefined> = {
         kbId,
         query,
         top_k: topK,
         context_window: contextWindow,
-      })
+      }
+      return this.http.get<{ results: SearchSourceInfo[] }>(`/api/kb/search${buildQuery(qs)}`)
     },
 
     ingestMessages: (kbId: string, messages: IngestMessage[]): Promise<IngestMessagesResponse> => {

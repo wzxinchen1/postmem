@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { Card, Row, Col, Statistic, Typography, Button, Empty, Space, message } from 'antd'
 import { BookOutlined, FileTextOutlined, CheckCircleOutlined, ReloadOutlined } from '@ant-design/icons'
 import { StatsResponse } from '@/app/admin/types'
-import { post } from '@/app/admin/lib/request'
+import { get, post } from '@/app/admin/lib/request'
 
 const { Title, Text } = Typography
 
@@ -20,7 +20,7 @@ export default function Dashboard() {
   const handleStats = async () => {
     setLoading(true)
     try {
-      const data = await post<StatsResponse>('/api/kb/stats', {})
+      const data = await get<StatsResponse>('/api/kb/stats')
       setStatsResults(data)
     } catch (err) {
       msg.error('加载统计数据失败')

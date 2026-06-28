@@ -4,7 +4,7 @@ import { useState, useEffect } from 'react'
 import { message, Card, Table, Button, Select, Space, Typography, Empty, Popconfirm, Modal } from 'antd'
 import { DeleteOutlined, EyeOutlined } from '@ant-design/icons'
 import { ListResponse, ListItem } from '@/app/admin/types'
-import { post } from '@/app/admin/lib/request'
+import { get, post } from '@/app/admin/lib/request'
 import { KBSelector } from '@/src/components/admin/KBSelector'
 
 const { Title, Text } = Typography
@@ -29,7 +29,7 @@ export default function ListPage() {
     if (!kbId) return
     setLoading(true)
     try {
-      const data = await post<ListResponse>('/api/kb/list', { kbId, page: listPage, limit: listLimit })
+      const data = await get<ListResponse>('/api/kb/list', { kbId, page: listPage, limit: listLimit })
       setListResults(data)
     } catch (err) {
       msg.error('加载片段列表失败')

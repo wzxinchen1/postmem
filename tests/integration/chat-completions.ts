@@ -52,13 +52,14 @@ class MockChatTest extends ChatTestFixture {
 
   protected async doBefore(): Promise<void> {
     // 先清空所有主题（此时 memories 已被父类 cleanupConversations 删除，主题为空可正常删除）
-    const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ kbId: this.kbId }),
-    })
+    const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics?kbId=${this.kbId}`)
     const listJson = await listRes.json()
-    const existingTopics: Array<{ id: string; name: string }> = listJson.data?.items ?? []
+    let existingTopics: Array<{ id: string; name: string }>
+    if (Array.isArray(listJson.data)) {
+      existingTopics = listJson.data
+    } else {
+      existingTopics = []
+    }
     for (const topic of existingTopics) {
       await fetch(`${getBaseUrl()}/api/kb/topic/delete`, {
         method: 'POST',
@@ -858,16 +859,12 @@ class MockChatTest extends ChatTestFixture {
     }, CHAT_TIMEOUT)
 
     test('通过 API 列出主题 — 包含刚创建的"默认"', async () => {
-      const res = await fetch(`${getBaseUrl()}/api/kb/list-topics`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kbId: this.kbId }),
-      })
+      const res = await fetch(`${getBaseUrl()}/api/kb/list-topics?kbId=${this.kbId}`)
       const json = await res.json()
 
       this.assertTruthy(json.success, 'list topics success')
-      this.assertTruthy(json.data?.items, 'has items')
-      const topics: Array<{ id: string; name: string }> = json.data.items
+      this.assertTruthy(Array.isArray(json.data), 'has topics')
+      const topics = json.data as Array<{ id: string; name: string }>
       const defaultTopic = topics.find((t) => t.name === '默认')
       this.assertTruthy(defaultTopic, '包含主题"默认"')
       this.assertEqual(defaultTopic!.id, this.topicId, 'topic id 匹配')
@@ -884,13 +881,9 @@ class MockChatTest extends ChatTestFixture {
       this.assertTruthy(json.success, 'rename success')
 
       // 验证名称已更新
-      const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kbId: this.kbId }),
-      })
+      const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics?kbId=${this.kbId}`)
       const listJson = await listRes.json()
-      const renamed = listJson.data.items.find((t: { id: string }) => t.id === this.topicId)
+      const renamed = (listJson.data as Array<{ id: string; name: string }>).find((t) => t.id === this.topicId)
       this.assertTruthy(renamed, 'renamed topic exists')
       this.assertEqual(renamed.name, '默认（已重命名）', 'name updated')
 
@@ -922,13 +915,9 @@ class MockChatTest extends ChatTestFixture {
       this.assertTruthy((await deleteRes.json()).success, 'delete success')
 
       // 验证列表不再包含
-      const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kbId: this.kbId }),
-      })
+      const listRes = await fetch(`${getBaseUrl()}/api/kb/list-topics?kbId=${this.kbId}`)
       const listJson = await listRes.json()
-      const deletedTopic = listJson.data.items.find((t: { id: string }) => t.id === tempTopicId)
+      const deletedTopic = (listJson.data as Array<{ id: string; name: string }>).find((t) => t.id === tempTopicId)
       this.assertTruthy(!deletedTopic, 'deleted topic no longer in list')
     }, CHAT_TIMEOUT)
   }

@@ -373,6 +373,23 @@ class MockSearchService {
     }
   }
 
+  async analyzeSearchNeeds(
+    _agent: unknown,
+    recentMessages: { role: 'user' | 'assistant'; content: string }[],
+    _options?: { includeWebSearch?: boolean; includeMemorySearch?: boolean }
+  ): Promise<{ searchWebReason: string; needSearchWeb: boolean; webKeywords: string[]; searchMemoryReason: string; needSearchMemory: boolean; memoryQuery: string | null }> {
+    const lastMsg = recentMessages[recentMessages.length - 1]
+    const query = lastMsg ? lastMsg.content : ''
+    return {
+      searchWebReason: 'mock 分析需要联网搜索',
+      needSearchWeb: true,
+      webKeywords: [query],
+      searchMemoryReason: '',
+      needSearchMemory: false,
+      memoryQuery: null,
+    }
+  }
+
   async fetchUrlContent(url: string): Promise<string> {
     return `这是 mock 的 URL 内容: ${url}。用于测试，不涉及真实网络请求。`
   }

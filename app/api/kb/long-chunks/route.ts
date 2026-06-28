@@ -9,54 +9,38 @@ interface Deps {
 /**
  * 查询超长片段
  * @swagger
+ * @query {number} threshold 字符数阈值
+ * @query {number} page 页码
+ * @query {number} limit 每页条数
+ * @query {string} kbId 知识库 ID（可选）
+ * @query {string} topicIds 分类 ID 列表（逗号分隔，可选）
  * @response 200 查询成功
- * /api/kb/long-chunks:
- *   post:
- *     tags: [Knowledge Base]
- *     summary: 查询超长片段
- *     description: 查询 content 字符数超过指定阈值的 memory 片段，支持按知识库过滤和分页
- *     requestBody:
- *       required: true
- *       content:
- *         application/json:
- *           schema:
- *             type: object
- *             properties:
- *               threshold:
- *                 type: integer
- *                 description: 字符数阈值
- *                 example: 1000
- *               kbId:
- *                 type: string
- *                 description: 知识库 ID（可选，不传查全部）
- *                 example: "clx..."
- *               page:
- *                 type: integer
- *                 description: 页码
- *                 example: 1
- *               limit:
- *                 type: integer
- *                 description: 每页条数
- *                 example: 20
- *     responses:
- *       200:
- *         description: 查询成功
  */
-export const POST = createApiHandler<Deps>({
+export const GET = createApiHandler<Deps>({
   dependencies: ['kbService'],
   handler: async (deps, request) => {
-    const body = await request.json()
+    const params = request.nextUrl.searchParams
+    const thresholdStr = params.get('threshold')
+    const pageStr = params.get('page')
+    const limitStr = params.get('limit')
+    const kbId = params.get('kbId')
+    const topicIdsStr = params.get('topicIds')
 
-    const threshold = body.threshold
-    const page = body.page
-    const limit = body.limit
-
-    if (threshold === undefined) return errorResponse('KB_LONG_CHUNKS_THRESHOLD_REQUIRED')
+    if (thresholdStr === null) {
+      errorResponse('KB_LONG_CHUNKS_THRESHOLD_REQUIRED')
+    }
+    const threshold = Number(thresholdStr)
     if (typeof threshold !== 'number' || threshold < 1) {
       return errorResponse('KB_LONG_CHUNKS_THRESHOLD_INVALID', { min: 1, actual: threshold })
     }
-    if (page === undefined) return errorResponse('KB_LONG_CHUNKS_PAGE_REQUIRED')
-    if (limit === undefined) return errorResponse('KB_LONG_CHUNKS_LIMIT_REQUIRED')
+    if (pageStr === null) {
+      errorResponse('KB_LONG_CHUNKS_PAGE_REQUIRED')
+    }
+    if (limitStr === null) {
+      errorResponse('KB_LONG_CHUNKS_LIMIT_REQUIRED')
+    }
+    const page = Number(pageStr)
+    const limit = Number(limitStr)
     if (typeof page !== 'number' || page < 1) {
       return errorResponse('KB_LONG_CHUNKS_PAGE_INVALID')
     }
@@ -64,16 +48,20 @@ export const POST = createApiHandler<Deps>({
       return errorResponse('KB_LONG_CHUNKS_LIMIT_INVALID', { min: 1, max: 100, actual: limit })
     }
 
-    const fetchPage = page
-    const fetchLimit = limit
+    let topicIds: string[] | undefined
+    if (topicIdsStr !== null) {
+      topicIds = topicIdsStr.split(',').filter(id => id.length > 0)
+    }
 
-    const result = await deps.kbService.findLongChunks({
-      threshold,
-      page: fetchPage,
-      limit: fetchLimit,
-      kbId: body.kbId,
-      topicIds: body.topicIds,
-    })
+    const findParams: Record<string, unknown> = { threshold, page, limit }
+    if (kbId !== null) {
+      findParams.kbId = kbId
+    }
+    if (topicIds !== undefined) {
+      findParams.topicIds = topicIds
+    }
+
+    const result = await deps.kbService.findLongChunks(findParams as any)
 
     return successResponse(result)
   },

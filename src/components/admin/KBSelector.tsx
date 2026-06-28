@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react'
 import { Card, Select, Typography } from 'antd'
-import { post } from '@/app/admin/lib/request'
+import { get, post } from '@/app/admin/lib/request'
 
 const { Text } = Typography
 
@@ -25,7 +25,7 @@ export function KBSelector({ kbId, setKbId }: KBSelectorProps) {
   useEffect(() => {
     const fetchKBList = async () => {
       try {
-        const data = await post<{ success: boolean; data?: { kbNames: KBInfo[] } }>('/api/kb/stats', {})
+        const data = await get<{ success: boolean; data?: { kbNames: KBInfo[] } }>('/api/kb/stats')
         if (data.success && data.data?.kbNames) {
           setKbList(data.data.kbNames)
         }

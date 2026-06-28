@@ -54,11 +54,7 @@ export function createClient(): PostMemClient {
 }
 
 export async function getTestKbId(): Promise<string> {
-  const res = await fetch(`${BASE_URL}/api/kb/stats`, {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: '{}',
-  })
+  const res = await fetch(`${BASE_URL}/api/kb/stats`)
   const json = await res.json()
   const kbNames = json.data.kbNames
   if (!kbNames || kbNames.length === 0) {

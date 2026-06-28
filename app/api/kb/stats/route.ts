@@ -1,8 +1,6 @@
 import { NextRequest } from 'next/server'
 import { KBService } from '@/src/services/kb.service'
 import { createApiHandler, successResponse } from '@/src/lib/api-utils'
-import type { StatsRequest } from '@/src/types'
-
 interface Deps {
   kbService: KBService
 }
@@ -10,13 +8,18 @@ interface Deps {
 /**
  * 获取知识库统计
  * @swagger
+ * @query {string} kbId 知识库 ID（可选，不传返回全部统计）
  * @response 200 返回统计信息
  */
-export const POST = createApiHandler<Deps>({
+export const GET = createApiHandler<Deps>({
   dependencies: ['kbService'],
   handler: async (deps, request) => {
-    const body: StatsRequest = await request.json()
-    const result = await deps.kbService.stats(body.kbId)
+    const kbIdParam = request.nextUrl.searchParams.get('kbId')
+    let kbId: string | undefined
+    if (kbIdParam !== null) {
+      kbId = kbIdParam
+    }
+    const result = await deps.kbService.stats(kbId)
     return successResponse(result)
   },
 })

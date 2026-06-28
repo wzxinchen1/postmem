@@ -283,14 +283,11 @@ function collectQueryParamUsage(node: ts.Node): Set<string> {
     }
     if (ts.isCallExpression(n)) {
       const nExpr = n.expression
-      if (ts.isPropertyAccessExpression(nExpr) && nExpr.name.text === 'get') {
-        const innerCall = nExpr.expression
-        if (ts.isCallExpression(innerCall) && n.arguments.length === 1 && ts.isStringLiteral(n.arguments[0])) {
-          const receiver = innerCall.expression
-          if (ts.isPropertyAccessExpression(receiver) && receiver.name.text === 'searchParams') {
-            const val = n.arguments[0].text
-            if (val !== 'id') params.add(val)
-          }
+      if (ts.isPropertyAccessExpression(nExpr) && nExpr.name.text === 'get' && n.arguments.length === 1 && ts.isStringLiteral(n.arguments[0])) {
+        const receiver = nExpr.expression
+        if (ts.isPropertyAccessExpression(receiver) && receiver.name.text === 'searchParams') {
+          const val = n.arguments[0].text
+          if (val !== 'id') params.add(val)
         }
       }
     }

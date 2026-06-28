@@ -155,6 +155,32 @@
         "tags": [
           "Chat"
         ],
+        "parameters": [
+          {
+            "name": "kbId",
+            "in": "query",
+            "description": "知识库 ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "返回分页对话列表",
@@ -234,6 +260,40 @@
         "description": "查询聊天消息列表",
         "tags": [
           "Chat"
+        ],
+        "parameters": [
+          {
+            "name": "conversationId",
+            "in": "query",
+            "description": "对话 ID",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "role",
+            "in": "query",
+            "description": "消息角色过滤",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "page",
+            "in": "query",
+            "description": "页码",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "limit",
+            "in": "query",
+            "description": "每页条数",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -534,7 +594,7 @@
       }
     },
     "/api/kb/list": {
-      "post": {
+      "get": {
         "summary": "分页查询知识库片段列表",
         "description": "分页查询知识库片段列表",
         "tags": [
@@ -555,11 +615,21 @@
       }
     },
     "/api/kb/list-topics": {
-      "post": {
+      "get": {
         "summary": "获取主题列表",
         "description": "获取主题列表",
         "tags": [
           "Knowledge Base"
+        ],
+        "parameters": [
+          {
+            "name": "kbId",
+            "in": "query",
+            "description": "知识库 ID",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -576,7 +646,7 @@
       }
     },
     "/api/kb/long-chunks": {
-      "post": {
+      "get": {
         "summary": "查询超长片段",
         "description": "查询超长片段",
         "tags": [
@@ -584,7 +654,7 @@
         ],
         "responses": {
           "200": {
-            "description": "查询成功 /api/kb/long-chunks: post: tags: [Knowledge Base] summary: 查询超长片段 description: 查询 content 字符数超过指定阈值的 memory 片段，支持按知识库过滤和分页 requestBody: required: true content: application/json: schema: type: object properties: threshold: type: integer description: 字符数阈值 example: 1000 kbId: type: string description: 知识库 ID（可选，不传查全部） example: \"clx...\" page: type: integer description: 页码 example: 1 limit: type: integer description: 每页条数 example: 20 responses: 200: description: 查询成功",
+            "description": "查询成功",
             "content": {
               "application/json": {
                 "schema": {
@@ -597,7 +667,7 @@
       }
     },
     "/api/kb/search": {
-      "post": {
+      "get": {
         "summary": "混合检索知识库（Dense + Sparse + RRF）",
         "description": "混合检索知识库（Dense + Sparse + RRF）",
         "tags": [
@@ -618,11 +688,21 @@
       }
     },
     "/api/kb/stats": {
-      "post": {
+      "get": {
         "summary": "获取知识库统计",
         "description": "获取知识库统计",
         "tags": [
           "Knowledge Base"
+        ],
+        "parameters": [
+          {
+            "name": "kbId",
+            "in": "query",
+            "description": "知识库 ID（可选，不传返回全部统计）",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -723,11 +803,21 @@
       }
     },
     "/api/kb/topic/stats": {
-      "post": {
+      "get": {
         "summary": "获取主题列表（含记忆数量）",
         "description": "获取主题列表（含记忆数量）",
         "tags": [
           "Knowledge Base"
+        ],
+        "parameters": [
+          {
+            "name": "kbId",
+            "in": "query",
+            "description": "知识库 ID",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -863,6 +953,16 @@
         "tags": [
           "Models"
         ],
+        "parameters": [
+          {
+            "name": "capability",
+            "in": "query",
+            "description": "模型能力类型",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "返回默认模型",
@@ -883,6 +983,24 @@
         "description": "查询模型列表",
         "tags": [
           "Models"
+        ],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "description": "是否包含已禁用的",
+            "schema": {
+              "type": "string"
+            }
+          },
+          {
+            "name": "providerId",
+            "in": "query",
+            "description": "按提供商过滤",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -1037,6 +1155,16 @@
         "tags": [
           "Providers"
         ],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "description": "是否包含已禁用的",
+            "schema": {
+              "type": "string"
+            }
+          }
+        ],
         "responses": {
           "200": {
             "description": "返回提供商列表",
@@ -1076,6 +1204,16 @@
         "description": "获取提供商树形结构",
         "tags": [
           "Providers"
+        ],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "description": "是否包含已禁用的",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
@@ -1354,6 +1492,16 @@
         "description": "查询厂商列表",
         "tags": [
           "Vendors"
+        ],
+        "parameters": [
+          {
+            "name": "includeInactive",
+            "in": "query",
+            "description": "是否包含已禁用的",
+            "schema": {
+              "type": "string"
+            }
+          }
         ],
         "responses": {
           "200": {
