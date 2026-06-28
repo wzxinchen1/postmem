@@ -36,9 +36,7 @@ interface TestDIOverrides {
   modelService?: ReturnType<typeof asValue>
 }
 
-const testDiOverrides = (globalThis as any).__POSTMEM_TEST_DI_OVERRIDES as
-  | TestDIOverrides
-  | undefined
+const testDiOverrides = (globalThis as any).__POSTMEM_TEST_DI_OVERRIDES as TestDIOverrides | undefined
 
 container.register({
   prisma: asValue(prisma as PrismaClient),

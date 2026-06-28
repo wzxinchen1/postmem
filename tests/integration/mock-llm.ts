@@ -63,6 +63,11 @@ export function addMockChatResponseRule(rule: MockResponseRule): void {
   getStore().chatResponseRules.push(rule)
 }
 
+/** 识图回复（vision agent 返回的内容，空字符串模拟识图失败） */
+export function setMockVisionResponse(content: string): void {
+  getStore().visionResponse = content
+}
+
 /** 设置默认聊天回复（无规则命中时使用） */
 export function setMockChatResponse(content: string): void {
   getStore().defaultChatResponse = content

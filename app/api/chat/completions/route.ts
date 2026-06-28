@@ -5,11 +5,11 @@ import { SSEService } from '@/src/services/sse.service'
 import { ModelService } from '@/src/services/model.service'
 import { KBService } from '@/src/services/kb.service'
 import { ChatSettingService } from '@/src/services/chat-setting.service'
-import { withErrorHandler } from '@/src/lib/with-error-handler'
-import { successResponse, errorResponse } from '@/src/lib/api-utils'
+import { withErrorHandler, renderErrorMessage, type ApiErrorCode } from '@/src/lib/with-error-handler'
+import { successResponse } from '@/src/lib/api-utils'
 import container from '@/src/lib/container'
 import { logger } from '@/src/lib/logger'
-import { formatErrorChain } from '@/src/lib/errors'
+import { AppError, formatErrorChain } from '@/src/lib/errors'
 import { ThinkingEffort, type ChatCompletionRequest } from '@/src/types'
 
 /**
@@ -30,30 +30,30 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId, topicIds, thinkingEffort, searchMemory, searchWeb } = body
 
   if (!messages || !Array.isArray(messages) || (messages.length === 0 && !regenerateMessageId)) {
-    return errorResponse('MISSING_MESSAGES')
+    throw new AppError('MISSING_MESSAGES')
   }
 
   if (!modelId) {
-    return errorResponse('MISSING_MODEL_ID')
+    throw new AppError('MISSING_MODEL_ID')
   }
 
   if (!kbId) {
-    return errorResponse('MISSING_KB_ID')
+    throw new AppError('MISSING_KB_ID')
   }
 
   if (searchMemory && (!topicIds || !Array.isArray(topicIds) || topicIds.length === 0)) {
-    return errorResponse('KB_SEARCH_TOPIC_IDS_REQUIRED')
+    throw new AppError('KB_SEARCH_TOPIC_IDS_REQUIRED')
   }
 
   const model = await modelService.get(modelId)
   if (!model) {
-    return errorResponse('MODEL_NOT_FOUND')
+    throw new AppError('MODEL_NOT_FOUND')
   }
 
   await kbService.getKnowledgeBaseById(kbId)
 
   if (thinkingEffort !== undefined && !Object.values(ThinkingEffort).includes(thinkingEffort)) {
-    return errorResponse('INVALID_THINKING_EFFORT', {
+    throw new AppError('INVALID_THINKING_EFFORT', {
       allowedValues: Object.values(ThinkingEffort).join('/'),
       actual: thinkingEffort,
     })
@@ -61,19 +61,19 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
 
   const chatSetting = await chatSettingService.get()
   if (chatSetting.memoryContextThreshold <= 0) {
-    return errorResponse('INVALID_MEMORY_CONTEXT_THRESHOLD', {
+    throw new AppError('INVALID_MEMORY_CONTEXT_THRESHOLD', {
       actual: chatSetting.memoryContextThreshold,
     })
   }
 
-  const totalImages = messages.reduce((sum: number, m: { images?: unknown[] }) => sum + (m.images?.length ?? 0), 0)
+  const totalImages = messages.reduce((sum: number, m: { images?: unknown[] }) => sum + (m.images ? m.images.length : 0), 0)
   if (totalImages > 5) {
-    return errorResponse('TOO_MANY_IMAGES', { max: 5, actual: totalImages })
+    throw new AppError('TOO_MANY_IMAGES', { max: 5, actual: totalImages })
   }
 
-  const totalUrls = messages.reduce((sum: number, m: { urls?: unknown[] }) => sum + (m.urls?.length ?? 0), 0)
+  const totalUrls = messages.reduce((sum: number, m: { urls?: unknown[] }) => sum + (m.urls ? m.urls.length : 0), 0)
   if (totalUrls > 5) {
-    return errorResponse('TOO_MANY_URLS', { max: 5, actual: totalUrls })
+    throw new AppError('TOO_MANY_URLS', { max: 5, actual: totalUrls })
   }
 
   let convId: string
@@ -96,19 +96,19 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const processing = await sseService.isProcessing(convId)
   if (processing) {
     logger.error('[completions] isProcessing 拦截', { convId, processing })
-    return errorResponse('CHAT_PROCESSING')
+    throw new AppError('CHAT_PROCESSING')
   }
 
   if (regenerateMessageId) {
     const message = await conversationService.getMessage(regenerateMessageId)
     if (!message) {
-      return errorResponse('REGENERATE_MESSAGE_NOT_FOUND')
+      throw new AppError('REGENERATE_MESSAGE_NOT_FOUND')
     }
     if (message.role !== 'user') {
-      return errorResponse('REGENERATE_NOT_USER_MESSAGE')
+      throw new AppError('REGENERATE_NOT_USER_MESSAGE')
     }
     if (message.memoried) {
-      return errorResponse('MEMORIED_MESSAGE_CANNOT_REGENERATE')
+      throw new AppError('MEMORIED_MESSAGE_CANNOT_REGENERATE')
     }
   }
 
@@ -136,6 +136,12 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
       logger.info('[completions] chat completed')
     } catch (error) {
       logger.error('[completions] Chat error', { modelId, kbId, conversationId: convId, errorChain: formatErrorChain(error) })
+      const errorMessage = error instanceof AppError
+        ? renderErrorMessage(error.code as ApiErrorCode, error.params)
+        : error instanceof Error
+          ? error.message
+          : '系统错误'
+      await sseService.emit({ type: 'error', message: errorMessage, conversationId: convId })
     }
   })()
 

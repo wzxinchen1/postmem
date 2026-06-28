@@ -3,7 +3,7 @@ import { AppError } from '@/src/lib/errors'
 import { logger } from '@/src/lib/logger'
 import apiErrorsConfig from '@/src/config/api-errors.json'
 
-type ApiErrorCode = keyof typeof apiErrorsConfig
+export type ApiErrorCode = keyof typeof apiErrorsConfig
 
 function formatErrorDetails(error: unknown, request: NextRequest): string {
   const lines: string[] = []
@@ -43,11 +43,8 @@ function formatErrorDetails(error: unknown, request: NextRequest): string {
   return lines.join('\n')
 }
 
-function renderErrorMessage(code: string, params?: Record<string, string | number>): string {
-  const config = apiErrorsConfig[code as ApiErrorCode]
-  if (!config) {
-    return `未知错误码: ${code}`
-  }
+export function renderErrorMessage(code: ApiErrorCode, params?: Record<string, string | number>): string {
+  const config = apiErrorsConfig[code]
   let message = config.message
   if (params) {
     for (const [key, value] of Object.entries(params)) {
@@ -74,7 +71,7 @@ export function withErrorHandler<TParams extends Record<string, string> = Record
         const config = apiErrorsConfig[error.code as ApiErrorCode]
         if (config) {
           statusCode = config.statusCode
-          errorMessage = renderErrorMessage(error.code, error.params)
+          errorMessage = renderErrorMessage(error.code as ApiErrorCode, error.params)
         } else {
           logger.error('[with-error-handler] 未知的错误码', { code: error.code })
         }

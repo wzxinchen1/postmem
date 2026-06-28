@@ -25,6 +25,9 @@ import {
   getBaseUrl,
   setMockChatResponseRules,
   setMockStreamChunkDelay,
+  setMockVisionResponse,
+  EventListener,
+  setActiveListener,
   getCalibrateCallCount,
   resetCalibrateCallCount,
 } from './helpers'
@@ -599,6 +602,72 @@ class MockChatTest extends ChatTestFixture {
 
       await this.assertApiError(res, 'TOO_MANY_IMAGES', { max: 5, actual: 6 })
     }, 15_000)
+
+    test('图片: 识图失败 — error 事件终止，无后续流程', async () => {
+      this.setModelHasVision(false)
+      setMockVisionResponse('')
+
+      const requestStartTime = Date.now()
+      const listener = new EventListener(requestStartTime)
+      setActiveListener(listener)
+
+      let conversationId: string
+      let regenerateMessageId: string
+      try {
+        const res = await fetch(`${getBaseUrl()}/api/chat/completions`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            messages: [{
+              id: 'img-vision-fail',
+              content: '描述这张图片',
+              images: [{ url: TEST_IMAGE_DATA_URI, mimeType: 'image/png' }],
+            }],
+            modelId: this.modelId,
+            kbId: this.kbId,
+            conversationId: this.convId1,
+          }),
+        })
+        if (!res.ok) {
+          throw new Error(`chat 请求失败 (HTTP ${res.status}): ${await res.text()}`)
+        }
+        const body = await res.json()
+        conversationId = body.data?.conversationId ?? this.convId1
+
+        await listener.getDonePromise()
+      } finally {
+        setActiveListener(null)
+      }
+
+      const result = listener.buildResult(conversationId)
+      const userMsgEvent = result.events.find(
+        e => e.type === 'messageId' && (e as Record<string, unknown>).role === 'user',
+      )
+      regenerateMessageId = (userMsgEvent as Record<string, unknown>).id as string
+
+      this.assertTruthy(result.error, '识图失败应收到 error 事件')
+      this.assertContains(result.error!, '识图模型返回了空内容', 'error 消息应为识图空内容')
+
+      const chunkEvents = result.events.filter(e => e.type === 'chunk')
+      this.assertEqual(chunkEvents.length, 0, '识图失败后不应有 chunk 事件（流程终止）')
+
+      const recognizingEvents = result.events.filter(
+        e => (e as Record<string, unknown>).status === 'recognizing',
+      )
+      this.assertGreaterThan(recognizingEvents.length, 0, '应有 recognizing 事件（识图节点被调用）')
+
+      this.setModelHasVision(true)
+      setMockVisionResponse('这是一张测试图片的描述。')
+
+      const retryResult = await this.chat({
+        messages: [],
+        regenerateMessageId,
+        modelId: this.modelId,
+        kbId: this.kbId,
+        conversationId,
+      })
+      this.assertTruthy(retryResult.fullContent, '重发应正常完成')
+    }, 30_000)
 
     // ════════════════════════════════════════════
     // thinkingEffort 参数测试

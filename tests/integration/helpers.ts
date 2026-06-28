@@ -155,7 +155,7 @@ export async function waitForProcessingCleared(conversationId: string, timeoutMs
  * 注册到全局转发器接收 SSE 事件，在 done/error 时自动完成。
  * 搜索事件直接从 result.events 中检查，无需全局收集。
  */
-class EventListener {
+export class EventListener {
   private resolve!: () => void
   private events: StreamEvent[] = []
   private fullContent = ''
@@ -246,6 +246,10 @@ class EventListener {
 
 /** 全局转发器：client.consume() 只能注册一次，将事件转发给当前活跃的 listener */
 let activeListener: EventListener | null = null
+
+export function setActiveListener(listener: EventListener | null): void {
+  activeListener = listener
+}
 
 export async function startConsume(client: PostMemClient): Promise<void> {
   // 每次启动 consume 前清理 Redis 残留（如上次测试失败留下的 key），避免干扰
@@ -651,4 +655,4 @@ export async function checkMessageTokens(): Promise<void> {
 }
 
 export { setMockChatSetting, setModelHasVision } from './di-overrides'
-export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, resetMockLLMStore, getCalibrateCallCount, resetCalibrateCallCount } from './mock-llm'
+export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, setMockVisionResponse, resetMockLLMStore, getCalibrateCallCount, resetCalibrateCallCount } from './mock-llm'

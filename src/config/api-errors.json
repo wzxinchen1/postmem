@@ -607,6 +607,10 @@
     "statusCode": 500,
     "message": "识图模型返回了空内容，无法处理图片"
   },
+  "AGENT_VISION_INVOKE_FAILED": {
+    "statusCode": 500,
+    "message": "识图服务调用失败"
+  },
   "KB_CHUNK_MISSING_CONTENT": {
     "statusCode": 500,
     "message": "片段 {index} 缺少 content 字段"

@@ -45,6 +45,8 @@ export type TestFn = (ctx: TestContext) => Promise<void>
 export interface TestOptions {
   /** 该测试是否需要搜索（记忆搜索）。默认 false。声明 true 的测试允许产生搜索事件，false 的测试不允许 */
   memorySearch?: boolean
+  /** 该测试是否允许 tokens=0 的消息（如识图失败等异常终止场景）。默认 false */
+  allowZeroTokens?: boolean
 }
 
 interface TestCase {
@@ -52,6 +54,7 @@ interface TestCase {
   fn: TestFn
   timeoutMs: number
   memorySearch: boolean
+  allowZeroTokens: boolean
 }
 
 interface TestResult {
@@ -116,13 +119,15 @@ export function before(fn: TestFn): void {
 export function test(name: string, fn: TestFn, timeoutOrOptions?: number | TestOptions & { timeoutMs?: number }) {
   let timeoutMs = DEFAULT_TIMEOUT
   let memorySearch = false
+  let allowZeroTokens = false
   if (typeof timeoutOrOptions === 'number') {
     timeoutMs = timeoutOrOptions
   } else if (timeoutOrOptions) {
     timeoutMs = timeoutOrOptions.timeoutMs ?? DEFAULT_TIMEOUT
     memorySearch = timeoutOrOptions.memorySearch ?? false
+    allowZeroTokens = timeoutOrOptions.allowZeroTokens ?? false
   }
-  tests.push({ name, fn, timeoutMs, memorySearch })
+  tests.push({ name, fn, timeoutMs, memorySearch, allowZeroTokens })
 }
 
 async function runWithTimeout(fn: TestFn, ctx: TestContext, timeoutMs: number): Promise<void> {
@@ -283,9 +288,11 @@ async function runTests(): Promise<void> {
     testLogger.info(`test_start`, { index: i + 1, total: tests.length, name: tc.name, memorySearch: tc.memorySearch })
     try {
       await runWithTimeout(tc.fn, ctx, tc.timeoutMs)
-      const { checkMessageTokens } = await import('./helpers')
-      if (!isRetryMode()) {
-        await checkMessageTokens()
+      if (!tc.allowZeroTokens) {
+        const { checkMessageTokens } = await import('./helpers')
+        if (!isRetryMode()) {
+          await checkMessageTokens()
+        }
       }
       const durationMs = Date.now() - start
       testLogger.info(`test_pass`, { index: i + 1, name: tc.name, durationMs })
@@ -332,6 +339,10 @@ export async function run(): Promise<void> {
   let exitCode = 0
 
   try {
+    if (await isServerRunning()) {
+      throw new Error('检测到已有服务器在运行，集成测试必须独占服务端口。请先停止现有服务器（pnpm dev 等），再执行测试。')
+    }
+
     // 在 Next.js webpack 编译前通过 globalThis 注入 DI override
     const { createTestOverrides } = await import('./di-overrides')
     ;(globalThis as any).__POSTMEM_TEST_DI_OVERRIDES = createTestOverrides(realLLMMode)
