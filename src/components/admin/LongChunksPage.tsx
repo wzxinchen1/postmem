@@ -36,6 +36,16 @@ interface EditableChunk {
   suggestLoading: boolean
 }
 
+interface MergeConfirmSnapshot {
+  sourceTopics: Array<{ id: string; name: string; memoryCount: number }>
+  targetTopic: { id: string; name: string; memoryCount: number }
+}
+
+const SNAPSHOT_EMPTY: MergeConfirmSnapshot = {
+  sourceTopics: [],
+  targetTopic: { id: '', name: '', memoryCount: 0 },
+}
+
 function buildEditableChunk(
   chunk: SplitChunkItem,
   plan: { action: string; topicName?: string },
@@ -164,6 +174,7 @@ export default function LongChunksPage() {
   const [selectedMergeTopicIds, setSelectedMergeTopicIds] = useState<string[]>([])
   const [mergeTargetTopicId, setMergeTargetTopicId] = useState<string | null>(null)
   const [mergeConfirmOpen, setMergeConfirmOpen] = useState(false)
+  const [mergeConfirmSnapshot, setMergeConfirmSnapshot] = useState<MergeConfirmSnapshot>(SNAPSHOT_EMPTY)
 
   const [msg, contextHolder] = antMessage.useMessage()
 
@@ -290,6 +301,7 @@ export default function LongChunksPage() {
           msg.success(`已移动 ${res.data.movedCount} 条记忆，删除 ${res.data.deletedCount} 个主题`)
         }
         setMergeConfirmOpen(false)
+        setMergeConfirmSnapshot(SNAPSHOT_EMPTY)
         setSelectedMergeTopicIds([])
         setMergeTargetTopicId(null)
         loadTopics()
@@ -826,7 +838,20 @@ export default function LongChunksPage() {
               <Button
                 size="small"
                 block
-                onClick={() => setMergeConfirmOpen(true)}
+                onClick={() => {
+                  if (mergeTargetTopicId === null) throw new Error('请先选择目标主题')
+                  const targetTopic = topicStats.find(s => s.id === mergeTargetTopicId)
+                  if (!targetTopic) throw new Error(`目标主题 ${mergeTargetTopicId} 不存在`)
+                  const sourceTopics = selectedMergeTopicIds
+                    .filter(id => id !== mergeTargetTopicId)
+                    .map(id => {
+                      const t = topicStats.find(s => s.id === id)
+                      if (!t) throw new Error(`主题 ${id} 不存在`)
+                      return { id: t.id, name: t.name, memoryCount: t.memoryCount }
+                    })
+                  setMergeConfirmSnapshot({ sourceTopics, targetTopic })
+                  setMergeConfirmOpen(true)
+                }}
                 disabled={selectedMergeTopicIds.length < 2 || mergeTargetTopicId === null}
               >
                 执行合并
@@ -1073,6 +1098,107 @@ export default function LongChunksPage() {
             </Space>
           </div>
         )}
+      </Modal>
+
+      <Modal
+        title="新建主题"
+        open={createOpen}
+        onCancel={() => {
+          setCreateOpen(false)
+          setCreateName('')
+          setCreateDesc('')
+        }}
+        onOk={handleCreateTopic}
+        okText="创建"
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <div>
+            <Text strong>主题名称：</Text>
+            <Input
+              value={createName}
+              onChange={(e) => setCreateName(e.target.value)}
+              placeholder="请输入主题名称（必填，5字以内）"
+              maxLength={10}
+              style={{ marginTop: 4 }}
+            />
+          </div>
+          <div>
+            <Text strong>主题描述：</Text>
+            <Input
+              value={createDesc}
+              onChange={(e) => setCreateDesc(e.target.value)}
+              placeholder="请输入主题描述（可选）"
+              style={{ marginTop: 4 }}
+            />
+          </div>
+        </Space>
+      </Modal>
+
+      <Modal
+        title={
+          <Space>
+            <TagOutlined />
+            批量移分类
+            <Text type="secondary" style={{ fontWeight: 400, fontSize: 14 }}>
+              （已选 {selectedRows.length} 个片段）
+            </Text>
+          </Space>
+        }
+        open={reassignOpen}
+        onCancel={() => {
+          setReassignOpen(false)
+          setReassignTopicId(null)
+        }}
+        onOk={handleReassignConfirm}
+        okText="确认移动"
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <div>
+            <Text strong>目标分类：</Text>
+            <Select
+              value={reassignTopicId}
+              onChange={setReassignTopicId}
+              placeholder="请选择目标分类"
+              style={{ width: '100%', marginTop: 4 }}
+              options={topicList.map(t => ({ value: t.id, label: t.name }))}
+            />
+          </div>
+        </Space>
+      </Modal>
+
+      <Modal
+        title="确认合并主题"
+        open={mergeConfirmOpen}
+        onCancel={() => {
+          setMergeConfirmOpen(false)
+          setMergeConfirmSnapshot(SNAPSHOT_EMPTY)
+          setSelectedMergeTopicIds([])
+          setMergeTargetTopicId(null)
+        }}
+        onOk={handleMergeTopics}
+        okText="确认合并"
+        okButtonProps={{ disabled: mergeConfirmSnapshot.sourceTopics.length === 0 }}
+      >
+        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+          <div>
+            <Text strong>源主题（将被合并掉）：</Text>
+            <Space direction="vertical" size={4} style={{ width: '100%', marginTop: 4 }}>
+              {mergeConfirmSnapshot.sourceTopics.map(t => (
+                <Tag key={t.id} color="orange" style={{ fontSize: 13, padding: '2px 8px' }}>
+                  {t.name}（{t.memoryCount} 条）
+                </Tag>
+              ))}
+            </Space>
+          </div>
+          <div>
+            <Text strong>目标主题（合并到）：</Text>
+            <div style={{ marginTop: 4 }}>
+              <Tag color="blue" style={{ fontSize: 13, padding: '2px 8px' }}>
+                {mergeConfirmSnapshot.targetTopic.name}（{mergeConfirmSnapshot.targetTopic.memoryCount} 条）
+              </Tag>
+            </div>
+          </div>
+        </Space>
       </Modal>
 
       <Modal
