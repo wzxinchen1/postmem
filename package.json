@@ -7,7 +7,7 @@
   "scripts": {
     "predev": "prisma generate && prisma migrate deploy && prisma db seed",
     "dev": "node packages/swagger-generator/dist/cli.mjs generate && next dev -p 3000",
-    "prebuild": "prisma generate && node packages/swagger-generator/dist/cli.mjs generate",
+    "prebuild": "pnpm --filter my-swagger-generator run build && node packages/swagger-generator/dist/cli.mjs generate && prisma generate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
