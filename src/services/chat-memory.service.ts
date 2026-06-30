@@ -3,6 +3,7 @@ import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import { SSEService } from '@/src/services/sse.service'
 import { KBService } from '@/src/services/kb.service'
 import { AppError } from '@/src/lib/errors'
+import { logger } from '@/src/lib/logger'
 import type { ChatMessage } from '@/src/types'
 
 interface IngestMessage {
@@ -34,6 +35,9 @@ export class ChatMemoryService {
     kbId: string,
     agent: ChatOpenAI
   ): Promise<string[]> {
+    const totalCharLength = messages.reduce((sum, m) => sum + m.content.length, 0)
+    logger.info('[ChatMemoryService] createMemory', { messageCount: messages.length, totalCharLength, conversationId, kbId })
+
     const ingestMessages: IngestMessage[] = messages.map(m => ({
       id: String(m.id),
       role: m.role === 'assistant' ? 'assistant' : 'user',

@@ -147,6 +147,9 @@ export class CutModelService {
       model: model.name,
       provider: provider.name,
       sessionId,
+      systemPromptLength: systemPrompt.length,
+      promptLength: prompt.length,
+      totalLength: systemPrompt.length + prompt.length,
     })
     const response = await chatModel.invoke([
       new SystemMessage(systemPrompt),
@@ -389,6 +392,8 @@ export class CutModelService {
     const systemPrompt = Prompts.cutAndRewriteExpert()
     const prompt = Prompts.cutAndRewrite(text, charRange)
 
+    logger.info('[CutModelService] cutAndRewrite 输入', { inputTextLength: text.length, promptLength: prompt.length, systemPromptLength: systemPrompt.length, modelName: model.name })
+
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
       if (!raw || typeof raw !== 'object') {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS')
@@ -502,6 +507,8 @@ export class CutModelService {
       chunks.map((c) => ({ index: c.index, title: c.title })),
       existingTopics.map((t) => ({ name: t.name, description: t.description }))
     )
+
+    logger.info('[CutModelService] batchResolveTopics 输入', { chunksCount: chunks.length, existingTopicsCount: existingTopics.length, promptLength: prompt.length, systemPromptLength: systemPrompt.length, modelName: model.name })
 
     const parsed = await this.callLLMAndValidate(
       prompt, systemPrompt, model, provider, session.id,

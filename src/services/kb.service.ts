@@ -210,6 +210,7 @@ export class KBService {
         }
       }
 
+      logger.info('[KBService] ingestTextStream 生成 embedding', { chunkIndex: i, chunkTotal: chunks.length, chunkTitle: chunk.title, chunkContentLength: chunk.content.length, chunkContentPreview: chunk.content.slice(0, 200) })
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
       const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
@@ -290,6 +291,7 @@ export class KBService {
         }
       }
 
+      logger.info('[KBService] ingestText 生成 embedding', { chunkTitle: chunk.title, chunkContentLength: chunk.content.length, chunkContentPreview: chunk.content.slice(0, 200) })
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
       const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
@@ -386,6 +388,7 @@ export class KBService {
         await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `入库`, conversationId })
       }
 
+      logger.info('[KBService] ingestMessages 生成 embedding', { chunkIndex: i, chunkTotal: chunks.length, chunkTitle: chunk.title, chunkContentLength: chunk.content.length, chunkContentPreview: chunk.content.slice(0, 200) })
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
 
       const inserted = await this.prisma.$queryRaw<{ id: string }[]>`

@@ -1,5 +1,6 @@
 import type { Embeddings } from '@langchain/core/embeddings'
 import { AppError } from '@/src/lib/errors'
+import { logger } from '@/src/lib/logger'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Model, Provider } from '@/src/types'
 import { VendorService } from './vendor.service'
@@ -66,6 +67,7 @@ export class EmbeddingService {
       config: model.config,
     }) as Embeddings
 
+    logger.info('[EmbeddingService] generateEmbedding 输入', { modelName: model.name, textLength: text.length, textPreview: text.slice(0, 200) })
     return embeddingModel.embedQuery(text)
   }
 

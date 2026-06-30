@@ -35,6 +35,8 @@ export function createSaveMemoryNode(deps: GraphDependencies) {
     }
 
     // 触发记忆后，全部未记忆消息都参与记忆
+    const totalContentLength = unmemoriedMessages.reduce((sum, m) => sum + m.content.length, 0)
+    logger.info('[ChatGraph] saveMemory 触发入库', { unmemoriedCount: unmemoriedMessages.length, unmemoriedTokens, totalContentLength, threshold: memoryThreshold })
     const memorizedMessageIds = await deps.chatMemoryService.createMemory(
       unmemoriedMessages,
       state.conversationId,
