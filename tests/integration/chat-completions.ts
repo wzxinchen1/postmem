@@ -30,9 +30,72 @@ import {
   setActiveListener,
   getCalibrateCallCount,
   resetCalibrateCallCount,
+  setMockCutModelResponses,
+  resetMockCutModelCallCount,
+  getMockCutModelCallCount,
 } from './helpers'
 
 const CHAT_TIMEOUT = 30_000
+const INGEST_TIMEOUT = 30_000
+
+interface IngestResult {
+  memoryIds: string[]
+  topicsInvolved: string[]
+}
+
+async function ingestTextAndWait(kbId: string, content: string): Promise<IngestResult> {
+  const res = await fetch(`${getBaseUrl()}/api/kb/ingest`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ kbId, content }),
+  })
+  if (!res.ok) {
+    const text = await res.text()
+    throw new Error(`Ingest 请求失败 (HTTP ${res.status}): ${text}`)
+  }
+
+  const reader = res.body!.getReader()
+  const decoder = new TextDecoder()
+  let buffer = ''
+
+  return new Promise<IngestResult>((resolve, reject) => {
+    function processLine(line: string): boolean {
+      if (!line.startsWith('data: ')) return false
+      try {
+        const event = JSON.parse(line.slice(6))
+        if (event.type === 'complete') {
+          resolve(event.data as IngestResult)
+          return true
+        }
+        if (event.type === 'error') {
+          reject(new Error(`Ingest 错误: ${event.data?.message || JSON.stringify(event.data)}`))
+          return true
+        }
+      } catch {
+        // 单行解析失败跳过
+      }
+      return false
+    }
+
+    function pump(): void {
+      reader.read().then(({ done, value }) => {
+        if (done) {
+          reject(new Error('Ingest SSE 流意外结束'))
+          return
+        }
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+        for (const line of lines) {
+          if (processLine(line.trim())) return
+        }
+        pump()
+      })
+    }
+
+    pump()
+  })
+}
 
 class MockChatTest extends ChatTestFixture {
   private topicId!: string
@@ -182,7 +245,7 @@ class MockChatTest extends ChatTestFixture {
         conversationId: this.convId1,
       })
 
-      await new Promise((resolve) => setTimeout(resolve, 10))
+      await new Promise((resolve) => setTimeout(resolve, 20))
 
       const secondRes = await fetch(`${getBaseUrl()}/api/chat/completions`, {
         method: 'POST',
@@ -920,6 +983,53 @@ class MockChatTest extends ChatTestFixture {
       const deletedTopic = (listJson.data as Array<{ id: string; name: string }>).find((t) => t.id === tempTopicId)
       this.assertTruthy(!deletedTopic, 'deleted topic no longer in list')
     }, CHAT_TIMEOUT)
+
+    // ─── CutModel 递归切分测试 ────────────────────────────
+
+    test('cutAndRewrite 正常切分 — 无递归', async () => {
+      resetMockCutModelCallCount()
+      setMockCutModelResponses([])
+
+      const result = await ingestTextAndWait(this.kbId, '这是一段测试文本，内容较短，不需要递归切分。')
+
+      this.assertTruthy(result.memoryIds?.length > 0, 'memoryIds 非空')
+      this.assertTruthy(result.memoryIds[0], '第一个 memoryId 有效')
+    }, INGEST_TIMEOUT)
+
+    test('cutAndRewrite 单层递归 — 首次返回超长块，递归后切分', async () => {
+      resetMockCutModelCallCount()
+      setMockCutModelResponses([
+        JSON.stringify({ chunks: [{ title: '长块', content: 'x'.repeat(1500) }] }),
+        JSON.stringify({ chunks: [{ title: '子块1', content: 'a'.repeat(600) }, { title: '子块2', content: 'b'.repeat(600) }] }),
+      ])
+
+      const result = await ingestTextAndWait(this.kbId, '需要递归切分的长文本。')
+
+      this.assertEqual(result.memoryIds.length, 2, '最终应产生 2 条记忆')
+      this.assertEqual(getMockCutModelCallCount(), 2, 'cut LLM 应被调用 2 次')
+    }, INGEST_TIMEOUT)
+
+    test('cutAndRewrite 递归超限 — depth=MAX_CUT_DEPTH 仍有超长块 → 报错', async () => {
+      resetMockCutModelCallCount()
+      setMockCutModelResponses([
+        JSON.stringify({ chunks: [{ title: '长块1', content: 'x'.repeat(1500) }] }),
+        JSON.stringify({ chunks: [{ title: '长块2', content: 'y'.repeat(1500) }] }),
+        JSON.stringify({ chunks: [{ title: '长块3', content: 'z'.repeat(1500) }] }),
+        JSON.stringify({ chunks: [{ title: '长块4', content: 'w'.repeat(1500) }] }),
+      ])
+
+      let threw = false
+      try {
+        await ingestTextAndWait(this.kbId, '文本')
+      } catch (err: unknown) {
+        threw = true
+        const msg = err instanceof Error ? err.message : String(err)
+        this.assertContains(msg, 'CUT_MODEL_RECURSION_EXCEEDED', '错误码')
+      }
+      if (!threw) {
+        throw new Error('应抛出 CUT_MODEL_RECURSION_EXCEEDED，但未抛出')
+      }
+    }, INGEST_TIMEOUT)
   }
 }
 

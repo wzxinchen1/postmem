@@ -35,6 +35,10 @@ interface LLMStore {
   streamChunkDelayMs: number
   /** MockChatAgent.invoke() 被调用的次数（校准走 invoke，聊天走 stream） */
   chatAgentInvokeCount: number
+  /** CutModel 按调用次数索引的响应列表，每次 invoke 按顺序取一个 */
+  cutModelResponses: string[]
+  /** CutModel 已调用的次数 */
+  cutModelCallCount: number
 }
 
 function getStore(): LLMStore {
@@ -46,6 +50,8 @@ function getStore(): LLMStore {
       confirmSearchWebResult: true,
       summaryResponse: '这是 mock 的网页摘要。',
       streamChunkDelayMs: 50,
+      cutModelResponses: [],
+      cutModelCallCount: 0,
     }
   }
   return (globalThis as any)[STORE_KEY]
@@ -90,6 +96,21 @@ export function setMockSummaryResponse(content: string): void {
 
 export function getMockChatResponse(): string {
   return getStore().defaultChatResponse
+}
+
+/** 设置 CutModel 按调用次数返回的响应列表（替换整个列表） */
+export function setMockCutModelResponses(responses: string[]): void {
+  getStore().cutModelResponses = responses
+}
+
+/** 获取 CutModel 已调用的次数 */
+export function getMockCutModelCallCount(): number {
+  return getStore().cutModelCallCount
+}
+
+/** 重置 CutModel 调用计数 */
+export function resetMockCutModelCallCount(): void {
+  getStore().cutModelCallCount = 0
 }
 
 /** 重置所有 mock 配置为默认值（每个测试前调用） */
@@ -421,7 +442,13 @@ class MockCutModelAgent {
 
     let content: string
     if (systemPrompt.includes('文本处理专家') && systemPrompt.includes('切分')) {
-      content = JSON.stringify({ chunks: [{ title: '测试片段', content: '这是 mock 的切片内容，用于测试记忆入库流程。' }] })
+      const store = getStore()
+      const callIndex = store.cutModelCallCount++
+      if (callIndex < store.cutModelResponses.length) {
+        content = store.cutModelResponses[callIndex]
+      } else {
+        content = JSON.stringify({ chunks: [{ title: '测试片段', content: '这是 mock 的切片内容，用于测试记忆入库流程。' }] })
+      }
     } else if (systemPrompt.includes('知识库去重专家')) {
       content = JSON.stringify({ action: 'new', reason: 'mock 无重复，直接入库', targetId: null, mergedContent: null })
     } else if (systemPrompt.includes('主题分类助手')) {
@@ -432,8 +459,18 @@ class MockCutModelAgent {
         content = JSON.stringify({ name: '测试', description: 'mock 创建的主题' })
       } else {
         // batchResolveTopics 期望 { plans: [...] }
-        // 测试环境已在 setup 中创建了"默认"主题，全部归入该主题
-        content = JSON.stringify({ plans: [{ index: 0, action: 'select', topicName: '默认', reason: 'mock 分配到默认主题' }] })
+        // 从 user prompt 中提取所有 chunk 编号 [片段0] [片段1] ...，统一分配到"默认"主题
+        const indexRegex = /\[片段(\d+)\]/g
+        const plans: Array<{ index: number; action: string; topicName: string; reason: string }> = []
+        let match: RegExpExecArray | null
+        while ((match = indexRegex.exec(userPrompt)) !== null) {
+          plans.push({ index: Number(match[1]), action: 'select', topicName: '默认', reason: 'mock 分配到默认主题' })
+        }
+        if (plans.length === 0) {
+          // fallback：无匹配时仍返回 index 0 防止流程中断
+          plans.push({ index: 0, action: 'select', topicName: '默认', reason: 'mock 分配到默认主题' })
+        }
+        content = JSON.stringify({ plans })
       }
     } else if (systemPrompt.includes('对话分析专家')) {
       content = JSON.stringify({ groups: [{ messageIds: [], summary: 'mock 分组', isComplete: true }] })

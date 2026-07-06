@@ -651,4 +651,4 @@ export async function checkMessageTokens(): Promise<void> {
 }
 
 export { setMockChatSetting, setModelHasVision } from './di-overrides'
-export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, setMockVisionResponse, resetMockLLMStore, getCalibrateCallCount, resetCalibrateCallCount } from './mock-llm'
+export { setMockChatResponse, setMockChatResponseRules, addMockChatResponseRule, setMockStreamChunkDelay, setMockConfirmSearchWeb, setMockSummaryResponse, getMockChatResponse, setMockVisionResponse, resetMockLLMStore, getCalibrateCallCount, resetCalibrateCallCount, setMockCutModelResponses, getMockCutModelCallCount, resetMockCutModelCallCount } from './mock-llm'

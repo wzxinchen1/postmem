@@ -1,4 +1,4 @@
-import { HumanMessage, SystemMessage } from '@langchain/core/messages'
+import { AIMessage, HumanMessage, SystemMessage } from '@langchain/core/messages'
 import type { BaseChatModel } from '@langchain/core/language_models/chat_models'
 import { AppError } from '@/src/lib/errors'
 import { Prompts } from '@/src/lib/prompts'
@@ -28,6 +28,8 @@ export class CutModelService {
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map<string, { model: Model; provider: Provider }>()
 
   private static readonly MAX_RETRIES = 5
+  private static readonly MAX_CHUNK_CHARS = 1000
+  private static readonly MAX_CUT_DEPTH = 3
 
   constructor({ prisma, sessionService, vendorService, llmResilienceService, chatSettingService }: CutModelDependencies) {
     this.prisma = prisma
@@ -126,22 +128,21 @@ export class CutModelService {
     systemPrompt: string,
     model: Model,
     provider: Provider,
-    sessionId: string,
-    reasoningEffort?: string
+    sessionId: string | undefined,
+    reasoningEffort?: string,
+    additionalMessages: { role: string; content: string }[] = []
   ): Promise<string> {
     const chatModel = await this.createModel(model, provider, reasoningEffort)
 
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'system',
-      content: systemPrompt,
-    })
+    if (sessionId !== undefined) {
+      await this.sessionService.addMessage({ sessionId, role: 'system', content: systemPrompt })
+      await this.sessionService.addMessage({ sessionId, role: 'user', content: prompt })
+    }
 
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'user',
-      content: prompt,
-    })
+    let additionalMessagesLength = 0
+    for (const m of additionalMessages) {
+      additionalMessagesLength += m.content.length
+    }
 
     logger.info('[CutModelService] callLLM', {
       model: model.name,
@@ -149,32 +150,33 @@ export class CutModelService {
       sessionId,
       systemPromptLength: systemPrompt.length,
       promptLength: prompt.length,
-      totalLength: systemPrompt.length + prompt.length,
+      additionalMessagesCount: additionalMessages.length,
+      additionalMessagesLength,
+      totalLength: systemPrompt.length + prompt.length + additionalMessagesLength,
     })
-    const response = await chatModel.invoke([
+    const messages = [
       new SystemMessage(systemPrompt),
+      ...additionalMessages.map((m) =>
+        m.role === 'assistant' ? new AIMessage(m.content) : new HumanMessage(m.content)
+      ),
       new HumanMessage(prompt),
-    ])
+    ]
+    const response = await chatModel.invoke(messages)
     logger.info('[CutModelService] callLLM responsed')
     const content = response.content.toString()
-
-    const messageMetadata: Record<string, unknown> = { model: model.name }
 
     if (response.additional_kwargs == null) {
       throw new AppError('CUT_MODEL_LLM_SDK_NULL_ADDITIONAL_KWARGS')
     }
 
-    const additionalKwargs = response.additional_kwargs
-    if (additionalKwargs.reasoning_content) {
-      messageMetadata.reasoning_content = additionalKwargs.reasoning_content
+    if (sessionId !== undefined) {
+      const messageMetadata: Record<string, unknown> = { model: model.name }
+      const additionalKwargs = response.additional_kwargs
+      if (additionalKwargs.reasoning_content) {
+        messageMetadata.reasoning_content = additionalKwargs.reasoning_content
+      }
+      await this.sessionService.addMessage({ sessionId, role: 'assistant', content, metadata: messageMetadata })
     }
-
-    await this.sessionService.addMessage({
-      sessionId,
-      role: 'assistant',
-      content,
-      metadata: messageMetadata,
-    })
 
     return content
   }
@@ -188,16 +190,17 @@ export class CutModelService {
     systemPrompt: string,
     model: Model,
     provider: Provider,
-    sessionId: string,
+    sessionId: string | undefined,
     validator: (parsed: unknown) => T,
-    reasoningEffort?: string
+    reasoningEffort?: string,
+    additionalMessages: { role: string; content: string }[] = []
   ): Promise<T> {
     let lastError: Error | null = null
 
     for (let attempt = 1; attempt <= CutModelService.MAX_RETRIES; attempt++) {
       let content: string
       try {
-        content = await this.callLLM(prompt, systemPrompt, model, provider, sessionId, reasoningEffort)
+        content = await this.callLLM(prompt, systemPrompt, model, provider, sessionId, reasoningEffort, additionalMessages)
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
 
@@ -368,33 +371,34 @@ export class CutModelService {
   }
 
   async cutAndRewrite(text: string, kbId?: string): Promise<TitledChunk[]> {
+    const rawChunks = await this.cutAndRewriteInternal(text, 0, kbId)
+    return rawChunks.map((chunk, i) => ({ ...chunk, index: i }))
+  }
+
+  private async cutAndRewriteInternal(
+    text: string,
+    depth: number,
+    kbId?: string,
+    messageHistory: { role: string; content: string }[] = [],
+    chunkIndex?: number
+  ): Promise<TitledChunk[]> {
     const { model, provider } = await this.getDefaultModel()
 
     if (!provider.vendor) {
       throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
     }
 
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'chat',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: provider.vendor.id,
-        vendorName: provider.vendor.name,
-        task: 'cut-and-rewrite',
-      },
-    })
-
     const chatSetting = await this.chatSettingService.get()
     const charRange = chatSetting.chunkCharRange
     const systemPrompt = Prompts.cutAndRewriteExpert()
-    const prompt = Prompts.cutAndRewrite(text, charRange)
 
-    logger.info('[CutModelService] cutAndRewrite 输入', { inputTextLength: text.length, promptLength: prompt.length, systemPromptLength: systemPrompt.length, modelName: model.name })
+    const prompt = depth === 0
+      ? Prompts.cutAndRewrite(text, charRange)
+      : `第${chunkIndex}条过长，请修正，每次修正请完整发送所有的chunk内容`
 
-    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+    logger.info('[CutModelService] cutAndRewriteInternal 调用', { inputTextLength: text.length, promptLength: prompt.length, systemPromptLength: systemPrompt.length, modelName: model.name, depth, historyLength: messageHistory.length })
+
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, undefined, (raw) => {
       if (!raw || typeof raw !== 'object') {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS')
       }
@@ -403,11 +407,9 @@ export class CutModelService {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS')
       }
       return obj as { chunks: any[] }
-    }, ThinkingEffort.XHigh)
+    }, ThinkingEffort.XHigh, messageHistory)
 
-    await this.sessionService.complete(session.id)
-
-    return parsed.chunks.map((chunk: any, i: number) => {
+    const chunks: TitledChunk[] = parsed.chunks.map((chunk: any, i: number) => {
       if (!chunk.title || !chunk.title.trim()) {
         throw new AppError('CUT_MODEL_CHUNK_MISSING_TITLE', { index: i })
       }
@@ -420,6 +422,53 @@ export class CutModelService {
         content: chunk.content.trim(),
       }
     })
+
+    if (depth >= CutModelService.MAX_CUT_DEPTH) {
+      const longChunks = chunks.filter(c => c.content.length > CutModelService.MAX_CHUNK_CHARS)
+      if (longChunks.length > 0) {
+        throw new AppError('CUT_MODEL_RECURSION_EXCEEDED', {
+          depth: CutModelService.MAX_CUT_DEPTH,
+          maxChunkChars: CutModelService.MAX_CHUNK_CHARS,
+          longChunks: JSON.stringify(longChunks.map(c => ({ title: c.title, contentLength: c.content.length }))),
+        })
+      }
+      return chunks
+    }
+
+    const roundHistory = [
+      { role: 'user' as const, content: prompt },
+      { role: 'assistant' as const, content: JSON.stringify(parsed) },
+    ]
+
+    let resultChunks: TitledChunk[] = chunks
+
+    while (true) {
+      let fixed = false
+
+      for (let i = 0; i < resultChunks.length; i++) {
+        if (resultChunks[i].content.length > CutModelService.MAX_CHUNK_CHARS) {
+          logger.info('[CutModelService] cutAndRewrite 递归修正', { depth: depth + 1, chunkTitle: resultChunks[i].title, chunkContentLength: resultChunks[i].content.length })
+
+          const subChunks = await this.cutAndRewriteInternal(
+            resultChunks[i].content, depth + 1, kbId,
+            [...messageHistory, ...roundHistory], i
+          )
+
+          resultChunks = [
+            ...resultChunks.slice(0, i),
+            ...subChunks,
+            ...resultChunks.slice(i + 1),
+          ]
+
+          fixed = true
+          break
+        }
+      }
+
+      if (!fixed) break
+    }
+
+    return resultChunks
   }
 
   async getModelInfo(): Promise<{ provider: string; model: string }> {
