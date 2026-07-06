@@ -229,6 +229,17 @@ export class ConversationService {
     })
   }
 
+  async updateMessage(messageId: string, data: { content?: string; images?: unknown; urls?: string[] }): Promise<void> {
+    await this.prisma.chatMessage.update({
+      where: { id: messageId },
+      data: {
+        ...(data.content !== undefined && { content: data.content }),
+        ...(data.images !== undefined && { images: data.images as any }),
+        ...(data.urls !== undefined && { urls: data.urls as any }),
+      },
+    })
+  }
+
   async updateMessageTokens(messageId: string, tokens: number, totalTokens: number): Promise<void> {
     await this.prisma.chatMessage.update({
       where: { id: messageId },

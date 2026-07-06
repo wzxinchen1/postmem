@@ -303,24 +303,7 @@ export async function chatAndWait(
   let conversationId: string
 
   try {
-    if (request.regenerateMessageId && (!request.messages || request.messages.length === 0)) {
-      const res = await fetch(`${BASE_URL}/api/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify(request),
-      })
-      if (!res.ok) {
-        const text = await res.text()
-        throw new Error(`chat 请求失败 (HTTP ${res.status}): ${text}`)
-      }
-      const body = await res.json()
-      conversationId = body.data?.conversationId ?? request.conversationId ?? ''
-      if (!conversationId) {
-        throw new Error(`chat 返回无 conversationId: ${JSON.stringify(body)}`)
-      }
-    } else {
-      conversationId = await client.chat(request)
-    }
+    conversationId = await client.chat(request)
 
     await listener.getDonePromise()
   } finally {
@@ -357,7 +340,7 @@ export async function chatAndWait(
   }
 
   // 框架层不变量：SSE 事件序列必须符合源码发射顺序
-  const isRegenerate = !!request.regenerateMessageId && (!request.messages || request.messages.length === 0)
+  const isRegenerate = !!request.regenerateMessageId
   assertEventSequence(result.events, conversationId, isRegenerate)
 
   // 框架层不变量：首响应时间检测
@@ -428,11 +411,12 @@ export async function chatAndWait(
  *   3. chunk+ (成功时≥1个)        — stream-llm.node.ts
  *   4. done | error               — finalize.node.ts / onError 回调
  *
- * 重发（regenerateMessageId，无新用户消息）：
+ * 重发（regenerateMessageId）：
  *   1. messageId(role=assistant)  — chat.service.ts，graph 调用前
  *   2. chunk+ (成功时≥1个)
  *   3. done | error
  *
+ * 注意：重发时更新原消息内容（不创建新用户消息），因此不发射 messageId(role=user)。
  * 中间可穿插 status/thinking 等可选事件，不影响必选事件的相对顺序。
  */
 function assertEventSequence(events: StreamEvent[], conversationId: string, isRegenerate = false): void {

@@ -180,7 +180,7 @@ class RealLLMChatTest extends ChatTestFixture {
       const previousTotal = msgResult.total
 
       await this.chat({
-        messages: [],
+        messages: [{ id: lastUserMsg.id, content: lastUserMsg.content }],
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
@@ -422,7 +422,7 @@ class RealLLMChatTest extends ChatTestFixture {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [],
+          messages: [{ id: memoriedMsg.id, content: memoriedMsg.content }],
           modelId: this.modelId,
           kbId: this.kbId,
           conversationId: this.convId1,

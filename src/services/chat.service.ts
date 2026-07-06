@@ -123,11 +123,19 @@ export class ChatService {
       if (!originalMessage) {
         throw new AppError('MESSAGE_NOT_FOUND', { messageId: regenerateMessageId })
       }
-      if (originalMessage.images) {
-        images = originalMessage.images as ChatMessageImage[]
+
+      const lastMessage = messages[messages.length - 1]
+      await this.conversationService.updateMessage(regenerateMessageId, {
+        content: lastMessage.content,
+        images: lastMessage.images,
+        urls: lastMessage.urls,
+      })
+
+      if (lastMessage.images) {
+        images = lastMessage.images as ChatMessageImage[]
       }
-      if (originalMessage.urls) {
-        urls = originalMessage.urls as string[]
+      if (lastMessage.urls) {
+        urls = lastMessage.urls as string[]
       }
 
       await this.conversationService.removeMessagesAfter(convId, regenerateMessageId)

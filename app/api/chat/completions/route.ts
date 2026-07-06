@@ -31,7 +31,7 @@ export const POST = withErrorHandler(async (request: NextRequest) => {
   const body: ChatCompletionRequest = await request.json()
   const { messages, conversationId, newConversation, regenerateMessageId, modelId, kbId, topicIds, thinkingEffort, searchMemory, searchWeb } = body
 
-  if (!messages || !Array.isArray(messages) || (messages.length === 0 && !regenerateMessageId)) {
+  if (!messages || !Array.isArray(messages) || messages.length === 0) {
     throw new AppError('MISSING_MESSAGES')
   }
 

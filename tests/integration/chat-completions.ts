@@ -283,7 +283,7 @@ class MockChatTest extends ChatTestFixture {
       const messagesAfterMid = msgResult.messages.length - midUserMsgIndex - 1
 
       await this.chat({
-        messages: [],
+        messages: [{ id: midUserMsg.id, content: midUserMsg.content }],
         modelId: this.modelId,
         kbId: this.kbId,
         conversationId: this.convId1,
@@ -424,7 +424,7 @@ class MockChatTest extends ChatTestFixture {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [],
+          messages: [{ id: memoriedUserMsg.id, content: memoriedUserMsg.content }],
           modelId: this.modelId,
           kbId: this.kbId,
           conversationId: this.convId1,
@@ -724,7 +724,11 @@ class MockChatTest extends ChatTestFixture {
       setMockVisionResponse('这是一张测试图片的描述。')
 
       const retryResult = await this.chat({
-        messages: [],
+        messages: [{
+          id: 'img-vision-retry',
+          content: '描述这张图片',
+          images: [{ url: TEST_IMAGE_DATA_URI, mimeType: 'image/png' }],
+        }],
         regenerateMessageId,
         modelId: this.modelId,
         kbId: this.kbId,
@@ -824,7 +828,7 @@ class MockChatTest extends ChatTestFixture {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [],
+          messages: [{ id: 'dummy-msg', content: '测试内容' }],
           modelId: this.modelId,
           kbId: this.kbId,
           conversationId: this.convId1,
@@ -846,7 +850,7 @@ class MockChatTest extends ChatTestFixture {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          messages: [],
+          messages: [{ id: 'dummy-msg', content: '测试内容' }],
           modelId: this.modelId,
           kbId: this.kbId,
           conversationId: this.convId1,
