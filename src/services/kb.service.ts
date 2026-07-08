@@ -159,7 +159,7 @@ export class KBService {
 
     onProgress({ type: 'status', message: '正在切分文本...' })
     const cutStart = Date.now()
-    const chunks = await this.cutModelService.cutAndRewrite(content, kbId)
+    const chunks = await this.cutModelService.cutAndRewrite(content, kbId, onProgress)
     const cutElapsed = Date.now() - cutStart
     logger.info('[KBService] ingestTextStream 切分完成', { chunksCount: chunks.length, cutElapsedMs: cutElapsed })
     onProgress({ type: 'status', message: `文本已切分为 ${chunks.length} 个片段（${cutElapsed}ms），正在规划主题...` })

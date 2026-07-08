@@ -11,6 +11,8 @@ import { VendorService } from './vendor.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 import type { IChatSettingProvider } from '@/src/interfaces/chat-setting-provider'
 
+type ProgressCallback = (event: { type: string; message?: string; data?: Record<string, unknown> }) => void
+
 interface CutModelDependencies {
   prisma: PrismaClient
   sessionService: SessionService
@@ -195,7 +197,8 @@ export class CutModelService {
     sessionId: string | undefined,
     validator: (parsed: unknown) => T,
     reasoningEffort?: string,
-    additionalMessages: { role: string; content: string }[] = []
+    additionalMessages: { role: string; content: string }[] = [],
+    onProgress?: ProgressCallback
   ): Promise<T> {
     let lastError: Error | null = null
 
@@ -212,6 +215,13 @@ export class CutModelService {
           errorMessage: lastError.message,
           stack: lastError.stack,
         })
+
+        if (onProgress) {
+          onProgress({
+            type: 'status',
+            message: `LLM 调用失败，第 ${attempt}/${CutModelService.MAX_RETRIES} 次重试...`,
+          })
+        }
         continue
       }
 
@@ -233,6 +243,13 @@ export class CutModelService {
           stack: lastError.stack,
           rawResponse: content.slice(0, 2000),
         })
+
+        if (onProgress) {
+          onProgress({
+            type: 'status',
+            message: `LLM 响应解析失败，第 ${attempt}/${CutModelService.MAX_RETRIES} 次重试...`,
+          })
+        }
       }
     }
 
@@ -372,10 +389,10 @@ export class CutModelService {
     }))
   }
 
-  async cutAndRewrite(text: string, kbId?: string): Promise<TitledChunk[]> {
+  async cutAndRewrite(text: string, kbId?: string, onProgress?: ProgressCallback): Promise<TitledChunk[]> {
     const cutStart = Date.now()
     logger.info('[CutModelService] cutAndRewrite 开始', { inputTextLength: text.length, kbId })
-    const rawChunks = await this.cutAndRewriteInternal(text, 0, kbId)
+    const rawChunks = await this.cutAndRewriteInternal(text, 0, kbId, [], undefined, onProgress)
     logger.info('[CutModelService] cutAndRewrite 完成', { chunksCount: rawChunks.length, textLength: text.length, elapsedMs: Date.now() - cutStart })
     return rawChunks.map((chunk, i) => ({ ...chunk, index: i }))
   }
@@ -385,7 +402,8 @@ export class CutModelService {
     depth: number,
     kbId?: string,
     messageHistory: { role: string; content: string }[] = [],
-    chunkIndex?: number
+    chunkIndex?: number,
+    onProgress?: ProgressCallback
   ): Promise<TitledChunk[]> {
     const { model, provider } = await this.getDefaultModel()
 
@@ -403,6 +421,15 @@ export class CutModelService {
 
     logger.info('[CutModelService] cutAndRewriteInternal 调用', { inputTextLength: text.length, promptLength: prompt.length, systemPromptLength: systemPrompt.length, modelName: model.name, depth, historyLength: messageHistory.length })
 
+    if (onProgress) {
+      onProgress({
+        type: 'status',
+        message: depth === 0
+          ? '正在切分文本...'
+          : `正在修正过长片段（第${depth}轮）...`,
+      })
+    }
+
     const llmStart = Date.now()
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, undefined, (raw) => {
       if (!raw || typeof raw !== 'object') {
@@ -413,7 +440,7 @@ export class CutModelService {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS')
       }
       return obj as { chunks: any[] }
-    }, ThinkingEffort.XHigh, messageHistory)
+    }, ThinkingEffort.XHigh, messageHistory, onProgress)
     logger.info('[CutModelService] cutAndRewriteInternal LLM 返回', { depth, llmElapsedMs: Date.now() - llmStart, chunksCount: parsed.chunks.length })
 
     const chunks: TitledChunk[] = parsed.chunks.map((chunk: any, i: number) => {
@@ -456,10 +483,17 @@ export class CutModelService {
         if (resultChunks[i].content.length > CutModelService.MAX_CHUNK_CHARS) {
           logger.info('[CutModelService] cutAndRewrite 递归修正', { depth: depth + 1, chunkTitle: resultChunks[i].title, chunkContentLength: resultChunks[i].content.length })
 
+          if (onProgress) {
+            onProgress({
+              type: 'status',
+              message: `正在修正过长片段：${resultChunks[i].title}（${resultChunks[i].content.length}字符，第${depth + 1}轮）`,
+            })
+          }
+
           const recurseStart = Date.now()
           const subChunks = await this.cutAndRewriteInternal(
             resultChunks[i].content, depth + 1, kbId,
-            [...messageHistory, ...roundHistory], i
+            [...messageHistory, ...roundHistory], i, onProgress
           )
           logger.info('[CutModelService] cutAndRewrite 递归修正完成', { depth: depth + 1, subChunksCount: subChunks.length, elapsedMs: Date.now() - recurseStart })
 
