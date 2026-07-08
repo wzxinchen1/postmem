@@ -877,7 +877,7 @@ export class KBService {
       throw new AppError('KB_CHUNK_NOT_FOUND', { id: memoryId })
     }
 
-    const chunks = await this.cutModelService.cutAndRewrite(memory.content, memory.kbId, undefined, instruction)
+    const chunks = await this.cutModelService.cutAndRewrite(memory.content, memory.kbId, undefined, instruction, true)
 
     const existingTopics = await this.prisma.topic.findMany({
       where: { kbId: memory.kbId },

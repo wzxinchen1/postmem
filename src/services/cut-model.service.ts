@@ -389,10 +389,10 @@ export class CutModelService {
     }))
   }
 
-  async cutAndRewrite(text: string, kbId?: string, onProgress?: ProgressCallback, instruction?: string): Promise<TitledChunk[]> {
+  async cutAndRewrite(text: string, kbId?: string, onProgress?: ProgressCallback, instruction?: string, skipRecursive = false): Promise<TitledChunk[]> {
     const cutStart = Date.now()
-    logger.info('[CutModelService] cutAndRewrite 开始', { inputTextLength: text.length, kbId, instruction: instruction?.slice(0, 200) })
-    const rawChunks = await this.cutAndRewriteInternal(text, 0, kbId, [], undefined, onProgress, instruction)
+    logger.info('[CutModelService] cutAndRewrite 开始', { inputTextLength: text.length, kbId, instruction: instruction?.slice(0, 200), skipRecursive })
+    const rawChunks = await this.cutAndRewriteInternal(text, 0, kbId, [], undefined, onProgress, instruction, skipRecursive)
     logger.info('[CutModelService] cutAndRewrite 完成', { chunksCount: rawChunks.length, textLength: text.length, elapsedMs: Date.now() - cutStart })
     return rawChunks.map((chunk, i) => ({ ...chunk, index: i }))
   }
@@ -404,7 +404,8 @@ export class CutModelService {
     messageHistory: { role: string; content: string }[] = [],
     chunkIndex?: number,
     onProgress?: ProgressCallback,
-    instruction?: string
+    instruction?: string,
+    skipRecursive = false
   ): Promise<TitledChunk[]> {
     const { model, provider } = await this.getDefaultModel()
 
@@ -474,6 +475,10 @@ export class CutModelService {
       { role: 'user' as const, content: prompt },
       { role: 'assistant' as const, content: JSON.stringify(parsed) },
     ]
+
+    if (skipRecursive) {
+      return chunks
+    }
 
     let resultChunks: TitledChunk[] = chunks
 
