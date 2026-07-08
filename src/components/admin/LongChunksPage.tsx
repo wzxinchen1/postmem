@@ -10,7 +10,7 @@ import {
   ScissorOutlined, MergeCellsOutlined, ThunderboltOutlined,
   DeleteOutlined, TagOutlined,
 } from '@ant-design/icons'
-import type { LongChunkItem, LongChunksResponse, TopicInfo, SplitChunkItem, DuplicateGroup, DuplicateGroupItem, DuplicateDetectResponse } from '@/app/admin/types'
+import type { LongChunkItem, LongChunksResponse, TopicInfo, SplitChunkItem, DuplicateGroup, DuplicateDetectResponse } from '@/app/admin/types'
 import { get, post } from '@/app/admin/lib/request'
 import { KBSelector } from '@/src/components/admin/KBSelector'
 
@@ -1091,7 +1091,7 @@ export default function LongChunksPage() {
                               <Button
                                 type="primary"
                                 icon={<MergeCellsOutlined />}
-                                onClick={openMergeModal}
+                                onClick={() => openMergeModal()}
                               >
                                 合并所选（{selectedRowKeys.length}）
                               </Button>

@@ -1173,7 +1173,6 @@ export class KBService {
     const pairCount = rows.length
 
     function buildItem(row: SimilarPair, which: 1 | 2): DuplicateGroupItem {
-      const r = which === 1 ? row : row
       const id = which === 1 ? row.id1 : row.id2
       const title = which === 1 ? row.title1 : row.title2
       const content = which === 1 ? row.content1 : row.content2
