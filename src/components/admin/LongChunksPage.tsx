@@ -1223,17 +1223,35 @@ export default function LongChunksPage() {
 
                         <Space direction="vertical" size={12} style={{ width: '100%' }}>
                           {dupResults.groups.map((group, gi) => (
-                            <Card
-                              key={gi}
-                              size="small"
-                              title={
-                                <Space>
-                                  <Tag color="volcano">重复组 #{gi + 1}</Tag>
-                                  <Text style={{ fontWeight: 400 }}>
-                                    {group.items.length} 条 · 相似度 {group.minSimilarity.toFixed(4)} ~ {group.maxSimilarity.toFixed(4)}
-                                  </Text>
-                                </Space>
-                              }
+                              <Card
+                                  key={gi}
+                                  size="small"
+                                  title={
+                                    <Space>
+                                      <Checkbox
+                                        checked={group.items.every((item) => dupSelectedIds.has(item.id))}
+                                        indeterminate={
+                                          group.items.some((item) => dupSelectedIds.has(item.id)) &&
+                                          !group.items.every((item) => dupSelectedIds.has(item.id))
+                                        }
+                                        onChange={(e) => {
+                                          const next = new Set(dupSelectedIds)
+                                          for (const item of group.items) {
+                                            if (e.target.checked) {
+                                              next.add(item.id)
+                                            } else {
+                                              next.delete(item.id)
+                                            }
+                                          }
+                                          setDupSelectedIds(next)
+                                        }}
+                                      />
+                                      <Tag color="volcano">重复组 #{gi + 1}</Tag>
+                                      <Text style={{ fontWeight: 400 }}>
+                                        {group.items.length} 条 · 相似度 {group.minSimilarity.toFixed(4)} ~ {group.maxSimilarity.toFixed(4)}
+                                      </Text>
+                                    </Space>
+                                  }
                               extra={
                                 <Space size={4}>
                                   <Button
