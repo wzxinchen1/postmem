@@ -18,12 +18,15 @@ export const POST = createApiHandler<Deps>({
   handler: async (deps, request) => {
     const body = await request.json()
     const memoryId = body.memoryId
+    const instruction = typeof body.instruction === 'string' && body.instruction.trim().length > 0
+      ? body.instruction.trim()
+      : undefined
 
     if (!memoryId || typeof memoryId !== 'string') {
       return errorResponse('KB_CHUNK_SPLIT_MEMORY_ID_REQUIRED')
     }
 
-    const result = await deps.kbService.splitPreview(memoryId)
+    const result = await deps.kbService.splitPreview(memoryId, instruction)
     return successResponse(result)
   },
 })

@@ -23,8 +23,11 @@ export class Prompts {
 Always respond with valid JSON only.`
   }
 
-  static cutAndRewrite(text: string, charRange: string = '200-500'): string {
-    return `请将以下文本切分为语义完整的片段，为每个片段生成标题并重写使其连贯自足。
+  static cutAndRewrite(text: string, charRange: string = '200-500', instruction?: string): string {
+    const instructionBlock = instruction
+      ? `\n\n## 用户的特殊要求\n${instruction}\n请在切分时严格遵循上述要求。`
+      : ''
+    return `请将以下文本切分为语义完整的片段，为每个片段生成标题并重写使其连贯自足。${instructionBlock}
 
 文本内容：
 ---

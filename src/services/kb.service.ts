@@ -863,7 +863,7 @@ export class KBService {
   /**
    * 拆分预览：AI 切分建议 + 主题归属建议
    */
-  async splitPreview(memoryId: string): Promise<{
+  async splitPreview(memoryId: string, instruction?: string): Promise<{
     chunks: TitledChunk[]
     topicSuggestions: BatchTopicPlan
     existingTopics: Array<{ id: string; name: string; description: string }>
@@ -877,7 +877,7 @@ export class KBService {
       throw new AppError('KB_CHUNK_NOT_FOUND', { id: memoryId })
     }
 
-    const chunks = await this.cutModelService.cutAndRewrite(memory.content, memory.kbId)
+    const chunks = await this.cutModelService.cutAndRewrite(memory.content, memory.kbId, undefined, instruction)
 
     const existingTopics = await this.prisma.topic.findMany({
       where: { kbId: memory.kbId },

@@ -389,10 +389,10 @@ export class CutModelService {
     }))
   }
 
-  async cutAndRewrite(text: string, kbId?: string, onProgress?: ProgressCallback): Promise<TitledChunk[]> {
+  async cutAndRewrite(text: string, kbId?: string, onProgress?: ProgressCallback, instruction?: string): Promise<TitledChunk[]> {
     const cutStart = Date.now()
-    logger.info('[CutModelService] cutAndRewrite 开始', { inputTextLength: text.length, kbId })
-    const rawChunks = await this.cutAndRewriteInternal(text, 0, kbId, [], undefined, onProgress)
+    logger.info('[CutModelService] cutAndRewrite 开始', { inputTextLength: text.length, kbId, instruction: instruction?.slice(0, 200) })
+    const rawChunks = await this.cutAndRewriteInternal(text, 0, kbId, [], undefined, onProgress, instruction)
     logger.info('[CutModelService] cutAndRewrite 完成', { chunksCount: rawChunks.length, textLength: text.length, elapsedMs: Date.now() - cutStart })
     return rawChunks.map((chunk, i) => ({ ...chunk, index: i }))
   }
@@ -403,7 +403,8 @@ export class CutModelService {
     kbId?: string,
     messageHistory: { role: string; content: string }[] = [],
     chunkIndex?: number,
-    onProgress?: ProgressCallback
+    onProgress?: ProgressCallback,
+    instruction?: string
   ): Promise<TitledChunk[]> {
     const { model, provider } = await this.getDefaultModel()
 
@@ -416,7 +417,7 @@ export class CutModelService {
     const systemPrompt = Prompts.cutAndRewriteExpert()
 
     const prompt = depth === 0
-      ? Prompts.cutAndRewrite(text, charRange)
+      ? Prompts.cutAndRewrite(text, charRange, instruction)
       : `第${chunkIndex}条过长，请修正，每次修正请完整发送所有的chunk内容`
 
     logger.info('[CutModelService] cutAndRewriteInternal 调用', { inputTextLength: text.length, promptLength: prompt.length, systemPromptLength: systemPrompt.length, modelName: model.name, depth, historyLength: messageHistory.length })
