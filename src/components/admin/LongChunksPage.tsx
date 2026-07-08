@@ -3,7 +3,7 @@
 import { useState, useCallback, useEffect } from 'react'
 import {
   message as antMessage, Card, Table, Button, InputNumber, Space, Typography,
-  Empty, Tag, Modal, Input, Select, Divider, Spin, Alert, Tabs,
+  Empty, Tag, Modal, Input, Select, Divider, Spin, Alert, Tabs, Checkbox,
 } from 'antd'
 import {
   SearchOutlined, EyeOutlined, ColumnHeightOutlined,
@@ -184,6 +184,7 @@ export default function LongChunksPage() {
   const [dupThreshold, setDupThreshold] = useState<number>(0.95)
   const [dupLoading, setDupLoading] = useState(false)
   const [dupResults, setDupResults] = useState<DuplicateDetectResponse['data'] | null>(null)
+  const [dupSelectedIds, setDupSelectedIds] = useState<Set<string>>(new Set())
 
   const handleDuplicateDetect = async () => {
     if (kbId === null) {
@@ -200,6 +201,13 @@ export default function LongChunksPage() {
       })
       if (res.success && res.data) {
         setDupResults(res.data)
+        const allIds = new Set<string>()
+        for (const g of res.data.groups) {
+          for (const item of g.items) {
+            allIds.add(item.id)
+          }
+        }
+        setDupSelectedIds(allIds)
         if (res.data.groups.length === 0) {
           msg.info('未发现重复片段')
         }
@@ -212,49 +220,58 @@ export default function LongChunksPage() {
   }
 
   const handleDupGroupMerge = (group: DuplicateGroup) => {
-    const rows: LongChunkItem[] = group.items.map((item) => ({
-      id: item.id,
-      title: item.title,
-      content: item.content,
-      charLength: item.charLength,
-      topicId: item.topicId,
-      topicName: item.topicName,
-      kbId: item.kbId,
-      kbName: item.kbName,
-      createdAt: '',
-    }))
+    const rows: LongChunkItem[] = group.items
+      .filter((item) => dupSelectedIds.has(item.id))
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        content: item.content,
+        charLength: item.charLength,
+        topicId: item.topicId,
+        topicName: item.topicName,
+        kbId: item.kbId,
+        kbName: item.kbName,
+        createdAt: '',
+      }))
+    if (rows.length < 2) {
+      msg.info('请至少选择 2 个片段才能合并')
+      return
+    }
     openMergeModal(rows)
   }
 
   const handleDupGroupReassign = (group: DuplicateGroup) => {
-    const rows: LongChunkItem[] = group.items.map((item) => ({
-      id: item.id,
-      title: item.title,
-      content: item.content,
-      charLength: item.charLength,
-      topicId: item.topicId,
-      topicName: item.topicName,
-      kbId: item.kbId,
-      kbName: item.kbName,
-      createdAt: '',
-    }))
+    const rows: LongChunkItem[] = group.items
+      .filter((item) => dupSelectedIds.has(item.id))
+      .map((item) => ({
+        id: item.id,
+        title: item.title,
+        content: item.content,
+        charLength: item.charLength,
+        topicId: item.topicId,
+        topicName: item.topicName,
+        kbId: item.kbId,
+        kbName: item.kbName,
+        createdAt: '',
+      }))
     setSelectedRowKeys(rows.map((r) => r.id))
     setSelectedRows(rows)
     setReassignOpen(true)
   }
 
   const handleDupGroupDelete = (group: DuplicateGroup) => {
-    const count = group.items.length
+    const targetIds = group.items.filter((item) => dupSelectedIds.has(item.id)).map((r) => r.id)
+    const count = targetIds.length
     if (count === 0) return
     Modal.confirm({
       title: '批量删除确认',
-      content: `确定要删除该重复组中的 ${count} 个片段吗？此操作不可撤销。`,
+      content: `确定要删除选中的 ${count} 个片段吗？此操作不可撤销。`,
       okText: '确认删除',
       okType: 'danger',
       cancelText: '取消',
       onOk: async () => {
         try {
-          await post('/api/kb/chunk/batch-delete', { memoryIds: group.items.map((r) => r.id) })
+          await post('/api/kb/chunk/batch-delete', { memoryIds: targetIds })
           msg.success(`已删除 ${count} 个片段`)
           setDupResults((prev) => {
             if (!prev) return prev
@@ -1254,10 +1271,23 @@ export default function LongChunksPage() {
                                       gap: 8,
                                       padding: '6px 8px',
                                       borderRadius: 4,
-                                      background: '#fafafa',
+                                      background: dupSelectedIds.has(item.id) ? '#fafafa' : '#f0f0f0',
+                                      opacity: dupSelectedIds.has(item.id) ? 1 : 0.6,
                                     }}
                                   >
-                                    <Text strong ellipsis style={{ width: 160, flexShrink: 0 }}>
+                                    <Checkbox
+                                      checked={dupSelectedIds.has(item.id)}
+                                      onChange={(e) => {
+                                        const next = new Set(dupSelectedIds)
+                                        if (e.target.checked) {
+                                          next.add(item.id)
+                                        } else {
+                                          next.delete(item.id)
+                                        }
+                                        setDupSelectedIds(next)
+                                      }}
+                                    />
+                                    <Text strong ellipsis style={{ width: 150, flexShrink: 0 }}>
                                       {item.title}
                                     </Text>
                                     <Tag>{item.charLength.toLocaleString()} 字符</Tag>
