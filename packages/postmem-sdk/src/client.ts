@@ -11,10 +11,6 @@ import type {
   KnowledgeBaseInfo,
   KnowledgeBaseStats,
   SearchSourceInfo,
-  IngestMessage,
-  IngestTextResponse,
-  IngestMessagesResponse,
-  IngestStreamEvent,
   Vendor,
   CreateVendorRequest,
   UpdateVendorRequest,
@@ -329,72 +325,6 @@ export class PostMemClient {
       return this.http.get<{ results: SearchSourceInfo[] }>(`/api/kb/search${buildQuery(qs)}`)
     },
 
-    ingestMessages: (kbId: string, messages: IngestMessage[]): Promise<IngestMessagesResponse> => {
-      return this.http.post<IngestMessagesResponse>('/api/kb/ingest', { kbId, messages })
-    },
-
-    ingestText: async (
-      kbId: string,
-      content: string,
-      onEvent?: (event: IngestStreamEvent) => void,
-    ): Promise<IngestTextResponse> => {
-      const response = await executeRequest(`${this.streamReader.baseUrl}/api/kb/ingest`, this.requestTimeout, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ kbId, content }),
-      })
-      if (!response.ok) {
-        throw new PostMemError(response.status, await response.text())
-      }
-      const reader = response.body?.getReader()
-      if (!reader) {
-        throw PostMemError.serverError('Failed to get response reader')
-      }
-      const decoder = new TextDecoder()
-      let buffer = ''
-
-      return new Promise((resolve, reject) => {
-        ;(async () => {
-          try {
-            while (true) {
-              const { done, value } = await reader.read()
-              if (done) break
-              buffer += decoder.decode(value, { stream: true })
-              const lines = buffer.split('\n')
-              buffer = lines.pop() || ''
-
-              for (const line of lines) {
-                const trimmed = line.trim()
-                if (!trimmed.startsWith('data:')) continue
-                const jsonStr = trimmed.slice(5).trim()
-                if (!jsonStr) continue
-
-                try {
-                  const event = JSON.parse(jsonStr) as IngestStreamEvent
-                  if (onEvent) onEvent(event)
-                  if (event.type === 'complete') {
-                    resolve(event.data as unknown as IngestTextResponse)
-                    return
-                  }
-                  if (event.type === 'error') {
-                    reject(new PostMemError(500, JSON.stringify(event.data)))
-                    return
-                  }
-                } catch {
-                  // skip malformed events
-                }
-              }
-            }
-          } catch (error) {
-            if (error instanceof PostMemError) {
-              reject(error)
-            } else {
-              reject(PostMemError.network(error instanceof Error ? error.message : String(error)))
-            }
-          }
-        })()
-      })
-    },
   }
 
   providers = {

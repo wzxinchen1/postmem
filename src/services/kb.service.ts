@@ -367,7 +367,11 @@ export class KBService {
 
     const cutStart = Date.now()
     logger.info('[KBService] ingestMessages 开始切分', { conversationId, textLength: conversationText.length, messageCount: messages.length })
-    const chunks = await this.cutModelService.cutAndRewrite(conversationText, kbId)
+    const chunks = await this.cutModelService.cutAndRewrite(conversationText, kbId, (event) => {
+      if (!isTest && event.message) {
+        this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: event.message, conversationId })
+      }
+    })
     const cutElapsed = Date.now() - cutStart
     logger.info('[KBService] ingestMessages 切分完成', { chunksCount: chunks.length, cutElapsedMs: cutElapsed, conversationId })
 

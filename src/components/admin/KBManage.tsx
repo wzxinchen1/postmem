@@ -5,7 +5,7 @@ import { message, Card, Row, Col, Button, Empty, Space, Typography, Tag } from '
 import { PlusOutlined, ReloadOutlined, BookOutlined, ImportOutlined } from '@ant-design/icons'
 import { StatsResponse } from '@/app/admin/types'
 import type { IngestProgressEvent } from '@/app/admin/types'
-import { get, post, streamPost, RequestError } from '@/app/admin/lib/request'
+import { get, post, RequestError } from '@/app/admin/lib/request'
 import { CreateKBModal } from '@/src/components/admin/modals/CreateKBModal'
 import { IngestModal } from '@/src/components/admin/modals/IngestModal'
 
@@ -55,28 +55,22 @@ export default function KBManagePage() {
       return
     }
 
-    setIngestProgress({ type: 'status', message: '正在提交...' })
-    const controller = new AbortController()
-    abortRef.current = controller
+    setIngestProgress({ type: 'status', message: '正在入库...' })
 
     try {
-      await streamPost(
+      const result = await post<{ count: number; memoryIds: string[]; topicsInvolved?: string[] }>(
         '/api/kb/ingest',
-        { kbId: selectedKbId, content: ingestContent },
-        (event) => {
-          setIngestProgress(event as IngestProgressEvent)
-        },
-        controller.signal
+        { kbId: selectedKbId, content: ingestContent }
       )
 
       setIngestContent('')
+      setIngestProgress({ type: 'complete', data: result })
       handleStats()
       setTimeout(() => {
         setShowIngestModal(false)
         setIngestProgress(null)
       }, 2000)
     } catch (err) {
-      if ((err as Error).name === 'AbortError') return
       if (err instanceof RequestError) {
         msg.error(err.message)
       } else {
