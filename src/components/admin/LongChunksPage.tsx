@@ -1177,8 +1177,6 @@ export default function LongChunksPage() {
                       <InputNumber
                         value={dupThreshold}
                         onChange={(val) => setDupThreshold(val ?? 0.95)}
-                        min={0.8}
-                        max={1}
                         step={0.01}
                         style={{ width: 160 }}
                       />
