@@ -109,6 +109,29 @@ export interface LongChunkItem {
 }
 
 /**
+ * 重复检测 - 组内项
+ */
+export interface DuplicateGroupItem {
+  id: string
+  title: string
+  content: string
+  charLength: number
+  topicId: string | null
+  topicName: string | null
+  kbId: string
+  kbName: string
+}
+
+/**
+ * 重复检测 - 重复组
+ */
+export interface DuplicateGroup {
+  items: DuplicateGroupItem[]
+  maxSimilarity: number
+  minSimilarity: number
+}
+
+/**
  * 统计信息
  */
 export interface Stats {

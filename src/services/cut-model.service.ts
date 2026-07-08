@@ -161,8 +161,10 @@ export class CutModelService {
       ),
       new HumanMessage(prompt),
     ]
+    const invokeStart = Date.now()
     const response = await chatModel.invoke(messages)
-    logger.info('[CutModelService] callLLM responsed')
+    const invokeElapsed = Date.now() - invokeStart
+    logger.info('[CutModelService] callLLM responsed', { invokeElapsedMs: invokeElapsed, responseContentLength: response.content.toString().length })
     const content = response.content.toString()
 
     if (response.additional_kwargs == null) {
@@ -371,7 +373,10 @@ export class CutModelService {
   }
 
   async cutAndRewrite(text: string, kbId?: string): Promise<TitledChunk[]> {
+    const cutStart = Date.now()
+    logger.info('[CutModelService] cutAndRewrite 开始', { inputTextLength: text.length, kbId })
     const rawChunks = await this.cutAndRewriteInternal(text, 0, kbId)
+    logger.info('[CutModelService] cutAndRewrite 完成', { chunksCount: rawChunks.length, textLength: text.length, elapsedMs: Date.now() - cutStart })
     return rawChunks.map((chunk, i) => ({ ...chunk, index: i }))
   }
 
@@ -398,6 +403,7 @@ export class CutModelService {
 
     logger.info('[CutModelService] cutAndRewriteInternal 调用', { inputTextLength: text.length, promptLength: prompt.length, systemPromptLength: systemPrompt.length, modelName: model.name, depth, historyLength: messageHistory.length })
 
+    const llmStart = Date.now()
     const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, undefined, (raw) => {
       if (!raw || typeof raw !== 'object') {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS')
@@ -408,6 +414,7 @@ export class CutModelService {
       }
       return obj as { chunks: any[] }
     }, ThinkingEffort.XHigh, messageHistory)
+    logger.info('[CutModelService] cutAndRewriteInternal LLM 返回', { depth, llmElapsedMs: Date.now() - llmStart, chunksCount: parsed.chunks.length })
 
     const chunks: TitledChunk[] = parsed.chunks.map((chunk: any, i: number) => {
       if (!chunk.title || !chunk.title.trim()) {
@@ -449,10 +456,12 @@ export class CutModelService {
         if (resultChunks[i].content.length > CutModelService.MAX_CHUNK_CHARS) {
           logger.info('[CutModelService] cutAndRewrite 递归修正', { depth: depth + 1, chunkTitle: resultChunks[i].title, chunkContentLength: resultChunks[i].content.length })
 
+          const recurseStart = Date.now()
           const subChunks = await this.cutAndRewriteInternal(
             resultChunks[i].content, depth + 1, kbId,
             [...messageHistory, ...roundHistory], i
           )
+          logger.info('[CutModelService] cutAndRewrite 递归修正完成', { depth: depth + 1, subChunksCount: subChunks.length, elapsedMs: Date.now() - recurseStart })
 
           resultChunks = [
             ...resultChunks.slice(0, i),

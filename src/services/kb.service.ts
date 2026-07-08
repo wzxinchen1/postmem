@@ -7,6 +7,8 @@ import type {
   SearchSource,
   ListItem,
   LongChunkItem,
+  DuplicateGroupItem,
+  DuplicateGroup,
   TitledChunk,
   BatchTopicPlan,
   Stats,
@@ -156,8 +158,11 @@ export class KBService {
     await this.getKnowledgeBaseById(kbId)
 
     onProgress({ type: 'status', message: '正在切分文本...' })
+    const cutStart = Date.now()
     const chunks = await this.cutModelService.cutAndRewrite(content, kbId)
-    onProgress({ type: 'status', message: `文本已切分为 ${chunks.length} 个片段，正在规划主题...` })
+    const cutElapsed = Date.now() - cutStart
+    logger.info('[KBService] ingestTextStream 切分完成', { chunksCount: chunks.length, cutElapsedMs: cutElapsed })
+    onProgress({ type: 'status', message: `文本已切分为 ${chunks.length} 个片段（${cutElapsed}ms），正在规划主题...` })
 
     const memoryIds: string[] = []
     const topicsInvolvedSet = new Set<string>()
@@ -170,13 +175,17 @@ export class KBService {
     const chunkInputs = chunks
 
     onProgress({ type: 'status', message: '正在规划主题归属...' })
+    const topicStart = Date.now()
     const plan = await this.cutModelService.batchResolveTopics(chunkInputs, existingTopics, kbId)
+    const topicElapsed = Date.now() - topicStart
+    logger.info('[KBService] ingestTextStream 主题规划完成', { topicElapsedMs: topicElapsed })
 
     const topicNameMap = new Map<string, string>()
     for (const t of existingTopics) {
       topicNameMap.set(t.name, t.id)
     }
 
+    const embedStart = Date.now()
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i]
       onProgress({
@@ -211,7 +220,10 @@ export class KBService {
       }
 
       logger.info('[KBService] ingestTextStream 生成 embedding', { chunkIndex: i, chunkTotal: chunks.length, chunkTitle: chunk.title, chunkContentLength: chunk.content.length, chunkContentPreview: chunk.content.slice(0, 200) })
+
+      const chunkEmbedStart = Date.now()
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
+      logger.info('[KBService] ingestTextStream embedding 生成完成', { chunkIndex: i, elapsedMs: Date.now() - chunkEmbedStart })
 
       const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
         INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
@@ -221,6 +233,7 @@ export class KBService {
       `
       memoryIds.push(inserted[0].id)
     }
+    logger.info('[KBService] ingestTextStream 全部完成', { totalChunks: chunks.length, totalEmbedElapsedMs: Date.now() - embedStart })
 
     return {
       count: memoryIds.length,
@@ -248,7 +261,9 @@ export class KBService {
 
     await this.getKnowledgeBaseById(kbId)
 
+    const cutStart = Date.now()
     const chunks = await this.cutModelService.cutAndRewrite(content, kbId)
+    logger.info('[KBService] ingestText 切分完成', { chunksCount: chunks.length, cutElapsedMs: Date.now() - cutStart })
     const memoryIds: string[] = []
     const topicsInvolvedSet = new Set<string>()
 
@@ -258,13 +273,17 @@ export class KBService {
     })
 
     const chunkInputs = chunks
+
+    const topicStart = Date.now()
     const plan = await this.cutModelService.batchResolveTopics(chunkInputs, existingTopics, kbId)
+    logger.info('[KBService] ingestText 主题规划完成', { topicElapsedMs: Date.now() - topicStart })
 
     const topicNameMap = new Map<string, string>()
     for (const t of existingTopics) {
       topicNameMap.set(t.name, t.id)
     }
 
+    const embedStart = Date.now()
     for (const chunk of chunks) {
       const planItem = plan.plans.find((p) => p.index === chunk.index)
 
@@ -292,7 +311,9 @@ export class KBService {
       }
 
       logger.info('[KBService] ingestText 生成 embedding', { chunkTitle: chunk.title, chunkContentLength: chunk.content.length, chunkContentPreview: chunk.content.slice(0, 200) })
+      const chunkEmbedStart = Date.now()
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
+      logger.info('[KBService] ingestText embedding 生成完成', { chunkTitle: chunk.title, elapsedMs: Date.now() - chunkEmbedStart })
 
       const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
         INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
@@ -302,6 +323,7 @@ export class KBService {
       `
       memoryIds.push(inserted[0].id)
     }
+    logger.info('[KBService] ingestText 全部完成', { totalChunks: chunks.length, totalEmbedElapsedMs: Date.now() - embedStart })
 
     return {
       count: memoryIds.length,
@@ -343,10 +365,14 @@ export class KBService {
       await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: '正在切分文本...', conversationId })
     }
 
+    const cutStart = Date.now()
+    logger.info('[KBService] ingestMessages 开始切分', { conversationId, textLength: conversationText.length, messageCount: messages.length })
     const chunks = await this.cutModelService.cutAndRewrite(conversationText, kbId)
+    const cutElapsed = Date.now() - cutStart
+    logger.info('[KBService] ingestMessages 切分完成', { chunksCount: chunks.length, cutElapsedMs: cutElapsed, conversationId })
 
     if (!isTest) {
-      await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `已切分为 ${chunks.length} 个片段`, conversationId })
+      await this.sseService.emit({ type: 'status', status: StreamStatus.Summarizing, message: `已切分为 ${chunks.length} 个片段（${cutElapsed}ms）`, conversationId })
     }
 
     const existingTopics = await this.prisma.topic.findMany({
@@ -354,7 +380,9 @@ export class KBService {
       select: { id: true, name: true, description: true },
     })
 
+    const topicStart = Date.now()
     const plan = await this.cutModelService.batchResolveTopics(chunks, existingTopics, kbId)
+    logger.info('[KBService] ingestMessages 主题规划完成', { topicElapsedMs: Date.now() - topicStart, conversationId })
 
     const topicNameMap = new Map<string, string>()
     for (const t of existingTopics) {
@@ -363,6 +391,7 @@ export class KBService {
     const memoryIds: string[] = []
     const memorizedMessageIds = messages.map((m) => m.id)
 
+    const embedStart = Date.now()
     for (let i = 0; i < chunks.length; i++) {
       const chunk = chunks[i]
 
@@ -389,7 +418,10 @@ export class KBService {
       }
 
       logger.info('[KBService] ingestMessages 生成 embedding', { chunkIndex: i, chunkTotal: chunks.length, chunkTitle: chunk.title, chunkContentLength: chunk.content.length, chunkContentPreview: chunk.content.slice(0, 200) })
+
+      const chunkEmbedStart = Date.now()
       const embedding = await this.embeddingService.generateEmbedding(chunk.content)
+      logger.info('[KBService] ingestMessages embedding 生成完成', { chunkIndex: i, elapsedMs: Date.now() - chunkEmbedStart })
 
       const inserted = await this.prisma.$queryRaw<{ id: string }[]>`
         INSERT INTO memories (id, kb_id, topic_id, title, content, embedding, metadata)
@@ -399,6 +431,7 @@ export class KBService {
       `
       memoryIds.push(inserted[0].id)
     }
+    logger.info('[KBService] ingestMessages 全部完成', { totalChunks: chunks.length, totalEmbedElapsedMs: Date.now() - embedStart, conversationId })
 
     return {
       count: memoryIds.length,
@@ -1084,5 +1117,138 @@ export class KBService {
     })
 
     return { movedCount: moveResult.count, deletedCount: deleteResult.count }
+  }
+
+  async duplicateDetect(kbId: string, threshold: number, limit = 100): Promise<{ groups: DuplicateGroup[]; detectedCount: number }> {
+    const similarityThreshold = Math.max(0, Math.min(1, threshold))
+
+    interface SimilarPair {
+      id1: string
+      title1: string
+      content1: string
+      char_length1: bigint
+      topic_id1: string | null
+      topic_name1: string | null
+      kb_id1: string
+      kb_name1: string
+      id2: string
+      title2: string
+      content2: string
+      char_length2: bigint
+      topic_id2: string | null
+      topic_name2: string | null
+      kb_id2: string
+      kb_name2: string
+      similarity: number
+    }
+
+    const rows = await this.prisma.$queryRaw<SimilarPair[]>`
+      WITH top AS (
+        SELECT m.id, m.title, m.content, m.topic_id, m.kb_id, m.embedding,
+               t.name AS topic_name, kb.name AS kb_name
+        FROM memories m
+        LEFT JOIN topics t ON t.id = m.topic_id
+        LEFT JOIN knowledge_bases kb ON kb.id = m.kb_id
+        WHERE m.kb_id = ${kbId}
+          AND m.embedding IS NOT NULL
+        ORDER BY LENGTH(m.content) DESC
+        LIMIT ${limit}
+      )
+      SELECT
+        t1.id AS id1, t1.title AS title1, t1.content AS content1,
+        LENGTH(t1.content) AS char_length1,
+        t1.topic_id AS topic_id1, t1.topic_name AS topic_name1,
+        t1.kb_id AS kb_id1, t1.kb_name AS kb_name1,
+        t2.id AS id2, t2.title AS title2, t2.content AS content2,
+        LENGTH(t2.content) AS char_length2,
+        t2.topic_id AS topic_id2, t2.topic_name AS topic_name2,
+        t2.kb_id AS kb_id2, t2.kb_name AS kb_name2,
+        1 - (t1.embedding <=> t2.embedding) AS similarity
+      FROM top t1
+      JOIN top t2 ON t1.id < t2.id
+      WHERE 1 - (t1.embedding <=> t2.embedding) > ${similarityThreshold}
+      ORDER BY similarity DESC
+    `
+
+    const pairCount = rows.length
+
+    function buildItem(row: SimilarPair, which: 1 | 2): DuplicateGroupItem {
+      const r = which === 1 ? row : row
+      const id = which === 1 ? row.id1 : row.id2
+      const title = which === 1 ? row.title1 : row.title2
+      const content = which === 1 ? row.content1 : row.content2
+      const charLength = Number(which === 1 ? row.char_length1 : row.char_length2)
+      const topicId = which === 1 ? row.topic_id1 : row.topic_id2
+      const topicName = which === 1 ? row.topic_name1 : row.topic_name2
+      const kbIdField = which === 1 ? row.kb_id1 : row.kb_id2
+      const kbName = which === 1 ? row.kb_name1 : row.kb_name2
+      return { id, title, content, charLength, topicId, topicName, kbId: kbIdField, kbName }
+    }
+
+    if (pairCount === 0) {
+      return { groups: [], detectedCount: 0 }
+    }
+
+    const nodeIds = new Set<string>()
+    for (const r of rows) {
+      nodeIds.add(r.id1)
+      nodeIds.add(r.id2)
+    }
+    const allIds = Array.from(nodeIds)
+    const parent = new Map<string, string>()
+    for (const id of allIds) {
+      parent.set(id, id)
+    }
+    function find(x: string): string {
+      while (parent.get(x) !== x) {
+        parent.set(x, parent.get(parent.get(x)!)!)
+        x = parent.get(x)!
+      }
+      return x
+    }
+    function union(a: string, b: string): void {
+      parent.set(find(a), find(b))
+    }
+    for (const r of rows) {
+      union(r.id1, r.id2)
+    }
+
+    const componentMap = new Map<string, { ids: Set<string>; similarities: number[]; rows: SimilarPair[] }>()
+    for (const id of allIds) {
+      const root = find(id)
+      if (!componentMap.has(root)) {
+        componentMap.set(root, { ids: new Set(), similarities: [], rows: [] })
+      }
+      componentMap.get(root)!.ids.add(id)
+    }
+    for (const r of rows) {
+      const root = find(r.id1)
+      const comp = componentMap.get(root)!
+      comp.similarities.push(r.similarity)
+      comp.rows.push(r)
+    }
+
+    const groups: DuplicateGroup[] = []
+    for (const [, comp] of componentMap) {
+      if (comp.ids.size < 2) continue
+      const idList = Array.from(comp.ids)
+      const itemMap = new Map<string, DuplicateGroupItem>()
+      for (const r of comp.rows) {
+        if (!itemMap.has(r.id1)) {
+          itemMap.set(r.id1, buildItem(r, 1))
+        }
+        if (!itemMap.has(r.id2)) {
+          itemMap.set(r.id2, buildItem(r, 2))
+        }
+      }
+      const items = idList.map((id) => itemMap.get(id)!).sort((a, b) => b.charLength - a.charLength)
+      const maxSimilarity = Math.max(...comp.similarities)
+      const minSimilarity = Math.min(...comp.similarities)
+      groups.push({ items, maxSimilarity: Math.round(maxSimilarity * 10000) / 10000, minSimilarity: Math.round(minSimilarity * 10000) / 10000 })
+    }
+
+    groups.sort((a, b) => b.items.length - a.items.length || b.maxSimilarity - a.maxSimilarity)
+
+    return { groups, detectedCount: allIds.length }
   }
 }

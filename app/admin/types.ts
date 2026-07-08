@@ -207,3 +207,29 @@ export interface TopicSuggestResponse {
   data?: { name: string; description: string }
   error?: { code: string; message: string }
 }
+
+export interface DuplicateGroupItem {
+  id: string
+  title: string
+  content: string
+  charLength: number
+  topicId: string | null
+  topicName: string | null
+  kbId: string
+  kbName: string
+}
+
+export interface DuplicateGroup {
+  items: DuplicateGroupItem[]
+  maxSimilarity: number
+  minSimilarity: number
+}
+
+export interface DuplicateDetectResponse {
+  success: boolean
+  data?: {
+    groups: DuplicateGroup[]
+    detectedCount: number
+  }
+  error?: { code: string; message: string }
+}

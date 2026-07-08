@@ -3,14 +3,14 @@
 import { useState, useCallback, useEffect } from 'react'
 import {
   message as antMessage, Card, Table, Button, InputNumber, Space, Typography,
-  Empty, Tag, Modal, Input, Select, Divider, Spin, Alert,
+  Empty, Tag, Modal, Input, Select, Divider, Spin, Alert, Tabs,
 } from 'antd'
 import {
   SearchOutlined, EyeOutlined, ColumnHeightOutlined,
   ScissorOutlined, MergeCellsOutlined, ThunderboltOutlined,
   DeleteOutlined, TagOutlined,
 } from '@ant-design/icons'
-import type { LongChunkItem, LongChunksResponse, TopicInfo, SplitChunkItem } from '@/app/admin/types'
+import type { LongChunkItem, LongChunksResponse, TopicInfo, SplitChunkItem, DuplicateGroup, DuplicateGroupItem, DuplicateDetectResponse } from '@/app/admin/types'
 import { get, post } from '@/app/admin/lib/request'
 import { KBSelector } from '@/src/components/admin/KBSelector'
 
@@ -179,6 +179,96 @@ export default function LongChunksPage() {
   const [mergeConfirmSnapshot, setMergeConfirmSnapshot] = useState<MergeConfirmSnapshot>(SNAPSHOT_EMPTY)
 
   const [msg, contextHolder] = antMessage.useMessage()
+
+  /* ---- Duplicate detect state ---- */
+  const [dupThreshold, setDupThreshold] = useState<number>(0.95)
+  const [dupLoading, setDupLoading] = useState(false)
+  const [dupResults, setDupResults] = useState<DuplicateDetectResponse['data'] | null>(null)
+
+  const handleDuplicateDetect = async () => {
+    if (kbId === null) {
+      msg.warning('请先选择知识库')
+      return
+    }
+    setDupLoading(true)
+    setDupResults(null)
+    try {
+      const res = await post<DuplicateDetectResponse>('/api/kb/chunk/duplicate-detect', {
+        kbId,
+        threshold: dupThreshold,
+        limit: 100,
+      })
+      if (res.success && res.data) {
+        setDupResults(res.data)
+        if (res.data.groups.length === 0) {
+          msg.info('未发现重复片段')
+        }
+      }
+    } catch {
+      msg.error('重复检测失败')
+    } finally {
+      setDupLoading(false)
+    }
+  }
+
+  const handleDupGroupMerge = (group: DuplicateGroup) => {
+    const rows: LongChunkItem[] = group.items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      content: item.content,
+      charLength: item.charLength,
+      topicId: item.topicId,
+      topicName: item.topicName,
+      kbId: item.kbId,
+      kbName: item.kbName,
+      createdAt: '',
+    }))
+    openMergeModal(rows)
+  }
+
+  const handleDupGroupReassign = (group: DuplicateGroup) => {
+    const rows: LongChunkItem[] = group.items.map((item) => ({
+      id: item.id,
+      title: item.title,
+      content: item.content,
+      charLength: item.charLength,
+      topicId: item.topicId,
+      topicName: item.topicName,
+      kbId: item.kbId,
+      kbName: item.kbName,
+      createdAt: '',
+    }))
+    setSelectedRowKeys(rows.map((r) => r.id))
+    setSelectedRows(rows)
+    setReassignOpen(true)
+  }
+
+  const handleDupGroupDelete = (group: DuplicateGroup) => {
+    const count = group.items.length
+    if (count === 0) return
+    Modal.confirm({
+      title: '批量删除确认',
+      content: `确定要删除该重复组中的 ${count} 个片段吗？此操作不可撤销。`,
+      okText: '确认删除',
+      okType: 'danger',
+      cancelText: '取消',
+      onOk: async () => {
+        try {
+          await post('/api/kb/chunk/batch-delete', { memoryIds: group.items.map((r) => r.id) })
+          msg.success(`已删除 ${count} 个片段`)
+          setDupResults((prev) => {
+            if (!prev) return prev
+            return {
+              ...prev,
+              groups: prev.groups.filter((g) => g !== group),
+            }
+          })
+        } catch {
+          msg.error('批量删除失败')
+        }
+      },
+    })
+  }
 
   const loadTopics = async () => {
     if (kbId === null) {
@@ -535,10 +625,15 @@ export default function LongChunksPage() {
   const [mergeSuggestLoading, setMergeSuggestLoading] = useState(false)
   const [mergeExistingTopics, setMergeExistingTopics] = useState<TopicInfo[]>([])
 
-  const openMergeModal = async () => {
-    if (selectedRows.length < 2) {
+  const openMergeModal = async (rows?: LongChunkItem[]) => {
+    const targetRows = rows ?? selectedRows
+    if (targetRows.length < 2) {
       msg.info('请至少选择 2 个片段来合并')
       return
+    }
+    if (rows) {
+      setSelectedRowKeys(rows.map((r) => r.id))
+      setSelectedRows(rows)
     }
     setMergeTitle('')
     setMergeContent('')
@@ -548,7 +643,7 @@ export default function LongChunksPage() {
     setMergeNewTopicDesc('')
     setMergeOpen(true)
 
-    const kbIdVal = selectedRows[0]?.kbId
+    const kbIdVal = targetRows[0]?.kbId
     if (kbIdVal) {
       try {
         const res = await get<{ success: boolean; data?: Array<{ id: string; name: string; description: string }> }>(
@@ -931,138 +1026,281 @@ export default function LongChunksPage() {
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 16, minWidth: 0 }}>
         <KBSelector kbId={kbId} setKbId={setKbId} />
 
-      <Card title={<Title level={4} style={{ margin: 0 }}>超长片段查询</Title>}>
-        <Space direction="vertical" size={16} style={{ width: '100%' }}>
-          <Space wrap>
-            <Text strong>字符数阈值：</Text>
-            <InputNumber
-              value={threshold}
-              onChange={(val) => setThreshold(val ?? 0)}
-              min={1}
-              max={100000}
-              style={{ width: 160 }}
-              addonAfter="字符"
-            />
-            <Text type="secondary" style={{ fontSize: 12 }}>
-              查询 content 长度超过此值的 memory 片段
-            </Text>
-            <Select
-              mode="multiple"
-              value={filterTopicIds}
-              onChange={setFilterTopicIds}
-              placeholder="筛选分类（可选）"
-              style={{ minWidth: 200 }}
-              options={topicList.map(t => ({ value: t.id, label: t.name }))}
-            />
-            <Button
-              type="primary"
-              icon={<SearchOutlined />}
-              onClick={handleSearch}
-              loading={loading}
-            >
-              查询
-            </Button>
-          </Space>
+        <Tabs
+          items={[
+            {
+              key: 'long-chunks',
+              label: '超长片段查询',
+              children: (
+                <Card title={<Title level={4} style={{ margin: 0 }}>超长片段查询</Title>}>
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Space wrap>
+                      <Text strong>字符数阈值：</Text>
+                      <InputNumber
+                        value={threshold}
+                        onChange={(val) => setThreshold(val ?? 0)}
+                        min={1}
+                        max={100000}
+                        style={{ width: 160 }}
+                        addonAfter="字符"
+                      />
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        查询 content 长度超过此值的 memory 片段
+                      </Text>
+                      <Select
+                        mode="multiple"
+                        value={filterTopicIds}
+                        onChange={setFilterTopicIds}
+                        placeholder="筛选分类（可选）"
+                        style={{ minWidth: 200 }}
+                        options={topicList.map(t => ({ value: t.id, label: t.name }))}
+                      />
+                      <Button
+                        type="primary"
+                        icon={<SearchOutlined />}
+                        onClick={handleSearch}
+                        loading={loading}
+                      >
+                        查询
+                      </Button>
+                    </Space>
 
-          {results?.data ? (
-            <>
-              <Space style={{ width: '100%', justifyContent: 'space-between' }}>
-                <Space>
-                  <Text type="secondary">
-                    共 {results.data.total} 条片段超过 {threshold.toLocaleString()} 字符
-                  </Text>
-                  {selectedRowKeys.length > 0 && (
-                    <Text strong>
-                      已选 {selectedRowKeys.length} 项
+                    {results?.data ? (
+                      <>
+                        <Space style={{ width: '100%', justifyContent: 'space-between' }}>
+                          <Space>
+                            <Text type="secondary">
+                              共 {results.data.total} 条片段超过 {threshold.toLocaleString()} 字符
+                            </Text>
+                            {selectedRowKeys.length > 0 && (
+                              <Text strong>
+                                已选 {selectedRowKeys.length} 项
+                              </Text>
+                            )}
+                          </Space>
+                          <Space>
+                            {selectedRowKeys.length > 0 && (
+                              <Button
+                                icon={<TagOutlined />}
+                                onClick={() => setReassignOpen(true)}
+                              >
+                                批量移分类
+                              </Button>
+                            )}
+                            {selectedRowKeys.length >= 2 && (
+                              <Button
+                                type="primary"
+                                icon={<MergeCellsOutlined />}
+                                onClick={openMergeModal}
+                              >
+                                合并所选（{selectedRowKeys.length}）
+                              </Button>
+                            )}
+                            {selectedRowKeys.length > 0 && (
+                              <Button
+                                danger
+                                icon={<DeleteOutlined />}
+                                onClick={handleBatchDelete}
+                              >
+                                批量删除（{selectedRowKeys.length}）
+                              </Button>
+                            )}
+                            {selectedRowKeys.length > 0 && (
+                              <Button
+                                onClick={() => {
+                                  setSelectedRowKeys([])
+                                  setSelectedRows([])
+                                }}
+                              >
+                                取消选择
+                              </Button>
+                            )}
+                            <Text type="secondary">
+                              当前第 {results.data.page} 页
+                            </Text>
+                          </Space>
+                        </Space>
+
+                        <Table<LongChunkItem>
+                          rowSelection={{
+                            selectedRowKeys,
+                            onChange: (keys, rows) => {
+                              setSelectedRowKeys(keys)
+                              setSelectedRows(rows)
+                            },
+                          }}
+                          columns={columns}
+                          dataSource={results.data.items}
+                          rowKey="id"
+                          loading={loading}
+                          pagination={{
+                            current: results.data.page,
+                            pageSize: results.data.limit,
+                            total: results.data.total,
+                            onChange: handlePageChange,
+                            showSizeChanger: false,
+                          }}
+                          locale={{
+                            emptyText: (
+                              <Empty
+                                description={
+                                  <Text type="secondary">
+                                    没有找到超过 {threshold.toLocaleString()} 字符的片段
+                                  </Text>
+                                }
+                              />
+                            ),
+                          }}
+                        />
+                      </>
+                    ) : (
+                      <Empty
+                        description={
+                          <Text type="secondary">
+                            设置字符数阈值后点击「查询」按钮
+                          </Text>
+                        }
+                      />
+                    )}
+                  </Space>
+                </Card>
+              ),
+            },
+            {
+              key: 'duplicate',
+              label: '重复检测',
+              children: (
+                <Card title={<Title level={4} style={{ margin: 0 }}>重复检测</Title>}>
+                  <Space direction="vertical" size={16} style={{ width: '100%' }}>
+                    <Space wrap>
+                      <Text strong>相似度阈值：</Text>
+                      <InputNumber
+                        value={dupThreshold}
+                        onChange={(val) => setDupThreshold(val ?? 0.95)}
+                        min={0.8}
+                        max={1}
+                        step={0.01}
+                        style={{ width: 160 }}
+                      />
+                      <Text type="secondary" style={{ fontSize: 12 }}>
+                        值越高要求越严格，0.95 表示 95% 相似
+                      </Text>
+                      <Button
+                        type="primary"
+                        icon={<SearchOutlined />}
+                        onClick={handleDuplicateDetect}
+                        loading={dupLoading}
+                      >
+                        检测重复
+                      </Button>
+                    </Space>
+
+                    <Text type="secondary" style={{ fontSize: 12 }}>
+                      每次最多检测 100 条（按字符数降序），对它们做两两语义相似度计算
                     </Text>
-                  )}
-                </Space>
-                <Space>
-                  {selectedRowKeys.length > 0 && (
-                    <Button
-                      icon={<TagOutlined />}
-                      onClick={() => setReassignOpen(true)}
-                    >
-                      批量移分类
-                    </Button>
-                  )}
-                  {selectedRowKeys.length >= 2 && (
-                    <Button
-                      type="primary"
-                      icon={<MergeCellsOutlined />}
-                      onClick={openMergeModal}
-                    >
-                      合并所选（{selectedRowKeys.length}）
-                    </Button>
-                  )}
-                  {selectedRowKeys.length > 0 && (
-                    <Button
-                      danger
-                      icon={<DeleteOutlined />}
-                      onClick={handleBatchDelete}
-                    >
-                      批量删除（{selectedRowKeys.length}）
-                    </Button>
-                  )}
-                  {selectedRowKeys.length > 0 && (
-                    <Button
-                      onClick={() => {
-                        setSelectedRowKeys([])
-                        setSelectedRows([])
-                      }}
-                    >
-                      取消选择
-                    </Button>
-                  )}
-                  <Text type="secondary">
-                    当前第 {results.data.page} 页
-                  </Text>
-                </Space>
-              </Space>
 
-              <Table<LongChunkItem>
-                rowSelection={{
-                  selectedRowKeys,
-                  onChange: (keys, rows) => {
-                    setSelectedRowKeys(keys)
-                    setSelectedRows(rows)
-                  },
-                }}
-                columns={columns}
-                dataSource={results.data.items}
-                rowKey="id"
-                loading={loading}
-                pagination={{
-                  current: results.data.page,
-                  pageSize: results.data.limit,
-                  total: results.data.total,
-                  onChange: handlePageChange,
-                  showSizeChanger: false,
-                }}
-                locale={{
-                  emptyText: (
-                    <Empty
-                      description={
+                    {dupResults && (
+                      <>
                         <Text type="secondary">
-                          没有找到超过 {threshold.toLocaleString()} 字符的片段
+                          检测 {dupResults.detectedCount} 条，发现 {dupResults.groups.length} 组重复
+                          {dupResults.groups.length > 0 && `（共 ${dupResults.groups.reduce((s, g) => s + g.items.length, 0)} 条）`}
                         </Text>
-                      }
-                    />
-                  ),
-                }}
-              />
-            </>
-          ) : (
-            <Empty
-              description={
-                <Text type="secondary">
-                  设置字符数阈值后点击「查询」按钮
-                </Text>
-              }
-            />
-          )}
-        </Space>
-      </Card>
+
+                        <Space direction="vertical" size={12} style={{ width: '100%' }}>
+                          {dupResults.groups.map((group, gi) => (
+                            <Card
+                              key={gi}
+                              size="small"
+                              title={
+                                <Space>
+                                  <Tag color="volcano">重复组 #{gi + 1}</Tag>
+                                  <Text style={{ fontWeight: 400 }}>
+                                    {group.items.length} 条 · 相似度 {group.minSimilarity.toFixed(4)} ~ {group.maxSimilarity.toFixed(4)}
+                                  </Text>
+                                </Space>
+                              }
+                              extra={
+                                <Space size={4}>
+                                  <Button
+                                    size="small"
+                                    icon={<MergeCellsOutlined />}
+                                    onClick={() => handleDupGroupMerge(group)}
+                                  >
+                                    合并
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    icon={<TagOutlined />}
+                                    onClick={() => handleDupGroupReassign(group)}
+                                  >
+                                    移分类
+                                  </Button>
+                                  <Button
+                                    size="small"
+                                    danger
+                                    icon={<DeleteOutlined />}
+                                    onClick={() => handleDupGroupDelete(group)}
+                                  >
+                                    删除
+                                  </Button>
+                                </Space>
+                              }
+                            >
+                              <Space direction="vertical" size={4} style={{ width: '100%' }}>
+                                {group.items.map((item) => (
+                                  <div
+                                    key={item.id}
+                                    style={{
+                                      display: 'flex',
+                                      alignItems: 'center',
+                                      gap: 8,
+                                      padding: '6px 8px',
+                                      borderRadius: 4,
+                                      background: '#fafafa',
+                                    }}
+                                  >
+                                    <Text strong ellipsis style={{ width: 160, flexShrink: 0 }}>
+                                      {item.title}
+                                    </Text>
+                                    <Tag>{item.charLength.toLocaleString()} 字符</Tag>
+                                    {item.topicName ? (
+                                      <Tag color="blue">{item.topicName}</Tag>
+                                    ) : (
+                                      <Text type="secondary" style={{ fontSize: 12 }}>无主题</Text>
+                                    )}
+                                    <Text type="secondary" style={{ fontSize: 12 }}>{item.kbName}</Text>
+                                    <Button
+                                      type="link"
+                                      size="small"
+                                      icon={<EyeOutlined />}
+                                      onClick={() => setViewContent(item.content)}
+                                    >
+                                      查看
+                                    </Button>
+                                  </div>
+                                ))}
+                              </Space>
+                            </Card>
+                          ))}
+                        </Space>
+                      </>
+                    )}
+
+                    {dupResults && dupResults.groups.length === 0 && (
+                      <Empty
+                        description={
+                          <Text type="secondary">
+                            未发现相似度超过 {dupThreshold} 的重复片段
+                          </Text>
+                        }
+                      />
+                    )}
+                  </Space>
+                </Card>
+              ),
+            },
+          ]}
+        />
       </div>
 
       <Modal

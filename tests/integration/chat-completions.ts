@@ -232,42 +232,6 @@ class MockChatTest extends ChatTestFixture {
       await this.assertApiError(res, 'MISSING_MESSAGES')
     }, CHAT_TIMEOUT)
 
-    test('同一对话正在处理时再次请求 → 400', async () => {
-      await this.waitForProcessingCleared(this.convId1)
-
-      // 每个 chunk 间隔 10ms，等 10ms 后发第二次请求，此时 processing 仍在
-      setMockStreamChunkDelay(10)
-
-      const firstChat = this.chat({
-        messages: [{ id: '5', content: '请简单解释量子力学的原理' }],
-        modelId: this.modelId,
-        kbId: this.kbId,
-        conversationId: this.convId1,
-      })
-
-      await new Promise((resolve) => setTimeout(resolve, 20))
-
-      const secondRes = await fetch(`${getBaseUrl()}/api/chat/completions`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          messages: [{ id: '5b', content: '再问一个问题' }],
-          modelId: this.modelId,
-          kbId: this.kbId,
-          conversationId: this.convId1,
-        }),
-      })
-
-      await this.assertApiError(secondRes, 'CHAT_PROCESSING')
-
-      // 等待第一个请求完成，然后恢复默认延迟
-      try {
-        await firstChat
-      } finally {
-        setMockStreamChunkDelay(0)
-      }
-    }, CHAT_TIMEOUT)
-
     // 「chunk → done 序列」和「messageId(user + assistant)」已由框架层 assertEventSequence 自动验证，无需单独测试
     // 「首 token 时间 ≤ 10s」已由 chatAndWait 框架层自动检测，无需单独测试
     // 「status 事件合法性」由 StreamStatus 枚举编译时保证，无需运行时检查

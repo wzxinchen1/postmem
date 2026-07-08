@@ -44,7 +44,9 @@ export class ChatMemoryService {
       content: m.content,
     }))
 
+    const saveStart = Date.now()
     const memorizedIds = await this.ingestMessages(kbId, ingestMessages, conversationId)
+    logger.info('[ChatMemoryService] createMemory 完成', { memorizedCount: memorizedIds.length, totalElapsedMs: Date.now() - saveStart, conversationId })
 
     return memorizedIds
   }

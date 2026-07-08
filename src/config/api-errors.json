@@ -703,6 +703,18 @@
     "statusCode": 400,
     "message": "缺少必需参数: memoryId"
   },
+  "KB_CHUNK_DUPLICATE_DETECT_KB_ID_REQUIRED": {
+    "statusCode": 400,
+    "message": "必需选择知识库"
+  },
+  "KB_CHUNK_DUPLICATE_DETECT_THRESHOLD_REQUIRED": {
+    "statusCode": 400,
+    "message": "缺少必需字段: threshold"
+  },
+  "KB_CHUNK_DUPLICATE_DETECT_THRESHOLD_INVALID": {
+    "statusCode": 400,
+    "message": "threshold 必须在 {min}-{max} 之间，实际: {actual}"
+  },
   "KB_CHUNK_BATCH_DELETE_MEMORY_IDS_REQUIRED": {
     "statusCode": 400,
     "message": "缺少必需参数: memoryIds"
