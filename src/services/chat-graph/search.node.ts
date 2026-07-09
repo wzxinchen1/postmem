@@ -154,17 +154,18 @@ export function createSearchNode(deps: GraphDependencies) {
     }
 
     if (shouldSearchMemory) {
-      const searchQuery = memoryQuery ?? query
+      const searchKeyword = memoryQuery ?? query
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
 
       const similarSummaries = await deps.chatMemoryService.searchSimilar(
         state.kbId,
         state.topicIds,
-        searchQuery
+        query,        // 原始用户消息 → dense 向量检索
+        memoryQuery   // AI 提取关键字 → sparse 全文检索
       )
       memoryText = similarSummaries.map(s => s.content).join('\n\n')
 
-      await deps.sseService.emit({ type: 'searchmemory', results: similarSummaries, query: searchQuery, conversationId: state.conversationId })
+      await deps.sseService.emit({ type: 'searchmemory', results: similarSummaries, query: searchKeyword, conversationId: state.conversationId })
 
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
     }

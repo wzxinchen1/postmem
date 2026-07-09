@@ -451,7 +451,8 @@ export class KBService {
     kbId: string,
     topicIds: string[],
     query: string,
-    topK: number = 5
+    topK: number = 5,
+    keywordQuery?: string
   ): Promise<SearchResult[]> {
     if (!query || query.trim().length === 0) {
       throw new AppError('KB_SEARCH_QUERY_REQUIRED')
@@ -463,6 +464,8 @@ export class KBService {
 
     await this.getKnowledgeBaseById(kbId)
     const queryEmbedding = await this.embeddingService.generateEmbedding(query)
+
+    const sparseQuery = keywordQuery ?? query
 
     const denseLimit = topK * 3
     const topicFilter = Prisma.sql`AND topic_id = ANY(ARRAY[${Prisma.join(topicIds)}]::text[])`
@@ -507,7 +510,7 @@ export class KBService {
         FROM memories
         WHERE kb_id = ${kbId}
           ${topicFilter}
-          AND content &@ ${query}
+          AND content &@ ${sparseQuery}
         ORDER BY pgroonga_score(memories.tableoid, memories.ctid) DESC
         LIMIT ${denseLimit}
       `

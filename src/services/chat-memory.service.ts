@@ -54,7 +54,8 @@ export class ChatMemoryService {
   async searchSimilar(
     kbId: string,
     topicIds: string[],
-    query: string
+    query: string,
+    keywordQuery?: string
   ): Promise<Array<{ id: string; content: string; score: number }>> {
     if (query.trim().length === 0) {
       throw new AppError('CHAT_MEMORY_QUERY_REQUIRED')
@@ -64,7 +65,7 @@ export class ChatMemoryService {
       throw new AppError('KB_SEARCH_TOPIC_IDS_REQUIRED')
     }
 
-    const results = await this.kbService.search(kbId, topicIds, query, 5)
+    const results = await this.kbService.search(kbId, topicIds, query, 5, keywordQuery)
     return results.map(item => ({
       id: item.id,
       content: item.content,
