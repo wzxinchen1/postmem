@@ -63,7 +63,7 @@ export const GET = createApiHandler<Deps>({
       findParams.topicIds = topicIds
     }
 
-    const result = await deps.kbService.findLongChunks(findParams as any)
+    const result = await deps.kbService.findChunks(findParams as any)
 
     return successResponse(result)
   },

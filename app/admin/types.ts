@@ -32,6 +32,7 @@ export type SearchSource = 'dense' | 'sparse' | 'hybrid'
 
 export interface SearchResult {
   id: string
+  title: string
   content: string
   score: number
   topicId: string | null
@@ -122,7 +123,7 @@ export interface KnowledgeBaseInfo {
   lastUpdated?: string
 }
 
-export interface LongChunkItem {
+export interface ChunkItem {
   id: string
   title: string
   content: string
@@ -134,10 +135,10 @@ export interface LongChunkItem {
   createdAt: string
 }
 
-export interface LongChunksResponse {
+export interface ChunksResponse {
   success: boolean
   data?: {
-    items: LongChunkItem[]
+    items: ChunkItem[]
     total: number
     page: number
     limit: number

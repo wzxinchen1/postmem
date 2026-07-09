@@ -94,9 +94,9 @@ export interface ListItem {
 }
 
 /**
- * 超长片段项
+ * 片段项
  */
-export interface LongChunkItem {
+export interface ChunkItem {
   id: string
   title: string
   content: string

@@ -14,7 +14,7 @@ const menuItems = [
   { key: '/admin/search', label: '语义检索', icon: <SearchOutlined /> },
   { key: '/admin/list', label: '片段列表', icon: <UnorderedListOutlined /> },
   { key: '/admin/sessions', label: '会话记录', icon: <MessageOutlined /> },
-  { key: '/admin/long-chunks', label: '超长片段', icon: <ColumnHeightOutlined /> },
+  { key: '/admin/chunks', label: '片段管理', icon: <ColumnHeightOutlined /> },
   { key: '/admin/providers', label: '提供商管理', icon: <ApiOutlined /> },
   { key: '/admin/settings', label: '应用设置', icon: <SettingOutlined /> },
 ]
@@ -27,7 +27,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
     item.key === pathname || (item.key !== '/admin' && (pathname ?? '').startsWith(item.key))
   )?.key || '/admin'
 
-  const isLongChunks = pathname === '/admin/long-chunks'
+  const isChunksPage = pathname === '/admin/chunks'
 
   return (
     <Layout style={{ display: 'flex', flexDirection: 'column', flex: 1, minHeight: 0 }}>
@@ -61,7 +61,7 @@ export default function AdminLayout({ children }: { children: ReactNode }) {
       </Header>
       <Content style={{
         display: 'flex', flexDirection: 'column', flex: 1, padding: '24px', width: '100%',
-        maxWidth: isLongChunks ? '100%' : '1400px',
+        maxWidth: isChunksPage ? '100%' : '1400px',
         margin: '0 auto',
       }}>
         {children}

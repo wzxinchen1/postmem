@@ -6,7 +6,7 @@ import type {
   SearchResult,
   SearchSource,
   ListItem,
-  LongChunkItem,
+  ChunkItem,
   DuplicateGroupItem,
   DuplicateGroup,
   TitledChunk,
@@ -991,13 +991,13 @@ export class KBService {
     return { memoryId: inserted[0].id }
   }
 
-  async findLongChunks(params: {
+  async findChunks(params: {
     threshold: number
     page: number
     limit: number
     kbId?: string
     topicIds?: string[]
-  }): Promise<{ items: LongChunkItem[]; total: number; page: number; limit: number }> {
+  }): Promise<{ items: ChunkItem[]; total: number; page: number; limit: number }> {
     const skip = (params.page - 1) * params.limit
 
     let whereClause = params.kbId
