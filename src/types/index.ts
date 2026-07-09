@@ -643,7 +643,7 @@ export type StreamEvent = {
 } | {
   type: 'messageId'; role: 'user' | 'assistant'; id: string; message?: ChatMessage; conversationId?: string
 } | {
-  type: 'searchmemory'; results: Array<{ id: string; content: string; score: number }>; query: string; conversationId?: string
+  type: 'searchmemory'; results: Array<{ id: string; content: string; score: number }>; conversationId?: string
 } | {
   type: 'error'; message: string; conversationId?: string
 } | {

@@ -159,7 +159,7 @@ export function createSearchNode(deps: GraphDependencies) {
         )
         memoryText = similarSummaries.map(s => s.content).join('\n\n')
 
-        await deps.sseService.emit({ type: 'searchmemory', results: similarSummaries, query: lastUserMsg.content, conversationId: state.conversationId })
+        await deps.sseService.emit({ type: 'searchmemory', results: similarSummaries, conversationId: state.conversationId })
 
         await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
       }
