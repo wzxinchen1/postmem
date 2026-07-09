@@ -30,8 +30,6 @@ export class CutModelService {
   private modelCache: Map<string, { model: Model; provider: Provider }> = new Map<string, { model: Model; provider: Provider }>()
 
   private static readonly MAX_RETRIES = 5
-  private static readonly MAX_CHUNK_CHARS = 1000
-  private static readonly MAX_CUT_DEPTH = 3
 
   constructor({ prisma, sessionService, vendorService, llmResilienceService, chatSettingService }: CutModelDependencies) {
     this.prisma = prisma
@@ -389,23 +387,19 @@ export class CutModelService {
     }))
   }
 
-  async cutAndRewrite(text: string, kbId?: string, onProgress?: ProgressCallback, instruction?: string, skipRecursive = false): Promise<TitledChunk[]> {
+  async cutAndRewrite(text: string, kbId?: string, onProgress?: ProgressCallback, instruction?: string): Promise<TitledChunk[]> {
     const cutStart = Date.now()
-    logger.info('[CutModelService] cutAndRewrite 开始', { inputTextLength: text.length, kbId, instruction: instruction?.slice(0, 200), skipRecursive })
-    const rawChunks = await this.cutAndRewriteInternal(text, 0, kbId, [], undefined, onProgress, instruction, skipRecursive)
+    logger.info('[CutModelService] cutAndRewrite 开始', { inputTextLength: text.length, kbId, instruction: instruction?.slice(0, 200) })
+    const rawChunks = await this.cutAndRewriteInternal(text, kbId, onProgress, instruction)
     logger.info('[CutModelService] cutAndRewrite 完成', { chunksCount: rawChunks.length, textLength: text.length, elapsedMs: Date.now() - cutStart })
     return rawChunks.map((chunk, i) => ({ ...chunk, index: i }))
   }
 
   private async cutAndRewriteInternal(
     text: string,
-    depth: number,
     kbId?: string,
-    messageHistory: { role: string; content: string }[] = [],
-    chunkIndex?: number,
     onProgress?: ProgressCallback,
-    instruction?: string,
-    skipRecursive = false
+    instruction?: string
   ): Promise<TitledChunk[]> {
     const { model, provider } = await this.getDefaultModel()
 
@@ -416,20 +410,12 @@ export class CutModelService {
     const chatSetting = await this.chatSettingService.get()
     const charRange = chatSetting.chunkCharRange
     const systemPrompt = Prompts.cutAndRewriteExpert()
+    const prompt = Prompts.cutAndRewrite(text, charRange, instruction)
 
-    const prompt = depth === 0
-      ? Prompts.cutAndRewrite(text, charRange, instruction)
-      : `第${chunkIndex}条过长，请修正，每次修正请完整发送所有的chunk内容`
-
-    logger.info('[CutModelService] cutAndRewriteInternal 调用', { inputTextLength: text.length, promptLength: prompt.length, systemPromptLength: systemPrompt.length, modelName: model.name, depth, historyLength: messageHistory.length })
+    logger.info('[CutModelService] cutAndRewriteInternal 调用', { inputTextLength: text.length, promptLength: prompt.length, systemPromptLength: systemPrompt.length, modelName: model.name })
 
     if (onProgress) {
-      onProgress({
-        type: 'status',
-        message: depth === 0
-          ? '正在切分文本...'
-          : `正在修正过长片段（第${depth}轮）...`,
-      })
+      onProgress({ type: 'status', message: '正在切分文本...' })
     }
 
     const llmStart = Date.now()
@@ -442,8 +428,8 @@ export class CutModelService {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS')
       }
       return obj as { chunks: any[] }
-    }, ThinkingEffort.XHigh, messageHistory, onProgress)
-    logger.info('[CutModelService] cutAndRewriteInternal LLM 返回', { depth, llmElapsedMs: Date.now() - llmStart, chunksCount: parsed.chunks.length })
+    }, ThinkingEffort.XHigh, [], onProgress)
+    logger.info('[CutModelService] cutAndRewriteInternal LLM 返回', { llmElapsedMs: Date.now() - llmStart, chunksCount: parsed.chunks.length })
 
     const chunks: TitledChunk[] = parsed.chunks.map((chunk: any, i: number) => {
       if (!chunk.title || !chunk.title.trim()) {
@@ -459,65 +445,7 @@ export class CutModelService {
       }
     })
 
-    if (depth >= CutModelService.MAX_CUT_DEPTH) {
-      const longChunks = chunks.filter(c => c.content.length > CutModelService.MAX_CHUNK_CHARS)
-      if (longChunks.length > 0) {
-        throw new AppError('CUT_MODEL_RECURSION_EXCEEDED', {
-          depth: CutModelService.MAX_CUT_DEPTH,
-          maxChunkChars: CutModelService.MAX_CHUNK_CHARS,
-          longChunks: JSON.stringify(longChunks.map(c => ({ title: c.title, contentLength: c.content.length }))),
-        })
-      }
-      return chunks
-    }
-
-    const roundHistory = [
-      { role: 'user' as const, content: prompt },
-      { role: 'assistant' as const, content: JSON.stringify(parsed) },
-    ]
-
-    if (skipRecursive) {
-      return chunks
-    }
-
-    let resultChunks: TitledChunk[] = chunks
-
-    while (true) {
-      let fixed = false
-
-      for (let i = 0; i < resultChunks.length; i++) {
-        if (resultChunks[i].content.length > CutModelService.MAX_CHUNK_CHARS) {
-          logger.info('[CutModelService] cutAndRewrite 递归修正', { depth: depth + 1, chunkTitle: resultChunks[i].title, chunkContentLength: resultChunks[i].content.length })
-
-          if (onProgress) {
-            onProgress({
-              type: 'status',
-              message: `正在修正过长片段：${resultChunks[i].title}（${resultChunks[i].content.length}字符，第${depth + 1}轮）`,
-            })
-          }
-
-          const recurseStart = Date.now()
-          const subChunks = await this.cutAndRewriteInternal(
-            resultChunks[i].content, depth + 1, kbId,
-            [...messageHistory, ...roundHistory], i, onProgress
-          )
-          logger.info('[CutModelService] cutAndRewrite 递归修正完成', { depth: depth + 1, subChunksCount: subChunks.length, elapsedMs: Date.now() - recurseStart })
-
-          resultChunks = [
-            ...resultChunks.slice(0, i),
-            ...subChunks,
-            ...resultChunks.slice(i + 1),
-          ]
-
-          fixed = true
-          break
-        }
-      }
-
-      if (!fixed) break
-    }
-
-    return resultChunks
+    return chunks
   }
 
   async getModelInfo(): Promise<{ provider: string; model: string }> {

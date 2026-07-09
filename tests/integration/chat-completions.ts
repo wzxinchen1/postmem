@@ -952,9 +952,9 @@ class MockChatTest extends ChatTestFixture {
       this.assertTruthy(!deletedTopic, 'deleted topic no longer in list')
     }, CHAT_TIMEOUT)
 
-    // ─── CutModel 递归切分测试 ────────────────────────────
+    // ─── CutModel 切分测试 ────────────────────────────
 
-    test('cutAndRewrite 正常切分 — 无递归', async () => {
+    test('cutAndRewrite 正常切分', async () => {
       resetMockCutModelCallCount()
       setMockCutModelResponses([])
 
@@ -962,41 +962,6 @@ class MockChatTest extends ChatTestFixture {
 
       this.assertTruthy(result.memoryIds?.length > 0, 'memoryIds 非空')
       this.assertTruthy(result.memoryIds[0], '第一个 memoryId 有效')
-    }, INGEST_TIMEOUT)
-
-    test('cutAndRewrite 单层递归 — 首次返回超长块，递归后切分', async () => {
-      resetMockCutModelCallCount()
-      setMockCutModelResponses([
-        JSON.stringify({ chunks: [{ title: '长块', content: 'x'.repeat(1500) }] }),
-        JSON.stringify({ chunks: [{ title: '子块1', content: 'a'.repeat(600) }, { title: '子块2', content: 'b'.repeat(600) }] }),
-      ])
-
-      const result = await ingestTextAndWait(this.kbId, '需要递归切分的长文本。')
-
-      this.assertEqual(result.memoryIds.length, 2, '最终应产生 2 条记忆')
-      this.assertEqual(getMockCutModelCallCount(), 2, 'cut LLM 应被调用 2 次')
-    }, INGEST_TIMEOUT)
-
-    test('cutAndRewrite 递归超限 — depth=MAX_CUT_DEPTH 仍有超长块 → 报错', async () => {
-      resetMockCutModelCallCount()
-      setMockCutModelResponses([
-        JSON.stringify({ chunks: [{ title: '长块1', content: 'x'.repeat(1500) }] }),
-        JSON.stringify({ chunks: [{ title: '长块2', content: 'y'.repeat(1500) }] }),
-        JSON.stringify({ chunks: [{ title: '长块3', content: 'z'.repeat(1500) }] }),
-        JSON.stringify({ chunks: [{ title: '长块4', content: 'w'.repeat(1500) }] }),
-      ])
-
-      let threw = false
-      try {
-        await ingestTextAndWait(this.kbId, '文本')
-      } catch (err: unknown) {
-        threw = true
-        const msg = err instanceof Error ? err.message : String(err)
-        this.assertContains(msg, 'CUT_MODEL_RECURSION_EXCEEDED', '错误码')
-      }
-      if (!threw) {
-        throw new Error('应抛出 CUT_MODEL_RECURSION_EXCEEDED，但未抛出')
-      }
     }, INGEST_TIMEOUT)
   }
 }
