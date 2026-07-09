@@ -89,15 +89,21 @@ export function createSearchNode(deps: GraphDependencies) {
     let memoryText = ''
     let fetchedUrls: string[] = []
 
-    if (shouldSearchWeb) {
-      const query = getLastUserQuery(recentMessages)
+    const query = getLastUserQuery(recentMessages)
+    let memoryQuery: string | null = null
+    let webKeywords: string[] = []
+
+    if (shouldSearchWeb || shouldSearchMemory) {
       const needsResult = await deps.searchService.analyzeSearchNeeds(
         state.agent as any,
         recentMessages,
-        { includeWebSearch: true, includeMemorySearch: false }
+        { includeWebSearch: shouldSearchWeb, includeMemorySearch: shouldSearchMemory }
       )
-      const webKeywords = needsResult.webKeywords.length > 0 ? needsResult.webKeywords : [query]
+      webKeywords = needsResult.webKeywords.length > 0 ? needsResult.webKeywords : [query]
+      memoryQuery = needsResult.memoryQuery
+    }
 
+    if (shouldSearchWeb) {
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, conversationId: state.conversationId })
 
       logger.info('[ChatGraph] 缓存查询', {
@@ -148,21 +154,19 @@ export function createSearchNode(deps: GraphDependencies) {
     }
 
     if (shouldSearchMemory) {
-      const lastUserMsg = [...recentMessages].reverse().find(m => m.role === 'user')
-      if (lastUserMsg && lastUserMsg.content) {
-        await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
+      const searchQuery = memoryQuery ?? query
+      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
 
-        const similarSummaries = await deps.chatMemoryService.searchSimilar(
-          state.kbId,
-          state.topicIds,
-          lastUserMsg.content
-        )
-        memoryText = similarSummaries.map(s => s.content).join('\n\n')
+      const similarSummaries = await deps.chatMemoryService.searchSimilar(
+        state.kbId,
+        state.topicIds,
+        searchQuery
+      )
+      memoryText = similarSummaries.map(s => s.content).join('\n\n')
 
-        await deps.sseService.emit({ type: 'searchmemory', results: similarSummaries, conversationId: state.conversationId })
+      await deps.sseService.emit({ type: 'searchmemory', results: similarSummaries, conversationId: state.conversationId })
 
-        await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
-      }
+      await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
     }
 
     if (state.fetchedUrlContent) {
