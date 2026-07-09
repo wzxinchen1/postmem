@@ -17,7 +17,6 @@ interface Deps {
  * @query {string} query 查询文本
  * @query {string} topicIds 分类 ID 列表（逗号分隔）
  * @query {number} top_k 返回结果数量
- * @query {number} context_window 上下文窗口大小
  * @response 200 返回检索结果列表
  */
 export const GET = createApiHandler<Deps>({
@@ -28,7 +27,6 @@ export const GET = createApiHandler<Deps>({
     const query = params.get('query')
     const topicIdsStr = params.get('topicIds')
     const topKStr = params.get('top_k')
-    const contextWindowStr = params.get('context_window')
 
     if (!kbId || typeof kbId !== 'string') {
       return errorResponse('KB_ID_REQUIRED')
@@ -52,22 +50,14 @@ export const GET = createApiHandler<Deps>({
     if (topKStr === null) {
       errorResponse('KB_TOP_K_REQUIRED')
     }
-    if (contextWindowStr === null) {
-      errorResponse('KB_CONTEXT_WINDOW_REQUIRED')
-    }
 
     const topK = Number(topKStr)
-    const contextWindow = Number(contextWindowStr)
 
     if (typeof topK !== 'number' || topK < 1 || topK > 100) {
       return errorResponse('KB_TOP_K_INVALID', { min: 1, max: 100, actual: topK })
     }
 
-    if (typeof contextWindow !== 'number' || contextWindow < 0 || contextWindow > 5) {
-      return errorResponse('KB_CONTEXT_WINDOW_INVALID', { min: 0, max: 5, actual: contextWindow })
-    }
-
-    const results = await deps.kbService.search(kbId, topicIds, query, topK, contextWindow)
+    const results = await deps.kbService.search(kbId, topicIds, query, topK)
     return successResponse({ results })
   },
 })

@@ -14,7 +14,6 @@ export default function SearchPage() {
   const [loading, setLoading] = useState(false)
   const [searchQuery, setSearchQuery] = useState('')
   const [searchTopK, setSearchTopK] = useState(5)
-  const [searchContextWindow, setSearchContextWindow] = useState(1)
   const [searchResults, setSearchResults] = useState<SearchResponse | null>(null)
   
   const [msg, contextHolder] = message.useMessage()
@@ -65,7 +64,6 @@ export default function SearchPage() {
         `topicIds=${encodeURIComponent(selectedTopicIds.join(','))}`,
         `query=${encodeURIComponent(searchQuery)}`,
         `top_k=${searchTopK}`,
-        `context_window=${searchContextWindow}`,
       ]
       const res = await fetch(`/api/kb/search?${queryParts.join('&')}`)
       
@@ -122,28 +120,16 @@ export default function SearchPage() {
             />
           </div>
           
-          <Space size="large">
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Text strong style={{ display: 'block', marginBottom: 0 }}>返回结果数量 (top_k)</Text>
-              <InputNumber
-                value={searchTopK}
-                onChange={(value) => setSearchTopK(value || 5)}
-                min={1}
-                max={100}
-                style={{ width: 150 }}
-              />
-            </div>
-            <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-              <Text strong style={{ display: 'block', marginBottom: 0 }}>上下文窗口大小</Text>
-              <InputNumber
-                value={searchContextWindow}
-                onChange={(value) => setSearchContextWindow(value || 1)}
-                min={0}
-                max={5}
-                style={{ width: 150 }}
-              />
-            </div>
-          </Space>
+          <div style={{ display: 'flex', flexDirection: 'column', gap: 8, maxWidth: 150 }}>
+            <Text strong style={{ display: 'block', marginBottom: 0 }}>返回结果数量 (top_k)</Text>
+            <InputNumber
+              value={searchTopK}
+              onChange={(value) => setSearchTopK(value || 5)}
+              min={1}
+              max={100}
+              style={{ width: '100%' }}
+            />
+          </div>
           
           <Button
             type="primary"
@@ -184,27 +170,9 @@ export default function SearchPage() {
                         </Space>
                       </Space>
                       
-                      {result.context?.prev && result.context.prev.length > 0 && (
-                        <Card size="small" style={{ background: '#e6f4ff', borderLeft: '3px solid #1677ff' }}>
-                          <Text type="secondary" style={{ fontSize: 12 }}>上文：</Text>
-                          {result.context.prev.map((text, i) => (
-                            <Text key={i} style={{ display: 'block', marginBottom: i < result.context!.prev.length - 1 ? 8 : 0 }}>{text}</Text>
-                          ))}
-                        </Card>
-                      )}
-                      
                       <Card size="small">
                         <Text>{result.content}</Text>
                       </Card>
-                      
-                      {result.context?.next && result.context.next.length > 0 && (
-                        <Card size="small" style={{ background: '#e6f4ff', borderLeft: '3px solid #1677ff' }}>
-                          <Text type="secondary" style={{ fontSize: 12 }}>下文：</Text>
-                          {result.context.next.map((text, i) => (
-                            <Text key={i} style={{ display: 'block', marginBottom: i < result.context!.next.length - 1 ? 8 : 0 }}>{text}</Text>
-                          ))}
-                        </Card>
-                      )}
                       
                       {result.metadata && (
                         <Space size="large">

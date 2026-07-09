@@ -42,10 +42,6 @@ export interface SearchResult {
     messageId?: string
     role?: string
   }
-  context?: {
-    prev: string[]
-    next: string[]
-  }
 }
 
 export interface SearchResponse {

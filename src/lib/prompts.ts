@@ -197,7 +197,8 @@ ${visionSection}
 2. 如果互联网搜索结果中有更新的信息，可以补充记忆中的内容
 3. 如果搜索结果为空或与问题无关，基于自身知识回答
 4. 回答时自然地融合信息，不要提及"搜索结果"或"记忆"等来源
-5. 使用中文回答`
+5. 使用中文回答
+`
   }
 
   static fillCurrentTime(systemPrompt: string): string {

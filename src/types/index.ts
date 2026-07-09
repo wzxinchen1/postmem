@@ -75,10 +75,6 @@ export interface SearchResult {
   topicId: string | null
   metadata: MemoryMetadata
   source: SearchSource
-  context?: {
-    prev: string[]
-    next: string[]
-  }
 }
 
 /**
@@ -201,7 +197,6 @@ export interface SearchRequest {
   topicIds: string[]
   query: string
   top_k?: number
-  context_window?: number
 }
 
 /**
@@ -647,6 +642,8 @@ export type StreamEvent = {
   type: 'status'; status: StreamStatus; message?: string; url?: string; conversationId?: string
 } | {
   type: 'messageId'; role: 'user' | 'assistant'; id: string; message?: ChatMessage; conversationId?: string
+} | {
+  type: 'searchmemory'; results: Array<{ id: string; content: string; score: number }>; query: string; conversationId?: string
 } | {
   type: 'error'; message: string; conversationId?: string
 } | {

@@ -451,8 +451,7 @@ export class KBService {
     kbId: string,
     topicIds: string[],
     query: string,
-    topK: number = 5,
-    contextWindow: number = 1
+    topK: number = 5
   ): Promise<SearchResult[]> {
     if (!query || query.trim().length === 0) {
       throw new AppError('KB_SEARCH_QUERY_REQUIRED')
@@ -569,10 +568,6 @@ export class KBService {
       } else {
         score = 0
       }
-      const context = contextWindow > 0
-        ? await this.getContextByTopic(item.data.id, kbId, item.data.topic_id, contextWindow)
-        : undefined
-
       searchResults.push({
         id: item.data.id,
         title: item.data.title,
@@ -581,60 +576,11 @@ export class KBService {
         topicId: item.data.topic_id,
         metadata: item.data.metadata,
         source: item.source,
-        context,
       })
     }
 
     return searchResults
   }
-
-  private async getContextByTopic(
-    memoryId: string,
-    kbId: string,
-    topicId: string | null,
-    windowSize: number
-  ): Promise<{ prev: string[]; next: string[] }> {
-    if (topicId === null) {
-      return { prev: [], next: [] }
-    }
-
-    const current = await this.prisma.memory.findUnique({
-      where: { id: memoryId },
-      select: { createdAt: true },
-    })
-
-    if (!current) return { prev: [], next: [] }
-
-    const [prevMemories, nextMemories] = await Promise.all([
-      this.prisma.memory.findMany({
-        where: {
-          kbId,
-          topicId,
-          createdAt: { lt: current.createdAt },
-        },
-        orderBy: { createdAt: 'desc' },
-        take: windowSize,
-        select: { content: true },
-      }),
-      this.prisma.memory.findMany({
-        where: {
-          kbId,
-          topicId,
-          createdAt: { gt: current.createdAt },
-        },
-        orderBy: { createdAt: 'asc' },
-        take: windowSize,
-        select: { content: true },
-      }),
-    ])
-
-    return {
-      prev: prevMemories.map((m) => m.content).reverse(),
-      next: nextMemories.map((m) => m.content),
-    }
-  }
-
-
 
   /**
    * 创建主题

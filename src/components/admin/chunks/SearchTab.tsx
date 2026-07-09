@@ -54,7 +54,6 @@ export function SearchTab({ kbId, topicList, isInCart, onAddToCart }: SearchTabP
         `topicIds=${encodeURIComponent(selectedTopicIds.join(','))}`,
         `query=${encodeURIComponent(query.trim())}`,
         `top_k=${topK}`,
-        `context_window=0`,
       ]
       const data = await get<SearchResponse>(`/api/kb/search?${queryParts.join('&')}`)
       setResults(data)

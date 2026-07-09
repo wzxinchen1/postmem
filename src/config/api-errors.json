@@ -255,17 +255,9 @@
     "statusCode": 400,
     "message": "缺少必需字段: top_k"
   },
-  "KB_CONTEXT_WINDOW_REQUIRED": {
-    "statusCode": 400,
-    "message": "缺少必需字段: context_window"
-  },
   "KB_TOP_K_INVALID": {
     "statusCode": 400,
     "message": "top_k 必须在 {min}-{max} 之间的数字，实际: {actual}"
-  },
-  "KB_CONTEXT_WINDOW_INVALID": {
-    "statusCode": 400,
-    "message": "context_window 必须在 {min}-{max} 之间的数字，实际: {actual}"
   },
   "INTERNAL_ERROR": {
     "statusCode": 500,

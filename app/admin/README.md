@@ -74,7 +74,7 @@ import type { StatsResponse, SearchResponse } from './types'
 
 ### 2. 语义检索 (SearchTab)
 - 查询语句输入
-- 参数配置 (top_k, context_window)
+- 参数配置 (top_k)
 - 检索结果展示
 
 ### 3. 列表管理 (ListTab)
