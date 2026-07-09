@@ -160,8 +160,8 @@ export function createSearchNode(deps: GraphDependencies) {
       const similarSummaries = await deps.chatMemoryService.searchSimilar(
         state.kbId,
         state.topicIds,
-        query,        // 原始用户消息 → dense 向量检索
-        memoryQuery   // AI 提取关键字 → sparse 全文检索
+        query,              // 原始用户消息 → dense 向量检索
+        memoryQuery ?? undefined  // AI 提取关键字 → sparse 全文检索
       )
       memoryText = similarSummaries.map(s => s.content).join('\n\n')
 
