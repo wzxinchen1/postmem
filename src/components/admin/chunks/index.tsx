@@ -5,11 +5,12 @@ import { message, Modal, Button, Tabs, Typography } from 'antd'
 import { get } from '@/app/admin/lib/request'
 import type { ChunkItem, TopicInfo } from '@/app/admin/types'
 import type { CartItem } from './types'
-import { KBSelector } from '@/src/components/admin/KBSelector'
+
 import { TopicPanel } from './TopicPanel'
 import { ChunksQuery } from './ChunksQuery'
 import { DuplicateDetect } from './DuplicateDetect'
 import { SearchTab } from './SearchTab'
+import { TopicChunksTab } from './TopicChunksTab'
 import { MergeCartBar } from './MergeCartBar'
 import { MergeModal } from './MergeModal'
 import { BatchReassignModal } from './BatchReassignModal'
@@ -19,18 +20,18 @@ const { Text } = Typography
 export default function ChunksPage() {
   const [msg, contextHolder] = message.useMessage()
 
-  /* ---- shared state ---- */
   const [kbId, setKbId] = useState<string | null>(null)
   const [topicList, setTopicList] = useState<TopicInfo[]>([])
   const [topicStats, setTopicStats] = useState<Array<{ id: string; name: string; description: string; memoryCount: number }>>([])
   const [refreshKey, setRefreshKey] = useState(0)
 
-  /* ---- modals ---- */
   const [viewContent, setViewContent] = useState<string | null>(null)
   const [mergeTargetRows, setMergeTargetRows] = useState<ChunkItem[] | null>(null)
   const [reassignTargetRows, setReassignTargetRows] = useState<ChunkItem[] | null>(null)
 
-  /* ---- merge cart ---- */
+  const [browseTopicId, setBrowseTopicId] = useState<string | null>(null)
+  const [activeTab, setActiveTab] = useState<string>('chunks')
+
   const [cartItems, setCartItems] = useState<CartItem[]>([])
 
   const addToCart = useCallback((item: CartItem) => {
@@ -52,12 +53,8 @@ export default function ChunksPage() {
     setCartItems([])
   }, [])
 
-  /* ---- load topics ---- */
   const loadTopics = useCallback(async () => {
-    if (kbId === null) {
-      setTopicList([])
-      setTopicStats([])
-    } else {
+    if (kbId !== null) {
       try {
         const [listRes, statsRes] = await Promise.all([
           get<{ success: boolean; data?: TopicInfo[] }>(`/api/kb/list-topics?kbId=${encodeURIComponent(kbId)}`),
@@ -72,6 +69,9 @@ export default function ChunksPage() {
       } catch {
         msg.error('加载分类列表失败')
       }
+    } else {
+      setTopicList([])
+      setTopicStats([])
     }
   }, [kbId, msg])
 
@@ -83,7 +83,11 @@ export default function ChunksPage() {
     setRefreshKey(k => k + 1)
   }, [])
 
-  /* ---- merge & reassign handlers ---- */
+  const handleBrowseTopic = useCallback((topicId: string) => {
+    setBrowseTopicId(topicId)
+    setActiveTab('topic-browse')
+  }, [])
+
   const handleMerge = useCallback((rows: ChunkItem[]) => {
     setMergeTargetRows(rows)
   }, [])
@@ -110,27 +114,26 @@ export default function ChunksPage() {
     handleRefresh()
   }, [clearCart, handleRefresh])
 
-  /* ---- cart callbacks object for passing to children ---- */
   const cartCallbacks = { onAddToCart: addToCart, isInCart }
 
   return (
     <div style={{ display: 'flex', flex: 1, gap: 16, height: '100%', minHeight: 0 }}>
       {contextHolder}
 
-      {kbId !== null && (
-        <TopicPanel
-          kbId={kbId}
-          topicStats={topicStats}
-          existingTopics={topicList}
-          onTopicChange={loadTopics}
-          onRefresh={handleRefresh}
-        />
-      )}
+      <TopicPanel
+        kbId={kbId}
+        setKbId={setKbId}
+        topicStats={topicStats}
+        existingTopics={topicList}
+        onTopicChange={loadTopics}
+        onRefresh={handleRefresh}
+        onBrowseTopic={handleBrowseTopic}
+      />
 
       <div style={{ display: 'flex', flexDirection: 'column', flex: 1, gap: 16, minWidth: 0 }}>
-        <KBSelector kbId={kbId} setKbId={setKbId} />
-
         <Tabs
+          activeKey={activeTab}
+          onChange={setActiveTab}
           items={[
             {
               key: 'chunks',
@@ -138,7 +141,6 @@ export default function ChunksPage() {
               children: (
                 <ChunksQuery
                   kbId={kbId}
-                  setKbId={setKbId}
                   topicList={topicList}
                   onMerge={handleMerge}
                   onReassign={handleReassign}
@@ -172,11 +174,25 @@ export default function ChunksPage() {
                 />
               ),
             },
+            {
+              key: 'topic-browse',
+              label: '按主题浏览',
+              children: (
+                <TopicChunksTab
+                  kbId={kbId}
+                  topicId={browseTopicId}
+                  onMerge={handleMerge}
+                  onReassign={handleReassign}
+                  onViewContent={setViewContent}
+                  refreshKey={refreshKey}
+                  {...cartCallbacks}
+                />
+              ),
+            },
           ]}
         />
       </div>
 
-      {/* Content viewer */}
       <Modal
         title="内容详情"
         open={viewContent !== null}
@@ -194,7 +210,6 @@ export default function ChunksPage() {
         </div>
       </Modal>
 
-      {/* Merge modal */}
       {mergeTargetRows !== null && (
         <MergeModal
           open={true}
@@ -204,7 +219,6 @@ export default function ChunksPage() {
         />
       )}
 
-      {/* Batch reassign modal */}
       {reassignTargetRows !== null && (
         <BatchReassignModal
           open={true}
@@ -215,7 +229,6 @@ export default function ChunksPage() {
         />
       )}
 
-      {/* Merge cart floating bar */}
       <MergeCartBar
         items={cartItems}
         onRemove={removeFromCart}

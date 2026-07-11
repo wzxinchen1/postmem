@@ -9,7 +9,6 @@ import {
 import { get, post } from '@/app/admin/lib/request'
 import type { ChunkItem, ChunksResponse, TopicInfo } from '@/app/admin/types'
 import type { CartItem } from './types'
-import { KBSelector } from '@/src/components/admin/KBSelector'
 import { SplitModal } from './SplitModal'
 
 const { Text } = Typography
@@ -23,7 +22,6 @@ function charLengthColor(len: number, threshold: number): string {
 
 interface ChunksQueryProps {
   kbId: string | null
-  setKbId: (id: string | null) => void
   topicList: TopicInfo[]
   onMerge: (rows: ChunkItem[]) => void
   onReassign: (rows: ChunkItem[]) => void
@@ -33,7 +31,7 @@ interface ChunksQueryProps {
   refreshKey: number
 }
 
-export function ChunksQuery({ kbId, setKbId, topicList, onMerge, onReassign, onViewContent, onAddToCart, isInCart, refreshKey }: ChunksQueryProps) {
+export function ChunksQuery({ kbId, topicList, onMerge, onReassign, onViewContent, onAddToCart, isInCart, refreshKey }: ChunksQueryProps) {
   const [msg, contextHolder] = message.useMessage()
   const [threshold, setThreshold] = useState<number>(1000)
   const [loading, setLoading] = useState(false)

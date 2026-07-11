@@ -1,14 +1,12 @@
 'use client'
 
 import { useState, useEffect } from 'react'
-import { Card, Select, Typography } from 'antd'
-import { get, post } from '@/app/admin/lib/request'
-
-const { Text } = Typography
+import { Select } from 'antd'
+import { get } from '@/app/admin/lib/request'
 
 interface KBSelectorProps {
   kbId: string | null
-  setKbId: (id: string) => void
+  setKbId: (id: string | null) => void
 }
 
 interface KBInfo {
@@ -26,10 +24,10 @@ export function KBSelector({ kbId, setKbId }: KBSelectorProps) {
     const fetchKBList = async () => {
       try {
         const data = await get<{ success: boolean; data?: { kbNames: KBInfo[] } }>('/api/kb/stats')
-        if (data.success && data.data?.kbNames) {
+        if (data.success && data.data !== undefined && data.data.kbNames !== undefined) {
           setKbList(data.data.kbNames)
         }
-      } catch (error) {
+      } catch {
       } finally {
         setLoading(false)
       }
@@ -38,19 +36,16 @@ export function KBSelector({ kbId, setKbId }: KBSelectorProps) {
   }, [])
 
   return (
-    <Card style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
-      <Text strong style={{ display: 'block', marginBottom: 0 }}>知识库</Text>
-      <Select
-        value={kbId || undefined}
-        onChange={setKbId}
-        loading={loading}
-        placeholder={loading ? '加载中...' : '请选择知识库'}
-        style={{ width: '100%' }}
-        options={kbList.map(kb => ({
-          value: kb.kbId,
-          label: `${kb.kbName} (${kb.total} 条记录)`
-        }))}
-      />
-    </Card>
+    <Select
+      value={kbId || undefined}
+      onChange={setKbId}
+      loading={loading}
+      placeholder={loading ? '加载中...' : '请选择知识库'}
+      style={{ width: '100%' }}
+      options={kbList.map(kb => ({
+        value: kb.kbId,
+        label: `${kb.kbName} (${kb.total} 条记录)`,
+      }))}
+    />
   )
 }
