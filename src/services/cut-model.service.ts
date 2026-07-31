@@ -6,7 +6,6 @@ import { logger } from '@/src/lib/logger'
 import type { PrismaClient } from '@/src/generated/prisma/client/client'
 import type { Model, Provider, CutPoint, IngestMessage, MessageGroup, ModelCapability, TopicCreateInfo, BatchTopicPlan, TitledChunk, ChunkTopicPlan } from '@/src/types'
 import { ThinkingEffort } from '@/src/types'
-import { SessionService } from '@/src/services/session.service'
 import { VendorService } from './vendor.service'
 import { LLMResilienceService } from '@/src/services/llm-resilience.service'
 import type { IChatSettingProvider } from '@/src/interfaces/chat-setting-provider'
@@ -15,7 +14,6 @@ type ProgressCallback = (event: { type: string; message?: string; data?: Record<
 
 interface CutModelDependencies {
   prisma: PrismaClient
-  sessionService: SessionService
   vendorService: VendorService
   llmResilienceService: LLMResilienceService
   chatSettingService: IChatSettingProvider
@@ -23,7 +21,6 @@ interface CutModelDependencies {
 
 export class CutModelService {
   private prisma: PrismaClient
-  private sessionService: SessionService
   private vendorService: VendorService
   private llmResilienceService: LLMResilienceService
   private chatSettingService: IChatSettingProvider
@@ -31,9 +28,8 @@ export class CutModelService {
 
   private static readonly MAX_RETRIES = 5
 
-  constructor({ prisma, sessionService, vendorService, llmResilienceService, chatSettingService }: CutModelDependencies) {
+  constructor({ prisma, vendorService, llmResilienceService, chatSettingService }: CutModelDependencies) {
     this.prisma = prisma
-    this.sessionService = sessionService
     this.vendorService = vendorService
     this.llmResilienceService = llmResilienceService
     this.chatSettingService = chatSettingService
@@ -128,16 +124,10 @@ export class CutModelService {
     systemPrompt: string,
     model: Model,
     provider: Provider,
-    sessionId: string | undefined,
     reasoningEffort?: string,
     additionalMessages: { role: string; content: string }[] = []
   ): Promise<string> {
     const chatModel = await this.createModel(model, provider, reasoningEffort)
-
-    if (sessionId !== undefined) {
-      await this.sessionService.addMessage({ sessionId, role: 'system', content: systemPrompt })
-      await this.sessionService.addMessage({ sessionId, role: 'user', content: prompt })
-    }
 
     let additionalMessagesLength = 0
     for (const m of additionalMessages) {
@@ -147,7 +137,6 @@ export class CutModelService {
     logger.info('[CutModelService] callLLM', {
       model: model.name,
       provider: provider.name,
-      sessionId,
       systemPromptLength: systemPrompt.length,
       promptLength: prompt.length,
       additionalMessagesCount: additionalMessages.length,
@@ -171,15 +160,6 @@ export class CutModelService {
       throw new AppError('CUT_MODEL_LLM_SDK_NULL_ADDITIONAL_KWARGS')
     }
 
-    if (sessionId !== undefined) {
-      const messageMetadata: Record<string, unknown> = { model: model.name }
-      const additionalKwargs = response.additional_kwargs
-      if (additionalKwargs.reasoning_content) {
-        messageMetadata.reasoning_content = additionalKwargs.reasoning_content
-      }
-      await this.sessionService.addMessage({ sessionId, role: 'assistant', content, metadata: messageMetadata })
-    }
-
     return content
   }
 
@@ -192,7 +172,6 @@ export class CutModelService {
     systemPrompt: string,
     model: Model,
     provider: Provider,
-    sessionId: string | undefined,
     validator: (parsed: unknown) => T,
     reasoningEffort?: string,
     additionalMessages: { role: string; content: string }[] = [],
@@ -203,7 +182,7 @@ export class CutModelService {
     for (let attempt = 1; attempt <= CutModelService.MAX_RETRIES; attempt++) {
       let content: string
       try {
-        content = await this.callLLM(prompt, systemPrompt, model, provider, sessionId, reasoningEffort, additionalMessages)
+        content = await this.callLLM(prompt, systemPrompt, model, provider, reasoningEffort, additionalMessages)
       } catch (error) {
         lastError = error instanceof Error ? error : new Error(String(error))
 
@@ -261,22 +240,10 @@ export class CutModelService {
       throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
     }
 
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'chat',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: provider.vendor.id,
-        vendorName: provider.vendor.name,
-      },
-    })
-
     const systemPrompt = Prompts.textAnalysisExpert()
     const prompt = Prompts.cutPoints(text)
 
-    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, (raw) => {
       if (!raw || typeof raw !== 'object') {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CUTPOINTS')
       }
@@ -286,8 +253,6 @@ export class CutModelService {
       }
       return obj as { cutPoints: any[] }
     })
-
-    await this.sessionService.complete(session.id)
 
     return parsed.cutPoints.map((point: any) => ({
       index: Number(point.index),
@@ -302,22 +267,10 @@ export class CutModelService {
       throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
     }
 
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'chat',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: provider.vendor.id,
-        vendorName: provider.vendor.name,
-      },
-    })
-
     const systemPrompt = Prompts.conversationAnalysisExpert()
     const prompt = Prompts.messageAnalysis(messages)
 
-    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, (raw) => {
       if (!raw || typeof raw !== 'object') {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_GROUPS')
       }
@@ -327,8 +280,6 @@ export class CutModelService {
       }
       return obj as { groups: any[] }
     })
-
-    await this.sessionService.complete(session.id)
 
     return parsed.groups.map((group: any) => {
       if (group.messageIds == null) {
@@ -352,22 +303,10 @@ export class CutModelService {
       throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
     }
 
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'chat',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: provider.vendor.id,
-        vendorName: provider.vendor.name,
-      },
-    })
-
     const systemPrompt = Prompts.textAnalysisExpert()
     const prompt = Prompts.textAnalysis(text)
 
-    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, (raw) => {
       if (!raw || typeof raw !== 'object') {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_GROUPS')
       }
@@ -377,8 +316,6 @@ export class CutModelService {
       }
       return obj as { groups: any[] }
     })
-
-    await this.sessionService.complete(session.id)
 
     return parsed.groups.map((group: any) => ({
       messageIds: [],
@@ -419,7 +356,7 @@ export class CutModelService {
     }
 
     const llmStart = Date.now()
-    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, undefined, (raw) => {
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, (raw) => {
       if (!raw || typeof raw !== 'object') {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS')
       }
@@ -463,23 +400,10 @@ export class CutModelService {
       throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
     }
 
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'chat',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: provider.vendor.id,
-        vendorName: provider.vendor.name,
-        task: 'topic-create',
-      },
-    })
-
     const systemPrompt = Prompts.topicMatchExpert()
     const prompt = Prompts.topicCreate(content)
 
-    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, session.id, (raw) => {
+    const parsed = await this.callLLMAndValidate(prompt, systemPrompt, model, provider, (raw) => {
       if (!raw || typeof raw !== 'object') {
         throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_NAME')
       }
@@ -492,8 +416,6 @@ export class CutModelService {
       }
       return obj as { name: string; description: string }
     })
-
-    await this.sessionService.complete(session.id)
 
     return {
       name: parsed.name.trim(),
@@ -515,19 +437,6 @@ export class CutModelService {
       throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
     }
 
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'chat',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: provider.vendor.id,
-        vendorName: provider.vendor.name,
-        task: 'batch-topic-match',
-      },
-    })
-
     const systemPrompt = Prompts.topicMatchExpert()
     const prompt = Prompts.batchTopicMatch(
       chunks.map((c) => ({ index: c.index, title: c.title })),
@@ -537,7 +446,7 @@ export class CutModelService {
     logger.info('[CutModelService] batchResolveTopics 输入', { chunksCount: chunks.length, existingTopicsCount: existingTopics.length, promptLength: prompt.length, systemPromptLength: systemPrompt.length, modelName: model.name })
 
     const parsed = await this.callLLMAndValidate(
-      prompt, systemPrompt, model, provider, session.id,
+      prompt, systemPrompt, model, provider,
       (raw) => {
         if (!raw || typeof raw !== 'object') {
           throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_PLANS')
@@ -571,8 +480,6 @@ export class CutModelService {
         return obj as { plans: Array<{ index: number; action: string; topicName?: string; reason?: string }> }
       }
     )
-
-    await this.sessionService.complete(session.id)
 
     const plans: ChunkTopicPlan[] = []
     for (const p of parsed.plans) {
@@ -608,24 +515,11 @@ export class CutModelService {
       throw new AppError('CUT_MODEL_PROVIDER_MISSING_VENDOR')
     }
 
-    const session = await this.sessionService.create({
-      kbId,
-      modelType: 'chat',
-      modelName: model.name,
-      provider: provider.name,
-      metadata: {
-        displayName: model.displayName,
-        vendorId: provider.vendor.id,
-        vendorName: provider.vendor.name,
-        task: 'merge',
-      },
-    })
-
     const systemPrompt = Prompts.mergeExpert()
     const prompt = Prompts.mergeTexts(chunks)
 
     const parsed = await this.callLLMAndValidate(
-      prompt, systemPrompt, model, provider, session.id,
+      prompt, systemPrompt, model, provider,
       (raw) => {
         if (!raw || typeof raw !== 'object') {
           throw new AppError('CUT_MODEL_INVALID_FORMAT_MISSING_CHUNKS')
@@ -641,8 +535,6 @@ export class CutModelService {
       },
       ThinkingEffort.XHigh
     )
-
-    await this.sessionService.complete(session.id)
 
     return parsed
   }

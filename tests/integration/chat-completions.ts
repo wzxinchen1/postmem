@@ -43,7 +43,7 @@ interface IngestResult {
   topicsInvolved: string[]
 }
 
-async function ingestTextAndWait(kbId: string, content: string): Promise<IngestResult> {
+async function ingestTextViaApi(kbId: string, content: string): Promise<IngestResult> {
   const res = await fetch(`${getBaseUrl()}/api/kb/ingest`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
@@ -54,47 +54,14 @@ async function ingestTextAndWait(kbId: string, content: string): Promise<IngestR
     throw new Error(`Ingest 请求失败 (HTTP ${res.status}): ${text}`)
   }
 
-  const reader = res.body!.getReader()
-  const decoder = new TextDecoder()
-  let buffer = ''
-
-  return new Promise<IngestResult>((resolve, reject) => {
-    function processLine(line: string): boolean {
-      if (!line.startsWith('data: ')) return false
-      try {
-        const event = JSON.parse(line.slice(6))
-        if (event.type === 'complete') {
-          resolve(event.data as IngestResult)
-          return true
-        }
-        if (event.type === 'error') {
-          reject(new Error(`Ingest 错误: ${event.data?.message || JSON.stringify(event.data)}`))
-          return true
-        }
-      } catch {
-        // 单行解析失败跳过
-      }
-      return false
-    }
-
-    function pump(): void {
-      reader.read().then(({ done, value }) => {
-        if (done) {
-          reject(new Error('Ingest SSE 流意外结束'))
-          return
-        }
-        buffer += decoder.decode(value, { stream: true })
-        const lines = buffer.split('\n')
-        buffer = lines.pop() || ''
-        for (const line of lines) {
-          if (processLine(line.trim())) return
-        }
-        pump()
-      })
-    }
-
-    pump()
-  })
+  const json = (await res.json()) as { success: boolean; data?: IngestResult }
+  if (!json.success) {
+    throw new Error(`Ingest 返回失败: ${JSON.stringify(json)}`)
+  }
+  if (!json.data) {
+    throw new Error(`Ingest 缺少 data 字段: ${JSON.stringify(json)}`)
+  }
+  return json.data
 }
 
 class MockChatTest extends ChatTestFixture {
@@ -958,7 +925,7 @@ class MockChatTest extends ChatTestFixture {
       resetMockCutModelCallCount()
       setMockCutModelResponses([])
 
-      const result = await ingestTextAndWait(this.kbId, '这是一段测试文本，内容较短，不需要递归切分。')
+      const result = await ingestTextViaApi(this.kbId, '这是一段测试文本，内容较短，不需要递归切分。')
 
       this.assertTruthy(result.memoryIds?.length > 0, 'memoryIds 非空')
       this.assertTruthy(result.memoryIds[0], '第一个 memoryId 有效')

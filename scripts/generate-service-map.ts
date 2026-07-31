@@ -398,7 +398,7 @@ function generateMermaidDiagram(classes: ClassInfo[]): string {
 
   lines.push('')
   lines.push('    subgraph 核心服务层')
-  for (const name of ['ChatService', 'ConversationService', 'KBService', 'SessionService']) {
+  for (const name of ['ChatService', 'ConversationService', 'KBService']) {
     const nodeId = name.replace(/Service$/, 'Svc')
     if (classes.some(c => c.name === name)) {
       lines.push(`        ${nodeId}`)

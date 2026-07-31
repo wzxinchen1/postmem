@@ -31,20 +31,17 @@ const mockChatSettingProvider: IChatSettingProvider = {
 /**
  * Real-LLM 模式下的 chatSettingProvider：
  * 从数据库读取真实设置，再叠加 mock store 中的测试控制字段。
- * 这样 searchSummaryConcurrency、searchLinkCount 等走真实数据库值，
- * 而 webSearchDisabled、memoryContextThreshold 等仍可由测试控制。
+ * 数据库无记录时直接报错，不静默回退（测试的目的就是提前发现问题）。
  */
 const realLLMChatSettingProvider: IChatSettingProvider = {
   async get() {
     const prisma = createMockPrisma()
     try {
       const dbSetting = await prisma.chatSetting.findFirst()
-      const store = getStore()
       if (!dbSetting) {
-        // 数据库无记录时 fallback 到 mock store
-        return { ...store }
+        throw new Error('real-LLM 测试模式：数据库 chat_settings 表无记录，请先初始化（调用生产 ChatSettingService.get() 或插入种子数据）')
       }
-      // 以数据库值为基础，叠加 mock store 中的测试控制字段
+      const store = getStore()
       return {
         ...dbSetting,
         // 以下字段由测试 mock 控制，不使用数据库值

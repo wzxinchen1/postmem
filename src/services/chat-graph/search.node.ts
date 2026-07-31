@@ -19,12 +19,12 @@ export function createSearchNode(deps: GraphDependencies) {
     return { systemPrompt, systemTokens }
   }
 
-  function getLastUserQuery(recentMessages: { role: string; content: string }[]): string {
+  function getLastUserQuery(recentMessages: { role: string; content: string }[], hasImages: boolean, hasUrls: boolean): string {
     const lastMsg = recentMessages[recentMessages.length - 1]
     if (!lastMsg) {
       throw new AppError('CHAT_SEARCH_MISSING_LAST_MESSAGE')
     }
-    if (!lastMsg.content) {
+    if (!lastMsg.content && !hasImages && !hasUrls) {
       throw new AppError('CHAT_SEARCH_MISSING_LAST_MESSAGE')
     }
     return lastMsg.content
@@ -89,11 +89,18 @@ export function createSearchNode(deps: GraphDependencies) {
     let memoryText = ''
     let fetchedUrls: string[] = []
 
-    const query = getLastUserQuery(recentMessages)
+    const hasImages = state.images.length > 0
+    const hasUrls = state.urls.length > 0
+    const query = getLastUserQuery(recentMessages, hasImages, hasUrls)
+    const hasTextQuery = query.trim().length > 0
     let memoryQuery: string | null = null
     let webKeywords: string[] = []
 
-    if (shouldSearchWeb || shouldSearchMemory) {
+    if (!hasTextQuery) {
+      logger.info('[ChatGraph] 最后一条用户消息无文本，跳过搜索', { hasImages, hasUrls })
+    }
+
+    if (hasTextQuery && (shouldSearchWeb || shouldSearchMemory)) {
       const needsResult = await deps.searchService.analyzeSearchNeeds(
         state.agent as any,
         recentMessages,
@@ -103,7 +110,7 @@ export function createSearchNode(deps: GraphDependencies) {
       memoryQuery = needsResult.memoryQuery
     }
 
-    if (shouldSearchWeb) {
+    if (hasTextQuery && shouldSearchWeb) {
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, conversationId: state.conversationId })
 
       logger.info('[ChatGraph] 缓存查询', {
@@ -153,7 +160,7 @@ export function createSearchNode(deps: GraphDependencies) {
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingWeb, conversationId: state.conversationId })
     }
 
-    if (shouldSearchMemory) {
+    if (hasTextQuery && shouldSearchMemory) {
       const searchKeyword = memoryQuery ?? query
       await deps.sseService.emit({ type: 'status', status: StreamStatus.SearchingMemory, conversationId: state.conversationId })
 

@@ -691,45 +691,6 @@ export interface UpdateChatSettingRequest {
   userProfile?: string | null
 }
 
-export interface Session {
-  id: string
-  kbId?: string
-  modelType: string
-  modelName: string
-  provider: string
-  status: string
-  error?: string
-  metadata: Record<string, unknown>
-  createdAt: Date
-  messages?: SessionMessage[]
-}
-
-export interface SessionMessage {
-  id: string
-  sessionId: string
-  role: string
-  content: string
-  tokens: number
-  metadata: Record<string, unknown>
-  createdAt: Date
-}
-
-export interface CreateSessionRequest {
-  kbId?: string
-  modelType: string
-  modelName: string
-  provider: string
-  metadata?: Record<string, unknown>
-}
-
-export interface AddSessionMessageRequest {
-  sessionId: string
-  role: string
-  content: string
-  tokens?: number
-  metadata?: Record<string, unknown>
-}
-
 /**
  * 提供商树节点 - 提供商及其下属模型的树形结构
  */

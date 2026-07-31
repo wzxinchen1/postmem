@@ -2,7 +2,7 @@
 
 import { ReactNode } from 'react'
 import { Layout, Menu, Typography, Space, Button } from 'antd'
-import { HomeOutlined, BookOutlined, SearchOutlined, UnorderedListOutlined, ApiOutlined, SettingOutlined, MessageOutlined, ArrowLeftOutlined, ColumnHeightOutlined } from '@ant-design/icons'
+import { HomeOutlined, BookOutlined, SearchOutlined, UnorderedListOutlined, ApiOutlined, SettingOutlined, ArrowLeftOutlined, ColumnHeightOutlined } from '@ant-design/icons'
 import { usePathname, useRouter } from 'next/navigation'
 
 const { Header, Content } = Layout
@@ -13,7 +13,6 @@ const menuItems = [
   { key: '/admin/kb', label: '知识库列表', icon: <BookOutlined /> },
   { key: '/admin/search', label: '语义检索', icon: <SearchOutlined /> },
   { key: '/admin/list', label: '片段列表', icon: <UnorderedListOutlined /> },
-  { key: '/admin/sessions', label: '会话记录', icon: <MessageOutlined /> },
   { key: '/admin/chunks', label: '片段管理', icon: <ColumnHeightOutlined /> },
   { key: '/admin/providers', label: '提供商管理', icon: <ApiOutlined /> },
   { key: '/admin/settings', label: '应用设置', icon: <SettingOutlined /> },

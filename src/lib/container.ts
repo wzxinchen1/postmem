@@ -8,7 +8,6 @@ import { ProviderService } from '@/src/services/provider.service'
 import { ModelService } from '@/src/services/model.service'
 import { SettingService } from '@/src/services/setting.service'
 import { ConversationService } from '@/src/services/conversation.service'
-import { SessionService } from '@/src/services/session.service'
 import { ProviderValidateService } from '@/src/services/provider-validate.service'
 import { VendorService } from '@/src/services/vendor.service'
 import { ChatService } from '@/src/services/chat.service'
@@ -43,7 +42,6 @@ container.register({
   embeddingService: asClass(EmbeddingService).scoped(),
   settingService: asClass(SettingService).scoped(),
   conversationService: asClass(ConversationService).scoped(),
-  sessionService: asClass(SessionService).scoped(),
   cutModelService: asClass(CutModelService).scoped(),
   kbService: asClass(KBService).scoped(),
   providerService: asClass(ProviderService).scoped(),
